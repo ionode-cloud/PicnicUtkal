@@ -619,7 +619,7 @@ export default function MapPage() {
                         id={`mp-book-${selected._id}`}
                         className={`mp-btn-book ${selected.status !== 'available' ? 'mp-btn-book--disabled' : ''}`}
                         disabled={selected.status !== 'available'}
-                        onClick={() => navigate(`/plots/${selected._id}`)}
+                        onClick={() => navigate(`/plots/${selected._id}?book=true`)}
                       >
                         <Star size={14} />
                         {selected.status === 'available' ? 'Book Now' : 'Not Available'}

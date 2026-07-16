@@ -31,7 +31,7 @@ export default function Contact() {
           <p style={{ color: 'var(--text-muted)' }}>Need custom packages or support? Drop us a line below.</p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-10)' }}>
+        <div className="contact-main-grid">
           {/* Info cards */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <div className="card" style={{ padding: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>

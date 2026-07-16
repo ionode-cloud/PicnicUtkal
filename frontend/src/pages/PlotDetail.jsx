@@ -238,6 +238,22 @@ export default function PlotDetail() {
       .finally(() => setLoading(false))
   }, [id])
 
+  // Auto-scroll to booking card on mobile if ?book=true is passed
+  useEffect(() => {
+    if (!loading && !error && plot) {
+      const searchParams = new URLSearchParams(window.location.search)
+      if (searchParams.get('book') === 'true') {
+        setTimeout(() => {
+          const element = document.getElementById('booking-date')
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            element.focus()
+          }
+        }, 300)
+      }
+    }
+  }, [loading, error, plot])
+
   const handleAddonToggle = (addonId) => {
     setSelectedAddons(prev =>
       prev.includes(addonId) ? prev.filter(a => a !== addonId) : [...prev, addonId]
@@ -461,9 +477,9 @@ export default function PlotDetail() {
                         key={addon.id}
                         className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
                         onClick={() => handleAddonToggle(addon.id)}
-                        style={{ cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'stretch', gap: '8px' }}
+                        style={{ cursor: 'pointer' }}
                       >
-                        <div style={{ display: 'flex', width: '100%', alignItems: 'center' }}>
+                        <div className="addon-row-content">
                           <div className="zone-detail-checkbox">
                             <input
                               type="checkbox"
@@ -473,22 +489,24 @@ export default function PlotDetail() {
                               id={`addon-check-${addon.id}`}
                             />
                           </div>
-                          <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
-                            <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
-                            {addon.items && (
-                              <button
-                                type="button"
-                                className="addon-details-btn"
-                                onClick={(e) => toggleExpandAddon(e, addon.id)}
-                              >
-                                {isExpanded ? 'Hide Details' : 'View details'}
-                              </button>
-                            )}
-                          </div>
-                          <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
-                            <span>+ ₹{addon.priceAddon}</span>
-                            <small>/person addon</small>
+                          <div className="addon-row-body">
+                            <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
+                              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
+                              <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
+                              {addon.items && (
+                                <button
+                                  type="button"
+                                  className="addon-details-btn"
+                                  onClick={(e) => toggleExpandAddon(e, addon.id)}
+                                >
+                                  {isExpanded ? 'Hide Details' : 'View details'}
+                                </button>
+                              )}
+                            </div>
+                            <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
+                              <span>+ ₹{addon.priceAddon}</span>
+                              <small>/person addon</small>
+                            </div>
                           </div>
                         </div>
 

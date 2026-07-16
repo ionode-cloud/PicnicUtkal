@@ -30,7 +30,7 @@ export default function Gallery() {
         </div>
 
         {/* Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 'var(--space-4)', marginBlock: 'var(--space-8)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 'var(--space-4)', marginBlock: 'var(--space-8)' }}>
           {IMAGES.map((img, i) => (
             <div
               key={i}

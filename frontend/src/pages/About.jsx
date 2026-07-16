@@ -11,7 +11,7 @@ export default function About() {
 
       <div className="about-page container section" style={{ paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
         {/* Story Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-12)', alignItems: 'center', marginBottom: 'var(--space-16)' }}>
+        <div className="about-story-grid">
           <div>
             <span className="section-eyebrow">Our Story</span>
             <h1 className="heading-2" style={{ marginBottom: 'var(--space-4)' }}>Pioneering Luxury Nature Escapes</h1>
@@ -28,7 +28,7 @@ export default function About() {
         </div>
 
         {/* Mission / Vision Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-6)', marginBottom: 'var(--space-16)' }}>
+        <div className="about-mission-grid">
           <div className="card" style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
             <div style={{ color: 'var(--forest)' }}><Trees size={32} /></div>
             <h3 className="heading-4">Nature Preservation</h3>

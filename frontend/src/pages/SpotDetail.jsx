@@ -101,6 +101,22 @@ export default function SpotDetail() {
   const [visitDate, setVisitDate] = useState('')
   const [selectedZones, setSelectedZones] = useState([])
 
+  // Auto-scroll to booking card on mobile if ?book=true is passed
+  useEffect(() => {
+    if (spot) {
+      const searchParams = new URLSearchParams(window.location.search)
+      if (searchParams.get('book') === 'true') {
+        setTimeout(() => {
+          const element = document.getElementById('booking-date')
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            element.focus()
+          }
+        }, 300)
+      }
+    }
+  }, [id, spot])
+
   const spot = SPOTS_DB[id] || SPOTS_DB['1']
 
   const handleZoneToggle = (zoneId) => {

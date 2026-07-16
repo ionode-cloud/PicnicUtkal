@@ -15,7 +15,47 @@ router.get('/plots', async (req, res) => {
 // GET single plot
 router.get('/plots/:id', async (req, res) => {
   try {
-    const plot = await MapPlot.findById(req.params.id)
+    const id = req.params.id
+
+    // Fallback dictionary for custom slug IDs
+    const SLUG_TO_TITLE = {
+      'pandal-1': 'Pandal — Upper Block',
+      'pandal-2': 'Pandal — Center Block',
+      'pandal-3': 'Pandal — West Block',
+      'pandal-4': 'Pandal — East Block',
+      'pandal-5': 'Pandal — Road Block',
+      'pandal-6': 'Pandal — North East Block',
+      'main-gate': 'Main Gate',
+      'parking': 'Parking Zone'
+    }
+
+    if (id === 'cottage-rooms') {
+      const cottageData = {
+        _id: 'cottage-rooms',
+        title: 'Cottage Rooms',
+        price: 1500,
+        area: '450 sq ft',
+        capacity: 4,
+        description: 'Premium air-conditioned cottage rooms with forest views and private sitouts.',
+        facilities: ['AC', 'TV', 'Geyser', 'Double Bed', 'Room Service'],
+        status: 'available',
+        color: '#C9A84C'
+      }
+      return res.json({ success: true, data: cottageData })
+    }
+
+    const mongoose = require('mongoose')
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      if (SLUG_TO_TITLE[id]) {
+        const plot = await MapPlot.findOne({ title: SLUG_TO_TITLE[id] })
+        if (plot) {
+          return res.json({ success: true, data: plot })
+        }
+      }
+      return res.status(404).json({ success: false, message: 'Plot not found' })
+    }
+
+    const plot = await MapPlot.findById(id)
     if (!plot) return res.status(404).json({ success: false, message: 'Plot not found' })
     res.json({ success: true, data: plot })
   } catch (err) {

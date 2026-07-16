@@ -181,7 +181,7 @@ function SpotCard({ spot, index }) {
           </div>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => navigate(`/plots/${spot.id}`)}
+            onClick={() => navigate(`/plots/${spot.id}?book=true`)}
             id={`book-spot-${spot.id}`}
           >
             Book Now

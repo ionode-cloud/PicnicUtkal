@@ -250,7 +250,7 @@ export default function Spots() {
                   </div>
                   <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
                     <Link to={`/plots/${spot.id}`} className="btn btn-outline btn-sm">Details</Link>
-                    <Link to={`/plots/${spot.id}`} className="btn btn-primary btn-sm" id={`book-${spot.id}`}>Book Now</Link>
+                    <Link to={`/plots/${spot.id}?book=true`} className="btn btn-primary btn-sm" id={`book-${spot.id}`}>Book Now</Link>
                   </div>
                 </div>
               </div>

@@ -1676,6 +1676,17 @@ h1, h2, h3, h4, h5, h6 {
   padding: 24px;
   box-shadow: var(--shadow-md);
   width: 100%;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(201, 168, 76, 0.25) transparent;
+}
+.booking-sticky-card::-webkit-scrollbar {
+  width: 4px;
+}
+.booking-sticky-card::-webkit-scrollbar-thumb {
+  background: rgba(201, 168, 76, 0.25);
+  border-radius: 2px;
 }
 .booking-card-price {
   display: flex;
@@ -1812,6 +1823,10 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 1024px) {
   .spot-grid-layout {
     flex-direction: column;
+  }
+  .spot-main-content {
+    width: 100%;
+    max-width: 100%;
   }
   .spot-booking-sidebar {
     width: 100%;
@@ -5198,13 +5213,13 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--gold, #C9A84C); flex-shrink: 0;
 }
 .bk2-pay-label { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-.bk2-pay-desc  { font-size: 11px; color: rgba(255,255,255,0.38); margin-top: 1px; }
+.bk2-pay-desc  { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
 .bk2-pay-check { position: absolute; right: 14px; color: var(--gold, #C9A84C); }
 .sr-only { display: none; }
 
 .bk2-upi-note {
-  font-size: 12px; color: rgba(255,255,255,0.42);
-  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);
+  font-size: 12px; color: var(--text-secondary);
+  background: var(--bg-secondary); border: 1px solid var(--border);
   border-radius: 8px; padding: 9px 12px; line-height: 1.5;
 }
 
@@ -5597,5 +5612,177 @@ h1, h2, h3, h4, h5, h6 {
 @media (max-width: 576px) {
   .bk2-grid-2 {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── About Page Responsive Grids ── */
+.about-story-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-12);
+  align-items: center;
+  margin-bottom: var(--space-16);
+}
+.about-mission-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6);
+  margin-bottom: var(--space-16);
+}
+
+@media (max-width: 768px) {
+  .about-story-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+  .about-mission-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-4);
+  }
+}
+
+/* ── Contact Page Responsive Grid ── */
+.contact-main-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-10);
+}
+
+@media (max-width: 768px) {
+  .contact-main-grid {
+    grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+}
+
+/* ── Additional Mobile Fine-Tuning ── */
+.spot-breadcrumb {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 480px) {
+  .addon-expanded-box {
+    margin-left: 10px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  .bk2-visitor-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .bk2-visitor-num {
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 8px !important;
+  }
+  .bk2-visitor-num br {
+    display: none;
+  }
+}
+
+/* ── Custom Event Addons Responsive Styles ── */
+.addon-row-content {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+}
+.addon-row-body {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+@media (max-width: 480px) {
+  .addon-row-content {
+    align-items: flex-start;
+  }
+  .addon-row-body {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .addon-row-body .zone-detail-price {
+    text-align: left !important;
+    min-width: unset !important;
+  }
+}
+
+/* ── Auth Pages Responsive Layout ── */
+.auth-page-container {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bg-primary);
+}
+.auth-banner {
+  flex: 1.2;
+  position: relative;
+  background: linear-gradient(135deg, var(--dark-green), var(--forest));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: var(--space-12);
+  color: var(--cream);
+}
+.auth-form-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: var(--bg-secondary);
+}
+
+@media (max-width: 991px) {
+  .auth-page-container {
+    flex-direction: column;
+  }
+  .auth-banner {
+    display: none;
+  }
+  .auth-form-side {
+    min-height: 100vh;
+    padding: var(--space-8) var(--space-4);
+  }
+}
+
+/* Auth Form Card & Mobile Back Link */
+.auth-form-card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--space-8);
+}
+
+.auth-mobile-back {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--forest);
+  font-weight: 600;
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-6);
+  text-decoration: none;
+}
+.auth-mobile-back:hover {
+  color: var(--gold-dark);
+}
+
+@media (max-width: 991px) {
+  .auth-mobile-back {
+    display: inline-flex;
+  }
+  .auth-form-card {
+    padding: var(--space-6) var(--space-5);
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-form-card {
+    padding: var(--space-5) var(--space-4);
   }
 }

@@ -25,9 +25,9 @@ export default function Register() {
         <title>Create Your PicnicUtkal Account</title>
       </Helmet>
 
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      <div className="auth-page-container">
         {/* Left Visual Banner */}
-        <div style={{ flex: 1.2, position: 'relative', background: 'linear-gradient(135deg, var(--dark-green), var(--forest))', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 'var(--space-12)', color: 'var(--cream)' }}>
+        <div className="auth-banner">
           <div style={{ position: 'absolute', inset: 0, backgroundImage: 'url("https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80")', backgroundSize: 'cover', backgroundPosition: 'center', opacity: 0.15 }} />
           <div style={{ position: 'relative', zIndex: 1 }}>
             <Link to="/" style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', color: 'var(--cream)', fontWeight: '600', marginBottom: 'var(--space-8)' }}>
@@ -39,8 +39,11 @@ export default function Register() {
         </div>
 
         {/* Right Form */}
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--space-6)', background: 'var(--bg-secondary)' }}>
-          <div className="glass-card" style={{ width: '100%', maxWidth: '420px', padding: 'var(--space-8)' }}>
+        <div className="auth-form-side">
+          <div className="glass-card auth-form-card">
+            <Link to="/" className="auth-mobile-back">
+              <ArrowLeft size={14} /> Back to Home
+            </Link>
             <h2 className="heading-3" style={{ marginBottom: 'var(--space-2)' }}>Join PicnicUtkal</h2>
             <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', marginBottom: 'var(--space-6)' }}>Create a free account in seconds</p>
 
