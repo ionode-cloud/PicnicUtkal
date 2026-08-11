@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { Leaf } from 'lucide-react'
+import { LuLeaf as Leaf } from 'react-icons/lu'
 
 export default function PageLoader() {
   return (

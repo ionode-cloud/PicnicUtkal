@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  Users, Trees, Calendar, ShoppingBag, Landmark, Timer, Layers, Star,
-  TrendingUp, Users as UsersIcon, Calendar as CalendarIcon, ArrowUpRight
-} from 'lucide-react'
+  LuUsers as Users, LuTrees as Trees, LuCalendar as Calendar, LuShoppingBag as ShoppingBag, LuLandmark as Landmark, LuTimer as Timer, LuLayers as Layers, LuStar as Star,
+  LuTrendingUp as TrendingUp, LuUsers as UsersIcon, LuCalendar as CalendarIcon, LuArrowUpRight as ArrowUpRight
+} from 'react-icons/lu'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
@@ -46,16 +46,35 @@ const POPULAR_SPOTS_DATA = [
 
 const COLORS = ['#1B4332', '#C9A84C', '#52B788', '#2D6A4F']
 
+import { useState } from 'react'
+import { useSocket } from '../../context/SocketContext'
+import toast from 'react-hot-toast'
+import { LuRadio as Radio, LuSend as Send } from 'react-icons/lu'
+
 export default function Dashboard() {
+  const { isConnected, liveVisitors, emitAdminAnnouncement } = useSocket()
+  const [broadcastMsg, setBroadcastMsg] = useState('')
+
+  const handleSendBroadcast = (e) => {
+    e.preventDefault()
+    if (!broadcastMsg.trim()) {
+      toast.error('Announcement message cannot be empty.')
+      return
+    }
+    emitAdminAnnouncement(broadcastMsg)
+    toast.success('Live announcement broadcasted to all connected visitors!')
+    setBroadcastMsg('')
+  }
+
   const kpis = [
+    { label: 'Real-time Visitors', val: `${liveVisitors} Online`, change: isConnected ? 'Socket Live' : 'Offline', trend: 'success', icon: Radio, color: '#4ADE80' },
     { label: 'Total Users', val: '1,248', change: '+4.1%', trend: 'success', icon: Users, color: 'var(--info)' },
     { label: 'Total Spots', val: '52', change: '+2 new', trend: 'success', icon: Trees, color: 'var(--forest)' },
     { label: 'Total Bookings', val: '438', change: '+8.2%', trend: 'success', icon: Calendar, color: 'var(--gold)' },
     { label: 'Today\'s Bookings', val: '14', change: '+12%', trend: 'success', icon: ShoppingBag, color: '#e8590c' },
     { label: 'Monthly Revenue', val: '₹1,84,390', change: '+12.4%', trend: 'success', icon: Landmark, color: 'var(--success)' },
     { label: 'Pending Payments', val: '3', change: '-15%', trend: 'warning', icon: Timer, color: '#fcc419' },
-    { label: 'Active Zones', val: '24', change: '100% capacity', trend: 'neutral', icon: Layers, color: '#748ffc' },
-    { label: 'Reviews Approval', val: '98%', change: '4.8 ★ average', trend: 'success', icon: Star, color: '#f59f00' }
+    { label: 'Active Zones', val: '24', change: '100% capacity', trend: 'neutral', icon: Layers, color: '#748ffc' }
   ]
 
   const containerVariants = {
@@ -73,12 +92,6 @@ export default function Dashboard() {
 
   return (
     <div className="admin-dashboard-container">
-      {/* Intro info */}
-      <div className="admin-page-header-title">
-        <h1 className="heading-3">Analytics Dashboard</h1>
-        <p className="text-muted text-sm">Real-time summaries, reservation metrics, and transaction ledgers.</p>
-      </div>
-
       {/* KPI Cards Grid */}
       <motion.div
         className="admin-kpis-grid"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ArrowUp } from 'lucide-react'
+import { LuArrowUp as ArrowUp } from 'react-icons/lu'
 import { motion, AnimatePresence } from 'framer-motion'
 
 export default function ScrollToTopFAB() {

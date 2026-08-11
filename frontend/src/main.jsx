@@ -7,6 +7,8 @@ import { HelmetProvider } from 'react-helmet-async'
 import App from './App'
 import './App.css'
 
+import { SocketProvider } from './context/SocketContext'
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -21,7 +23,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          <App />
+          <SocketProvider>
+            <App />
+          </SocketProvider>
           <Toaster
             position="top-right"
             toastOptions={{

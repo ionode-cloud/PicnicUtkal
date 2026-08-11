@@ -27,11 +27,17 @@ const NotFound   = lazy(() => import('./pages/NotFound'))
 const AdminLayout = lazy(() => import('./admin/layout/AdminLayout'))
 const Dashboard   = lazy(() => import('./admin/pages/Dashboard'))
 const AdminSpots  = lazy(() => import('./admin/pages/Spots'))
+const EventAddons = lazy(() => import('./admin/pages/EventAddons'))
+const AdminZones  = lazy(() => import('./admin/pages/Zones'))
 const Bookings    = lazy(() => import('./admin/pages/Bookings'))
+const BookingHistory = lazy(() => import('./admin/pages/BookingHistory'))
+const InvoicePage = lazy(() => import('./admin/pages/InvoicePage'))
 const Users       = lazy(() => import('./admin/pages/Users'))
 const Payments    = lazy(() => import('./admin/pages/Payments'))
-const AdminGallery    = lazy(() => import('./admin/pages/Gallery'))
 const AdminMapMgmt    = lazy(() => import('./admin/pages/MapManagement'))
+const AdminCredentials = lazy(() => import('./admin/pages/AdminCredentials'))
+const UserViewMgmt   = lazy(() => import('./admin/pages/UserViewMgmt'))
+const SupportContact = lazy(() => import('./admin/pages/SupportContact'))
 
 // No navbar/footer on these routes
 const CLEAN_ROUTES = ['/login', '/register', '/forgot-password']
@@ -81,11 +87,21 @@ export default function App() {
             >
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="spots"     element={<AdminSpots />} />
+              <Route path="spots/addons" element={<EventAddons />} />
+              <Route path="zones"     element={<AdminZones />} />
               <Route path="bookings"  element={<Bookings />} />
+              <Route path="bookings/history" element={<BookingHistory />} />
+              <Route path="bookings/invoice/:id" element={<InvoicePage />} />
               <Route path="users"     element={<Users />} />
               <Route path="payments"  element={<Payments />} />
-              <Route path="gallery"   element={<AdminGallery />} />
               <Route path="map"       element={<AdminMapMgmt />} />
+              <Route path="credentials" element={<AdminCredentials />} />
+              <Route path="support-contact" element={<SupportContact />} />
+              <Route path="user-view" element={<UserViewMgmt />} />
+              <Route path="user-view/home" element={<UserViewMgmt />} />
+              <Route path="user-view/about" element={<UserViewMgmt />} />
+              <Route path="user-view/gallery" element={<UserViewMgmt />} />
+              <Route path="user-view/contact" element={<UserViewMgmt />} />
             </Route>
 
             <Route path="*"                   element={<NotFound />} />

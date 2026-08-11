@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  X, User, Mail, Phone, Calendar, Users, FileText,
-  CreditCard, Smartphone, Banknote, CheckCircle2,
-  ArrowRight, ArrowLeft, IndianRupee, MapPin, Loader2,
-  PartyPopper, Copy, Check, ShieldCheck, Clock,
-  IdCard, ChevronDown, ChevronUp, Star, Sparkles
-} from 'lucide-react'
+  LuX as X, LuUser as User, LuMail as Mail, LuPhone as Phone, LuCalendar as Calendar, LuUsers as Users, LuFileText as FileText,
+  LuCreditCard as CreditCard, LuSmartphone as Smartphone, LuBanknote as Banknote, LuCircleCheck as CheckCircle2,
+  LuArrowRight as ArrowRight, LuArrowLeft as ArrowLeft, LuIndianRupee as IndianRupee, LuMapPin as MapPin, LuLoader as Loader2,
+  LuPartyPopper as PartyPopper, LuCopy as Copy, LuCheck as Check, LuShieldCheck as ShieldCheck, LuClock as Clock,
+  LuIdCard as IdCard, LuChevronDown as ChevronDown, LuChevronUp as ChevronUp, LuStar as Star, LuSparkles as Sparkles
+} from 'react-icons/lu'
 
 const STEPS = [
   { label: 'Details',   icon: User },
@@ -32,6 +32,7 @@ function FieldLabel({ icon: Icon, text, optional }) {
 }
 
 export default function BookingModal({ plot, onClose }) {
+  const { emitNewBooking, emitPlotStatusChange } = useSocket()
   const [step, setStep]       = useState(0)
   const [loading, setLoading] = useState(false)
   const [booking, setBooking] = useState(null)
@@ -66,7 +67,7 @@ export default function BookingModal({ plot, onClose }) {
     })
   }, [form.persons])
 
-  const total = pricePerPerson * form.persons
+  const total = pricePerPerson // Fixed flat rate per pandal/plot
 
   /* ── Validation helpers ── */
   const validateDetails = () => {
@@ -148,6 +149,15 @@ export default function BookingModal({ plot, onClose }) {
       if (!res.ok || !data.success) throw new Error(data.message || 'Booking failed. Please try again.')
       setBooking(data.data)
       setStep(3)
+
+      // Emit real-time socket events
+      emitNewBooking({
+        pandalName: plot?.title || 'Picnic Pandal',
+        visitDate: form.visitDate,
+        total: total,
+        customerName: form.name
+      })
+      emitPlotStatusChange(plot?._id, 'booked')
     } catch (err) {
       setError(err.message)
     } finally {
@@ -338,7 +348,7 @@ export default function BookingModal({ plot, onClose }) {
               <div className="bk2-summary-card">
                 <div className="bk2-summary-row">
                   <span>{plot?.title}</span>
-                  <span>₹{pricePerPerson.toLocaleString()}/person</span>
+                  <span>₹{pricePerPerson.toLocaleString()} {!plot?.isCottage ? '/Pindi' : '/night'}</span>
                 </div>
                 <div className="bk2-summary-row">
                   <span>Persons</span>

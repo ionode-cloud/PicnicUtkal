@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
-import { Search, Grid, List, MapPin, Star, SlidersHorizontal, X, ChevronDown } from 'lucide-react'
+import { LuSearch as Search, LuLayoutGrid as Grid, LuList as List, LuMapPin as MapPin, LuStar as Star, LuSlidersHorizontal as SlidersHorizontal, LuX as X, LuChevronDown as ChevronDown } from 'react-icons/lu'
 
 const SPOTS = [
   {
@@ -135,7 +135,7 @@ export default function Spots() {
       {/* Page Header */}
       <div className="spots-header">
         <div className="spots-header__bg" />
-        <div className="container spots-header__content">
+        <div className="container-fluid spots-header__content">
           <motion.h1 className="heading-2" style={{ color: 'var(--cream)' }}
             initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             Discover Picnic Spots<br /><span className="text-gradient">Across Odisha</span>
@@ -144,7 +144,7 @@ export default function Spots() {
         </div>
       </div>
 
-      <div className="spots-page container">
+      <div className="spots-page container-fluid">
         {/* Controls */}
         <div className="spots-controls">
           <div className="spots-search-wrap">
@@ -202,7 +202,7 @@ export default function Spots() {
                   onChange={e => setFilters(f => ({ ...f, minRating: Number(e.target.value) }))} className="filter-range" />
               </div>
               <div>
-                <label className="filter-label">Max Price: ₹{filters.maxPrice}/person</label>
+                <label className="filter-label">Max Price: ₹{filters.maxPrice}/pandal</label>
                 <input type="range" min={100} max={1000} step={50} value={filters.maxPrice}
                   onChange={e => setFilters(f => ({ ...f, maxPrice: Number(e.target.value) }))} className="filter-range" />
               </div>
@@ -246,10 +246,10 @@ export default function Spots() {
                   <div className="spot-card__price">
                     <span className="spot-card__price-from">from</span>
                     <span className="spot-card__price-amount">₹{spot.price}</span>
-                    <span className="spot-card__price-unit">{spot.id === 'cottage-rooms' ? '/night' : '/person'}</span>
+                    <span className="spot-card__price-unit">{spot.id === 'cottage-rooms' ? '/night' : '/pandal'}</span>
                   </div>
-                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
-                    <Link to={`/plots/${spot.id}`} className="btn btn-outline btn-sm">Details</Link>
+                  <div className="spot-card__actions">
+                    <Link to={`/plots/${spot.id}`} className="btn btn-outline btn-sm" id={`details-${spot.id}`}>Details</Link>
                     <Link to={`/plots/${spot.id}?book=true`} className="btn btn-primary btn-sm" id={`book-${spot.id}`}>Book Now</Link>
                   </div>
                 </div>

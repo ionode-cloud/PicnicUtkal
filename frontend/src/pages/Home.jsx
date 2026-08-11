@@ -1,17 +1,18 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
 import {
-  Search, MapPin, Calendar, Users, Star, ArrowRight,
-  Waves, Flame, Music, Tent, Target, Trees, Camera,
-  ChevronDown, Shield, Clock, Award, TrendingUp
-} from 'lucide-react'
+  LuSearch as Search, LuMapPin as MapPin, LuCalendar as Calendar, LuUsers as Users, LuStar as Star, LuArrowRight as ArrowRight,
+  LuWaves as Waves, LuFlame as Flame, LuMusic as Music, LuTent as Tent, LuTarget as Target, LuTrees as Trees, LuCamera as Camera,
+  LuChevronDown as ChevronDown, LuShield as Shield, LuClock as Clock, LuAward as Award, LuTrendingUp as TrendingUp
+} from 'react-icons/lu'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, Pagination, EffectFade } from 'swiper/modules'
 import 'swiper/css'
 import 'swiper/css/pagination'
 import 'swiper/css/effect-fade'
+import { useSocket } from '../context/SocketContext'
 
 const HERO_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=85',
@@ -177,15 +178,24 @@ function SpotCard({ spot, index }) {
           <div className="spot-card__price">
             <span className="spot-card__price-from">from</span>
             <span className="spot-card__price-amount">₹{spot.price}</span>
-            <span className="spot-card__price-unit">{spot.id === 'cottage-rooms' ? '/night' : '/person'}</span>
+            <span className="spot-card__price-unit">{spot.id === 'cottage-rooms' ? '/night' : '/pandal'}</span>
           </div>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => navigate(`/plots/${spot.id}?book=true`)}
-            id={`book-spot-${spot.id}`}
-          >
-            Book Now
-          </button>
+          <div className="spot-card__actions">
+            <button
+              className="btn btn-outline btn-sm"
+              onClick={() => navigate(`/plots/${spot.id}`)}
+              id={`details-spot-${spot.id}`}
+            >
+              Details
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => navigate(`/plots/${spot.id}?book=true`)}
+              id={`book-spot-${spot.id}`}
+            >
+              Book Now
+            </button>
+          </div>
         </div>
       </div>
     </motion.div>
@@ -199,6 +209,39 @@ export default function Home() {
 
   const [searchData, setSearchData] = useState({ location: '', date: '', people: '' })
   const navigate = useNavigate()
+
+  // Load User View config from Admin Panel (localStorage)
+  const getStoredHomeConfig = () => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_user_view_config')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        return parsed.home || {}
+      }
+    } catch (e) {}
+    return {}
+  }
+
+  const [homeConfig, setHomeConfig] = useState(getStoredHomeConfig)
+
+  // Socket.io: live-reload when admin saves Home page content
+  const { socket } = useSocket()
+  useEffect(() => {
+    if (!socket) return
+    const handler = (data) => {
+      if (data && data.config) {
+        setHomeConfig(data.config)
+        // Also persist to localStorage so refreshes keep changes
+        try {
+          const saved = localStorage.getItem('picnicutkal_user_view_config')
+          const parsed = saved ? JSON.parse(saved) : {}
+          localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, home: data.config }))
+        } catch (e) {}
+      }
+    }
+    socket.on('home_config_update', handler)
+    return () => socket.off('home_config_update', handler)
+  }, [socket])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -229,7 +272,7 @@ export default function Home() {
             loop
             className="hero__swiper"
           >
-            {HERO_IMAGES.map((img, i) => (
+            {(homeConfig.heroImages && homeConfig.heroImages.length > 0 ? homeConfig.heroImages : HERO_IMAGES).map((img, i) => (
               <SwiperSlide key={i}>
                 <div className="hero__slide" style={{ backgroundImage: `url(${img})` }} />
               </SwiperSlide>
@@ -238,14 +281,14 @@ export default function Home() {
           <div className="hero-overlay" />
         </motion.div>
 
-        <div className="hero__content container">
+        <div className="hero__content container-fluid">
           <motion.span
             className="hero__eyebrow"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            🌿 Welcome to Odisha's Nature Paradise
+            {homeConfig.eyebrowText || "🌿 Welcome to Odisha's Nature Paradise"}
           </motion.span>
 
           <motion.h1
@@ -254,9 +297,9 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            Find Your Perfect<br />
-            <span className="text-gradient">Picnic Escape</span><br />
-            in Odisha
+            {homeConfig.heroTitleLine1 || "Find Your Perfect"}<br />
+            <span className="text-gradient">{homeConfig.heroTitleLine2 || "Picnic Escape"}</span><br />
+            {homeConfig.heroTitleLine3 || "in Odisha"}
           </motion.h1>
 
           <motion.p
@@ -265,8 +308,7 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            Discover 50+ premium picnic zones with swimming, BBQ, camping, adventure & more.
-            Book instantly and arrive to a perfectly arranged picnic.
+            {homeConfig.heroSubtitle || "Discover 50+ premium picnic zones with swimming, BBQ, camping, adventure & more. Book instantly and arrive to a perfectly arranged picnic."}
           </motion.p>
 
           {/* Search Box */}
@@ -332,11 +374,11 @@ export default function Home() {
 
       {/* POPULAR ZONES */}
       <section className="section section-sm zones-section">
-        <div className="container">
+        <div className="container-fluid">
           <div className="section-header">
-            <span className="section-eyebrow">Explore Zones</span>
-            <h2 className="section-title">Choose Your <span className="text-gradient">Perfect Zone</span></h2>
-            <p className="section-subtitle">From peaceful family gardens to thrilling adventure zones — we have it all.</p>
+            <span className="section-eyebrow">{homeConfig.zonesEyebrow || "Explore Zones"}</span>
+            <h2 className="section-title">{homeConfig.zonesTitle || "Choose Your Perfect Zone"}</h2>
+            <p className="section-subtitle">{homeConfig.zonesSubtitle || "From peaceful family gardens to thrilling adventure zones — we have it all."}</p>
           </div>
           <motion.div
             className="zones-grid"
@@ -371,11 +413,11 @@ export default function Home() {
 
       {/* FEATURED SPOTS */}
       <section className="section spots-section">
-        <div className="container">
+        <div className="container-fluid">
           <div className="section-header">
-            <span className="section-eyebrow">Top Destinations</span>
-            <h2 className="section-title">Featured <span className="text-gradient-green">Picnic Spots</span></h2>
-            <p className="section-subtitle">Handpicked premium picnic destinations across Odisha's most beautiful landscapes.</p>
+            <span className="section-eyebrow">{homeConfig.spotsEyebrow || "Top Destinations"}</span>
+            <h2 className="section-title">{homeConfig.spotsTitle || "Featured Picnic Spots"}</h2>
+            <p className="section-subtitle">{homeConfig.spotsSubtitle || "Handpicked premium picnic destinations across Odisha's most beautiful landscapes."}</p>
           </div>
           <motion.div
             className="spots-grid"
@@ -399,33 +441,38 @@ export default function Home() {
 
       {/* WHY CHOOSE US */}
       <section className="section why-section">
-        <div className="container">
+        <div className="container-fluid">
           <div className="why-inner">
             <div className="why-text">
-              <span className="section-eyebrow">Why PicnicUtkal?</span>
+              <span className="section-eyebrow">{homeConfig.whyEyebrow || "Why PicnicUtkal?"}</span>
               <h2 className="section-title" style={{ textAlign: 'left', maxWidth: '480px' }}>
-                The Smartest Way to<br /><span className="text-gradient-green">Plan a Picnic</span>
+                {homeConfig.whyTitleLine1 || "The Smartest Way to"}<br />
+                <span className="text-gradient-green">{homeConfig.whyTitleLine2 || "Plan a Picnic"}</span>
               </h2>
               <p className="section-subtitle" style={{ textAlign: 'left' }}>
-                We handle everything — from booking your zone to arranging food, decorations, and parking. Just show up and enjoy.
+                {homeConfig.whySubtitle || "We handle everything — from booking your zone to arranging food, decorations, and parking. Just show up and enjoy."}
               </p>
               <div className="why-features">
-                {[
-                  { icon: Shield, label: 'Secure Payments', desc: 'Razorpay secured. UPI, cards & more.' },
-                  { icon: Clock,  label: 'Instant Confirmation', desc: 'QR ticket in seconds on email & SMS.' },
-                  { icon: Award, label: 'Premium Spots', desc: 'Handpicked, verified, top-rated spots.' },
-                  { icon: TrendingUp, label: 'Best Price Guarantee', desc: 'No hidden fees. What you see is final.' },
-                ].map(f => (
-                  <div key={f.label} className="why-feature">
-                    <div className="why-feature__icon">
-                      <f.icon size={20} />
+                {(homeConfig.whyFeatures || [
+                  { label: 'Secure Payments', desc: 'Razorpay secured. UPI, cards & more.' },
+                  { label: 'Instant Confirmation', desc: 'QR ticket in seconds on email & SMS.' },
+                  { label: 'Premium Spots', desc: 'Handpicked, verified, top-rated spots.' },
+                  { label: 'Best Price Guarantee', desc: 'No hidden fees. What you see is final.' },
+                ]).map((f, idx) => {
+                  const icons = [Shield, Clock, Award, TrendingUp]
+                  const IconComp = icons[idx % icons.length]
+                  return (
+                    <div key={f.label || idx} className="why-feature">
+                      <div className="why-feature__icon">
+                        <IconComp size={20} />
+                      </div>
+                      <div>
+                        <div className="why-feature__label">{f.label}</div>
+                        <div className="why-feature__desc">{f.desc}</div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="why-feature__label">{f.label}</div>
-                      <div className="why-feature__desc">{f.desc}</div>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
               <Link to="/about" className="btn btn-primary btn-lg" id="learn-more-btn">
                 Learn More <ArrowRight size={18} />
@@ -434,19 +481,19 @@ export default function Home() {
             <div className="why-visual">
               <div className="why-img-stack">
                 <img
-                  src="https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=500&q=80"
+                  src={homeConfig.whyImgMain || "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=500&q=80"}
                   alt="Happy family picnic"
                   className="why-img why-img--main"
                 />
                 <img
-                  src="https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=300&q=80"
+                  src={homeConfig.whyImgSecondary || "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=300&q=80"}
                   alt="Picnic zone"
                   className="why-img why-img--secondary"
                   style={{ border: '4px solid var(--cream)' }}
                 />
                 <div className="why-badge glass-dark">
                   <Star size={16} fill="var(--gold)" color="var(--gold)" />
-                  <span>4.9 · 15,000+ Reviews</span>
+                  <span>{homeConfig.whyBadgeText || "4.9 · 15,000+ Reviews"}</span>
                 </div>
               </div>
             </div>
@@ -456,15 +503,15 @@ export default function Home() {
 
       {/* TESTIMONIALS */}
       <section className="section testimonials-section">
-        <div className="container">
+        <div className="container-fluid">
           <div className="section-header">
-            <span className="section-eyebrow">Happy Families</span>
-            <h2 className="section-title">What Our <span className="text-gradient">Guests Say</span></h2>
+            <span className="section-eyebrow">{homeConfig.reviewsEyebrow || "Happy Families"}</span>
+            <h2 className="section-title">{homeConfig.reviewsTitle || "What Our Guests Say"}</h2>
           </div>
           <div className="testimonials-grid">
-            {TESTIMONIALS.map((t, i) => (
+            {(homeConfig.testimonials || TESTIMONIALS).map((t, i) => (
               <motion.div
-                key={t.name}
+                key={t.name + i}
                 className="testimonial-card card"
                 custom={i}
                 variants={fadeUp}
@@ -473,13 +520,13 @@ export default function Home() {
                 viewport={{ once: true }}
               >
                 <div className="testimonial-card__stars">
-                  {Array.from({ length: t.rating }).map((_, j) => (
+                  {Array.from({ length: t.rating || 5 }).map((_, j) => (
                     <Star key={j} size={14} fill="var(--gold)" color="var(--gold)" />
                   ))}
                 </div>
                 <p className="testimonial-card__comment">"{t.comment}"</p>
                 <div className="testimonial-card__author">
-                  <img src={t.avatar} alt={t.name} className="testimonial-card__avatar" />
+                  <img src={t.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.name}`} alt={t.name} className="testimonial-card__avatar" />
                   <div>
                     <div className="testimonial-card__name">{t.name}</div>
                     <div className="testimonial-card__loc">{t.location} · {t.spot}</div>
@@ -493,20 +540,23 @@ export default function Home() {
 
       {/* GALLERY PREVIEW */}
       <section className="section-sm gallery-preview-section">
-        <div className="container">
+        <div className="container-fluid">
           <div className="section-header">
-            <span className="section-eyebrow">Our Gallery</span>
-            <h2 className="section-title">Moments of <span className="text-gradient-green">Pure Joy</span></h2>
+            <span className="section-eyebrow">{homeConfig.galleryPreviewEyebrow || "Our Gallery"}</span>
+            <h2 className="section-title">{homeConfig.galleryPreviewTitle || "Moments of Pure Joy"}</h2>
           </div>
           <div className="gallery-preview-grid">
-            {[
-              'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&q=80',
-              'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=80',
-              'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=400&q=80',
-              'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
-              'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80',
-              'https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&q=80',
-            ].map((src, i) => (
+            {(homeConfig.galleryPreviewImages && homeConfig.galleryPreviewImages.length > 0
+              ? homeConfig.galleryPreviewImages
+              : [
+                  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&q=80',
+                  'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=80',
+                  'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=400&q=80',
+                  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
+                  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80',
+                  'https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&q=80',
+                ]
+            ).map((src, i) => (
               <motion.div
                 key={i}
                 className={`gallery-preview-item ${i === 0 || i === 5 ? 'gallery-preview-item--wide' : ''}`}
@@ -523,7 +573,7 @@ export default function Home() {
           </div>
           <div style={{ textAlign: 'center', marginTop: 'var(--space-8)' }}>
             <Link to="/gallery" className="btn btn-outline btn-lg" id="view-gallery-btn">
-              View Full Gallery <ArrowRight size={18} />
+              {homeConfig.galleryPreviewBtnText || "View Full Gallery"} <ArrowRight size={18} />
             </Link>
           </div>
         </div>

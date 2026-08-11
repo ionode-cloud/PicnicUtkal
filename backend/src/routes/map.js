@@ -1,11 +1,59 @@
 const express = require('express')
 const router = express.Router()
 const MapPlot = require('../models/MapPlot')
+const InteractiveMap = require('../models/InteractiveMap')
 
-// GET all plots
+// GET all maps
+router.get('/maps', async (req, res) => {
+  try {
+    const maps = await InteractiveMap.find().sort({ isDefault: -1, createdAt: 1 })
+    res.json({ success: true, data: maps })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// POST create map
+router.post('/maps', async (req, res) => {
+  try {
+    const map = new InteractiveMap(req.body)
+    await map.save()
+    res.status(201).json({ success: true, data: map })
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message })
+  }
+})
+
+// PUT update map
+router.put('/maps/:id', async (req, res) => {
+  try {
+    const map = await InteractiveMap.findByIdAndUpdate(req.params.id, req.body, { new: true })
+    if (!map) return res.status(404).json({ success: false, message: 'Map not found' })
+    res.json({ success: true, data: map })
+  } catch (err) {
+    res.status(400).json({ success: false, message: err.message })
+  }
+})
+
+// DELETE map
+router.delete('/maps/:id', async (req, res) => {
+  try {
+    const map = await InteractiveMap.findByIdAndDelete(req.params.id)
+    if (!map) return res.status(404).json({ success: false, message: 'Map not found' })
+    res.json({ success: true, message: 'Map deleted' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message })
+  }
+})
+
+// GET all plots (optional mapId filter)
 router.get('/plots', async (req, res) => {
   try {
-    const plots = await MapPlot.find().sort({ priority: -1, createdAt: 1 })
+    const filter = {}
+    if (req.query.mapId) {
+      filter.mapId = req.query.mapId
+    }
+    const plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 })
     res.json({ success: true, data: plots })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -16,18 +64,6 @@ router.get('/plots', async (req, res) => {
 router.get('/plots/:id', async (req, res) => {
   try {
     const id = req.params.id
-
-    // Fallback dictionary for custom slug IDs
-    const SLUG_TO_TITLE = {
-      'pandal-1': 'Pandal — Upper Block',
-      'pandal-2': 'Pandal — Center Block',
-      'pandal-3': 'Pandal — West Block',
-      'pandal-4': 'Pandal — East Block',
-      'pandal-5': 'Pandal — Road Block',
-      'pandal-6': 'Pandal — North East Block',
-      'main-gate': 'Main Gate',
-      'parking': 'Parking Zone'
-    }
 
     if (id === 'cottage-rooms') {
       const cottageData = {
@@ -46,12 +82,8 @@ router.get('/plots/:id', async (req, res) => {
 
     const mongoose = require('mongoose')
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      if (SLUG_TO_TITLE[id]) {
-        const plot = await MapPlot.findOne({ title: SLUG_TO_TITLE[id] })
-        if (plot) {
-          return res.json({ success: true, data: plot })
-        }
-      }
+      const plot = await MapPlot.findOne({ $or: [{ _id: id }, { title: new RegExp(id.replace(/-/g, ' '), 'i') }] })
+      if (plot) return res.json({ success: true, data: plot })
       return res.status(404).json({ success: false, message: 'Plot not found' })
     }
 
@@ -66,7 +98,9 @@ router.get('/plots/:id', async (req, res) => {
 // POST create plot
 router.post('/plots', async (req, res) => {
   try {
-    const plot = new MapPlot(req.body)
+    const payload = { ...req.body }
+    delete payload._id
+    const plot = new MapPlot(payload)
     await plot.save()
     res.status(201).json({ success: true, data: plot })
   } catch (err) {
@@ -77,8 +111,30 @@ router.post('/plots', async (req, res) => {
 // PUT update plot
 router.put('/plots/:id', async (req, res) => {
   try {
-    const plot = await MapPlot.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true })
-    if (!plot) return res.status(404).json({ success: false, message: 'Plot not found' })
+    const id = req.params.id
+    const mongoose = require('mongoose')
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      let plot = await MapPlot.findOne({ $or: [{ _id: id }, { title: req.body.title }] })
+      if (plot) {
+        plot = await MapPlot.findByIdAndUpdate(plot._id, req.body, { new: true })
+        return res.json({ success: true, data: plot })
+      }
+      const payload = { ...req.body }
+      delete payload._id
+      const newPlot = new MapPlot(payload)
+      await newPlot.save()
+      return res.json({ success: true, data: newPlot })
+    }
+
+    const plot = await MapPlot.findByIdAndUpdate(id, req.body, { new: true, runValidators: false })
+    if (!plot) {
+      const payload = { ...req.body }
+      delete payload._id
+      const newPlot = new MapPlot(payload)
+      await newPlot.save()
+      return res.json({ success: true, data: newPlot })
+    }
     res.json({ success: true, data: plot })
   } catch (err) {
     res.status(400).json({ success: false, message: err.message })
@@ -88,8 +144,15 @@ router.put('/plots/:id', async (req, res) => {
 // DELETE plot
 router.delete('/plots/:id', async (req, res) => {
   try {
-    const plot = await MapPlot.findByIdAndDelete(req.params.id)
-    if (!plot) return res.status(404).json({ success: false, message: 'Plot not found' })
+    const id = req.params.id
+    const mongoose = require('mongoose')
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      await MapPlot.deleteMany({ $or: [{ _id: id }, { title: new RegExp(id.replace(/-/g, ' '), 'i') }] })
+      return res.json({ success: true, message: 'Plot deleted' })
+    }
+
+    await MapPlot.findByIdAndDelete(id)
     res.json({ success: true, message: 'Plot deleted' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

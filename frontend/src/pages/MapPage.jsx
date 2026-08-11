@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  MapPin, X, ZoomIn, ZoomOut, Maximize2, Minimize2,
-  Navigation, ExternalLink, Search, Filter, RotateCcw,
-  CheckCircle, Clock, AlertCircle, Droplets,
-  Star, Users, Ruler, IndianRupee, Share2
-} from 'lucide-react'
+  LuMapPin as MapPin, LuX as X, LuZoomIn as ZoomIn, LuZoomOut as ZoomOut, LuMaximize2 as Maximize2, LuMinimize2 as Minimize2,
+  LuNavigation as Navigation, LuExternalLink as ExternalLink, LuSearch as Search, LuFilter as Filter, LuRotateCcw as RotateCcw,
+  LuCircleCheck as CheckCircle, LuClock as Clock, LuCircleAlert as AlertCircle, LuDroplets as Droplets,
+  LuStar as Star, LuUsers as Users, LuRuler as Ruler, LuIndianRupee as IndianRupee, LuShare2 as Share2, LuMap as Map, LuImage as Image
+} from 'react-icons/lu'
 import masterPlanImg from '../assets/master-plan.png'
+import { useSocket } from '../context/SocketContext'
 
 /* ─── Static seed plots (Landscape % positions) ─── */
 const DEFAULT_PLOTS = [
@@ -182,6 +183,33 @@ const STATUS_CONFIG = {
   maintenance: { label: 'Maintenance', color: '#FAB005', icon: Clock }
 }
 
+const DEFAULT_MAPS = [
+  {
+    _id: 'default-master-plan',
+    title: 'Barapita Master Plan (Main Ground)',
+    image: masterPlanImg,
+    description: 'Central master plan containing Biotech parks, Riverside Pandals, and Main Gate.',
+    spotId: '1',
+    isDefault: true
+  },
+  {
+    _id: 'chilika-map-02',
+    title: 'Chilika Lake Sanctuary Map',
+    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80',
+    description: 'Waterfront camping pandals, boating docks, and island picnic spots.',
+    spotId: '2',
+    isDefault: false
+  },
+  {
+    _id: 'simlipal-map-03',
+    title: 'Simlipal Forest & Waterfall Map',
+    image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&q=80',
+    description: 'Deep forest camping zones, safari trails, and canopy watchtowers.',
+    spotId: '3',
+    isDefault: false
+  }
+]
+
 function buildPathD(points, svgW, svgH) {
   if (!points || points.length < 2) return ''
   const pts = points.map(p => `${(p.x / 100) * svgW},${(p.y / 100) * svgH}`)
@@ -190,6 +218,17 @@ function buildPathD(points, svgW, svgH) {
 
 export default function MapPage() {
   const navigate = useNavigate()
+  const [maps, setMaps] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_admin_maps')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (e) {}
+    return DEFAULT_MAPS
+  })
+  const [selectedMapId, setSelectedMapId] = useState(() => maps[0]?._id || 'default-master-plan')
   const [plots, setPlots] = useState(DEFAULT_PLOTS)
   const [selected, setSelected] = useState(null)
   const [search, setSearch] = useState('')
@@ -203,6 +242,25 @@ export default function MapPage() {
   const canvasOuterRef = useRef(null)
   const imgRef = useRef(null)
   const containerRef = useRef(null)
+
+  const { socket } = useSocket()
+
+  /* Real-time Socket.io listener for maps updates */
+  useEffect(() => {
+    if (!socket) return
+    const handler = (data) => {
+      if (data && Array.isArray(data.maps)) {
+        setMaps(data.maps)
+        try {
+          localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(data.maps))
+        } catch (e) {}
+      }
+    }
+    socket.on('map_config_update', handler)
+    return () => socket.off('map_config_update', handler)
+  }, [socket])
+
+  const currentMap = maps.find(m => m._id === selectedMapId) || maps[0] || DEFAULT_MAPS[0]
 
   /* Fetch from API */
   useEffect(() => {
@@ -250,10 +308,16 @@ export default function MapPage() {
       .catch(() => {})
   }
 
+  const isDefaultMapSelected = selectedMapId === 'default-master-plan' || selectedMapId === 'default-map'
+
   const visiblePlots = plots.filter(p => {
+    const pMapId = p.mapId || 'default-master-plan'
+    const matchMap = isDefaultMapSelected
+      ? (pMapId === 'default-master-plan' || pMapId === 'default-map' || !p.mapId)
+      : (pMapId === selectedMapId)
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase())
     const matchStatus = filterStatus === 'all' || p.status === filterStatus
-    return matchSearch && matchStatus
+    return matchMap && matchSearch && matchStatus
   })
 
   const routePoints = selected ? (ROUTE_PATHS[selected._id] || ROUTE_PATHS['main-gate']) : []
@@ -266,8 +330,8 @@ export default function MapPage() {
   return (
     <>
       <Helmet>
-        <title>Master Plan Map | Barapita Picnic Utkal</title>
-        <meta name="description" content="Explore the interactive master plan of Barapita Picnic Utkal. Click any plot to view pricing, availability, and navigate to the location." />
+        <title>{currentMap?.title || 'Master Plan Map'} | PicnicUtkal</title>
+        <meta name="description" content="Explore interactive resort & sanctuary master plans. Click any plot to view pricing, availability, and navigate to the location." />
       </Helmet>
 
       <div className="mp-page" ref={containerRef}>
@@ -282,14 +346,30 @@ export default function MapPage() {
           >
             <div className="mp-header-badge">
               <MapPin size={14} />
-              <span>Barapita, Deras — Odisha</span>
+              <span>{currentMap?.title || 'Barapita, Deras — Odisha'}</span>
             </div>
-            <h1 className="mp-header-title">Interactive Master Plan</h1>
+            <h1 className="mp-header-title">Interactive Resort &amp; Sanctuary Maps</h1>
             <p className="mp-header-sub">Click any zone to explore pricing, availability &amp; navigate</p>
           </motion.div>
 
           {/* Controls Bar */}
           <div className="mp-controls-bar">
+            {/* Map Selection Dropdown */}
+            <div className="mp-filter-wrap" style={{ borderRight: '1px solid var(--border)', paddingRight: '12px' }}>
+              <Map size={14} style={{ color: 'var(--gold)' }} />
+              <select
+                id="mp-filter-map"
+                className="mp-filter-select"
+                value={selectedMapId}
+                onChange={e => { setSelectedMapId(e.target.value); setSelected(null); }}
+                style={{ fontWeight: 700, color: 'var(--gold)' }}
+              >
+                {maps.map(m => (
+                  <option key={m._id} value={m._id}>{m.title}</option>
+                ))}
+              </select>
+            </div>
+
             <div className="mp-search-wrap">
               <Search size={15} className="mp-search-icon" />
               <input
@@ -328,27 +408,26 @@ export default function MapPage() {
 
         {/* ── Full-Width Landscape Map ── */}
         <div className="mp-map-outer">
-          <div className="mp-perspective-stage">
-            <div className="mp-map-canvas-outer" ref={canvasOuterRef}>
-              <motion.div
-                className="mp-map-inner-landscape"
-                style={{
-                  transform: `scale(${zoom})`,
-                  transformOrigin: 'center center',
-                  position: 'relative',
-                  width: '100%',
-                  height: '100%'
-                }}
-              >
-                {/* Landscape Master Plan Image */}
-                <img
-                  ref={imgRef}
-                  src={masterPlanImg}
-                  alt="Barapita Picnic Utkal Master Plan"
-                  className="mp-map-image"
-                  onLoad={() => setImgLoaded(true)}
-                  draggable={false}
-                />
+          <div className="mp-map-container" ref={canvasOuterRef}>
+            <div
+              className="mp-map-inner"
+              style={{
+                transform: `scale(${zoom})`,
+                transformOrigin: 'center center',
+                position: 'relative',
+                width: '100%',
+                height: '100%'
+              }}
+            >
+              {/* Landscape Master Plan Image */}
+              <img
+                ref={imgRef}
+                src={currentMap?.image || masterPlanImg}
+                alt={currentMap?.title || 'Master Plan'}
+                className="mp-map-image"
+                onLoad={() => setImgLoaded(true)}
+                draggable={false}
+              />
 
                 {/* SVG Route Overlay — scales dynamically with image width & height */}
                 {imgLoaded && (
@@ -434,13 +513,13 @@ export default function MapPage() {
                       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                     >
                       <span className="mp-hotspot-label">
-                        {isPandal && plot.price > 0 ? `₹${plot.price}/person` : plot.title}
+                        {isPandal && plot.price > 0 ? `₹${plot.price}/Pindi` : plot.title}
                       </span>
                       <span className="mp-hotspot-status-dot" style={{ background: sColor }} />
                     </motion.div>
                   )
                 })}
-              </motion.div>
+              </div>
 
               {/* Loading Skeleton */}
               {!imgLoaded && (
@@ -450,7 +529,6 @@ export default function MapPage() {
                 </div>
               )}
             </div>
-          </div>
 
           {/* Legend */}
           <div className="mp-legend">
@@ -508,7 +586,7 @@ export default function MapPage() {
                         <IndianRupee size={14} />
                         <div>
                           <span className="mp-popup-stat-val">₹{selected.price?.toLocaleString()}</span>
-                          <span className="mp-popup-stat-lbl">Per Person</span>
+                          <span className="mp-popup-stat-lbl">Flat / Pandal</span>
                         </div>
                       </div>
                     )}
@@ -559,6 +637,22 @@ export default function MapPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Photo Gallery Grid (Up to 10 Images) */}
+                  {(selected.images?.length > 0 || selected.image) && (
+                    <div style={{ marginBottom: '14px' }}>
+                      <h4 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--gold)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Image size={13} /> Zone Photo Gallery ({(selected.images?.length > 0 ? selected.images : [selected.image]).length} / 10 Photos)
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+                        {(selected.images?.length > 0 ? selected.images : [selected.image]).slice(0, 10).map((img, i) => (
+                          <div key={i} style={{ width: '100%', paddingTop: '75%', position: 'relative', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+                            <img src={img} alt={`Zone Photo ${i + 1}`} style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <p className="mp-popup-desc">{selected.description}</p>
 
@@ -615,15 +709,26 @@ export default function MapPage() {
                       View on Google Maps
                     </a>
                     {!selected.isGate && !selected.isParking && (
-                      <button
-                        id={`mp-book-${selected._id}`}
-                        className={`mp-btn-book ${selected.status !== 'available' ? 'mp-btn-book--disabled' : ''}`}
-                        disabled={selected.status !== 'available'}
-                        onClick={() => navigate(`/plots/${selected._id}?book=true`)}
-                      >
-                        <Star size={14} />
-                        {selected.status === 'available' ? 'Book Now' : 'Not Available'}
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                        <button
+                          id={`mp-details-${selected._id}`}
+                          className="mp-btn-book"
+                          style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--cream)', border: '1px solid rgba(255,255,255,0.2)', flex: 1 }}
+                          onClick={() => navigate(`/plots/${selected._id}`)}
+                        >
+                          Details
+                        </button>
+                        <button
+                          id={`mp-book-${selected._id}`}
+                          className={`mp-btn-book ${selected.status !== 'available' ? 'mp-btn-book--disabled' : ''}`}
+                          disabled={selected.status !== 'available'}
+                          style={{ flex: 1 }}
+                          onClick={() => navigate(`/plots/${selected._id}?book=true`)}
+                        >
+                          <Star size={14} />
+                          {selected.status === 'available' ? 'Book Now' : 'Not Available'}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

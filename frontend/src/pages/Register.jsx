@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { Mail, Lock, User, Phone, ArrowLeft, CheckSquare } from 'lucide-react'
+import { LuMail as Mail, LuLock as Lock, LuUser as User, LuPhone as Phone, LuArrowLeft as ArrowLeft, LuSquareCheck as CheckSquare, LuEye as Eye, LuEyeOff as EyeOff } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '' })
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
 
@@ -105,14 +106,34 @@ export default function Register() {
                   <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
                     id="reg-password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="Min 8 characters"
                     className="input"
                     value={formData.password}
                     onChange={e => setFormData(d => ({ ...d, password: e.target.value }))}
-                    style={{ paddingLeft: '36px' }}
+                    style={{ paddingLeft: '36px', paddingRight: '38px' }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0
+                    }}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 

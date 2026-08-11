@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
-import { Leaf, Phone, Mail, MapPin } from 'lucide-react'
+import { LuLeaf as Leaf, LuPhone as Phone, LuMail as Mail, LuMapPin as MapPin } from 'react-icons/lu'
+import { FaInstagram, FaFacebookF, FaYoutube, FaXTwitter } from 'react-icons/fa6'
 
 const QUICK_LINKS = [
   { label: 'Home', href: '/' },
@@ -11,7 +12,6 @@ const QUICK_LINKS = [
 
 const ZONES = [
   { label: '🏊 Swimming Zone', href: '/spots?zone=swimming' },
-  { label: '🍖 BBQ Zone', href: '/spots?zone=cooking' },
   { label: '🎵 Music Zone', href: '/spots?zone=music' },
   { label: '🏕 Camping Zone', href: '/spots?zone=camping' },
   { label: '🎯 Adventure Zone', href: '/spots?zone=adventure' },
@@ -22,8 +22,6 @@ const SUPPORT = [
   { label: 'How to Book', href: '/about' },
   { label: 'Cancellation Policy', href: '/cancel-policy' },
   { label: 'Refund Policy', href: '/refund-policy' },
-  { label: 'Privacy Policy', href: '/privacy' },
-  { label: 'Terms & Conditions', href: '/terms' },
   { label: 'Contact Support', href: '/contact' },
 ]
 
@@ -38,7 +36,7 @@ export default function Footer() {
       </div>
 
       <div className="footer__main">
-        <div className="container">
+        <div className="container-fluid">
           <div className="footer__grid">
             {/* Brand */}
             <div className="footer__brand">
@@ -63,17 +61,17 @@ export default function Footer() {
                 </span>
               </div>
               <div className="footer__socials">
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="Instagram">
-                  IG
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="Instagram" title="Instagram">
+                  <FaInstagram size={15} />
                 </a>
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="Facebook">
-                  FB
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="Facebook" title="Facebook">
+                  <FaFacebookF size={14} />
                 </a>
-                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="YouTube">
-                  YT
+                <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="YouTube" title="YouTube">
+                  <FaYoutube size={16} />
                 </a>
-                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="Twitter">
-                  TW
+                <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="footer__social" aria-label="Twitter / X" title="Twitter / X">
+                  <FaXTwitter size={14} />
                 </a>
               </div>
             </div>
@@ -132,7 +130,7 @@ export default function Footer() {
 
       {/* Bottom Bar */}
       <div className="footer__bottom">
-        <div className="container footer__bottom-inner">
+        <div className="container-fluid footer__bottom-inner">
           <p>© {new Date().getFullYear()} PicnicUtkal. All rights reserved. Made with 💚 in Odisha.</p>
           <div className="footer__bottom-links">
             <Link to="/privacy">Privacy</Link>

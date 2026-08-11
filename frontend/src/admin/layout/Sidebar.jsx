@@ -2,29 +2,40 @@ import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../../store'
 import {
-  LayoutDashboard, MapPin, Trees, Calendar, Users, CreditCard,
-  Image, Tag, Star, BookOpen, Bell, Settings, User, LogOut,
-  ChevronDown, ChevronRight, Leaf, Eye, PlusCircle, FolderHeart,
-  Droplets, Flame, Music, Tent, Compass, Sparkles, Smile,
-  Hourglass, CheckCircle2, XCircle, FileSpreadsheet, ListTodo, AlertTriangle, DollarSign,
-  Map
-} from 'lucide-react'
+  LuLayoutDashboard as LayoutDashboard, LuMapPin as MapPin, LuTrees as Trees, LuCalendar as Calendar, LuUsers as Users, LuCreditCard as CreditCard,
+  LuImage as Image, LuTag as Tag, LuStar as Star, LuBookOpen as BookOpen, LuBell as Bell, LuSettings as Settings, LuUser as User, LuLogOut as LogOut,
+  LuChevronDown as ChevronDown, LuChevronRight as ChevronRight, LuLeaf as Leaf, LuEye as Eye, LuCirclePlus as PlusCircle, LuFolderHeart as FolderHeart,
+  LuDroplets as Droplets, LuFlame as Flame, LuMusic as Music, LuTent as Tent, LuCompass as Compass, LuSparkles as Sparkles, LuSmile as Smile,
+  LuHourglass as Hourglass, LuCircleCheck as CheckCircle2, LuCircleX as XCircle, LuFileSpreadsheet as FileSpreadsheet, LuListTodo as ListTodo, LuTriangleAlert as AlertTriangle, LuDollarSign as DollarSign,
+  LuMap as Map, LuDownload as Download, LuKey as Key, LuMail as Mail, LuHeadphones as Headphones
+} from 'react-icons/lu'
 import toast from 'react-hot-toast'
 
 export default function Sidebar({ isOpen, toggleSidebar }) {
-  const { logout } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const navigate = useNavigate()
   const location = useLocation()
   const currentPath = location.pathname
 
+  // Check tab visibility based on User Role & Checkbox permissions
+  const isTabAllowed = (tabId) => {
+    if (!user || user.role === 'admin') return true
+    if (user.role === 'staff') {
+      if (!user.allowedTabs) return true
+      return user.allowedTabs.includes(tabId)
+    }
+    return true
+  }
+
   // Menu collapse states
   const [openMenus, setOpenMenus] = useState({
-    spots: false,
+    spots: currentPath.startsWith('/admin/spots'),
+    userview: currentPath.startsWith('/admin/user-view'),
     zones: false,
     bookings: false,
     users: false,
     payments: false,
-    gallery: false
+    credentials: false
   })
 
   // Logout confirmation modal state
@@ -62,179 +73,151 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
         <div className="admin-sidebar-scroll-wrapper">
           <nav className="admin-sidebar-nav-menu">
             {/* Dashboard Link */}
-            <Link
-              to="/admin/dashboard"
-              className={`admin-nav-menu-item ${isActive('/admin/dashboard') ? 'active' : ''}`}
-            >
-              <LayoutDashboard size={18} /> <span>Dashboard</span>
-            </Link>
-
-            {/* Picnic Spots Submenu */}
-            <div className="admin-nav-submenu-wrap">
-              <button
-                onClick={() => toggleSubmenu('spots')}
-                className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.spots ? 'expanded' : ''}`}
+            {isTabAllowed('dashboard') && (
+              <Link
+                to="/admin/dashboard"
+                className={`admin-nav-menu-item ${isActive('/admin/dashboard') ? 'active' : ''}`}
               >
                 <div className="flex items-center gap-4">
-                  <MapPin size={18} /> <span>Picnic Spots</span>
+                  <LayoutDashboard size={18} /> <span>Dashboard</span>
                 </div>
-                {openMenus.spots ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              <div className={`admin-nav-submenu-list ${openMenus.spots ? 'open' : ''}`}>
-                <Link to="/admin/spots" className={`admin-submenu-item ${isActive('/admin/spots') ? 'active' : ''}`}>
-                  <Eye size={14} /> <span>All Spots</span>
-                </Link>
-                <Link to="/admin/spots/add" className="admin-submenu-item">
-                  <PlusCircle size={14} /> <span>Add Spot</span>
-                </Link>
-                <Link to="/admin/spots/categories" className="admin-submenu-item">
-                  <FolderHeart size={14} /> <span>Spot Categories</span>
-                </Link>
-              </div>
-            </div>
+              </Link>
+            )}
 
-            {/* Zones Submenu */}
-            <div className="admin-nav-submenu-wrap">
-              <button
-                onClick={() => toggleSubmenu('zones')}
-                className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.zones ? 'expanded' : ''}`}
+            {/* Picnic Spots Submenu */}
+            {isTabAllowed('spots') && (
+              <div className="admin-nav-submenu-wrap">
+                <button
+                  onClick={() => toggleSubmenu('spots')}
+                  className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.spots ? 'expanded' : ''}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <MapPin size={18} /> <span>Picnic Spots</span>
+                  </div>
+                  {openMenus.spots ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+                <div className={`admin-nav-submenu-list ${openMenus.spots ? 'open' : ''}`}>
+                  <Link to="/admin/spots" className={`admin-submenu-item ${isActive('/admin/spots') ? 'active' : ''}`}>
+                    <Eye size={14} /> <span>All Spots</span>
+                  </Link>
+                  <Link to="/admin/spots/addons" className={`admin-submenu-item ${isActive('/admin/spots/addons') ? 'active' : ''}`}>
+                    <Sparkles size={14} /> <span>Custom Event Add-ons</span>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Map Management Link */}
+            {isTabAllowed('map') && (
+              <Link
+                to="/admin/map"
+                className={`admin-nav-menu-item ${isActive('/admin/map') ? 'active' : ''}`}
+              >
+                <div className="flex items-center gap-4">
+                  <Map size={18} /> <span>Map Management</span>
+                </div>
+              </Link>
+            )}
+
+            {/* Zones Link */}
+            {isTabAllowed('zones') && (
+              <Link
+                to="/admin/zones"
+                className={`admin-nav-menu-item ${isActive('/admin/zones') ? 'active' : ''}`}
               >
                 <div className="flex items-center gap-4">
                   <Trees size={18} /> <span>Zones</span>
                 </div>
-                {openMenus.zones ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              <div className={`admin-nav-submenu-list ${openMenus.zones ? 'open' : ''}`}>
-                <Link to="/admin/zones/swimming" className="admin-submenu-item">
-                  <Droplets size={14} /> <span>Swimming Zone</span>
-                </Link>
-                <Link to="/admin/zones/cooking" className="admin-submenu-item">
-                  <Flame size={14} /> <span>Cooking Zone</span>
-                </Link>
-                <Link to="/admin/zones/music" className="admin-submenu-item">
-                  <Music size={14} /> <span>Music Zone</span>
-                </Link>
-                <Link to="/admin/zones/camping" className="admin-submenu-item">
-                  <Tent size={14} /> <span>Camping Zone</span>
-                </Link>
-                <Link to="/admin/zones/adventure" className="admin-submenu-item">
-                  <Compass size={14} /> <span>Adventure Zone</span>
-                </Link>
-                <Link to="/admin/zones/kids" className="admin-submenu-item">
-                  <Smile size={14} /> <span>Kids Zone</span>
-                </Link>
-                <Link to="/admin/zones/garden" className="admin-submenu-item">
-                  <Sparkles size={14} /> <span>Garden Zone</span>
-                </Link>
-              </div>
-            </div>
+              </Link>
+            )}
 
             {/* Bookings Submenu */}
-            <div className="admin-nav-submenu-wrap">
-              <button
-                onClick={() => toggleSubmenu('bookings')}
-                className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.bookings ? 'expanded' : ''}`}
-              >
-                <div className="flex items-center gap-4">
-                  <Calendar size={18} /> <span>Bookings</span>
+            {isTabAllowed('bookings') && (
+              <div className="admin-nav-submenu-wrap">
+                <button
+                  onClick={() => toggleSubmenu('bookings')}
+                  className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.bookings ? 'expanded' : ''}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Calendar size={18} /> <span>Bookings</span>
+                  </div>
+                  {openMenus.bookings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+                <div className={`admin-nav-submenu-list ${openMenus.bookings ? 'open' : ''}`}>
+                  <Link to="/admin/bookings" className={`admin-submenu-item ${isActive('/admin/bookings') ? 'active' : ''}`}>
+                    <FileSpreadsheet size={14} /> <span>All Bookings</span>
+                  </Link>
+                  <Link to="/admin/bookings/history" className={`admin-submenu-item ${isActive('/admin/bookings/history') ? 'active' : ''}`}>
+                    <Download size={14} /> <span>Booking History</span>
+                  </Link>
                 </div>
-                {openMenus.bookings ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              <div className={`admin-nav-submenu-list ${openMenus.bookings ? 'open' : ''}`}>
-                <Link to="/admin/bookings" className={`admin-submenu-item ${isActive('/admin/bookings') ? 'active' : ''}`}>
-                  <FileSpreadsheet size={14} /> <span>All Bookings</span>
-                </Link>
-                <Link to="/admin/bookings/pending" className="admin-submenu-item">
-                  <Hourglass size={14} /> <span>Pending</span>
-                </Link>
-                <Link to="/admin/bookings/confirmed" className="admin-submenu-item">
-                  <CheckCircle2 size={14} /> <span>Confirmed</span>
-                </Link>
-                <Link to="/admin/bookings/cancelled" className="admin-submenu-item">
-                  <XCircle size={14} /> <span>Cancelled</span>
-                </Link>
-                <Link to="/admin/bookings/completed" className="admin-submenu-item">
-                  <ListTodo size={14} /> <span>Completed</span>
-                </Link>
               </div>
-            </div>
+            )}
 
-            {/* Users Submenu */}
-            <div className="admin-nav-submenu-wrap">
-              <button
-                onClick={() => toggleSubmenu('users')}
-                className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.users ? 'expanded' : ''}`}
+            {/* Users Link */}
+            {isTabAllowed('users') && (
+              <Link
+                to="/admin/users"
+                onClick={() => isOpen && toggleSidebar()}
+                className={`admin-nav-menu-item ${isActive('/admin/users') ? 'active' : ''}`}
               >
                 <div className="flex items-center gap-4">
                   <Users size={18} /> <span>Users</span>
                 </div>
-                {openMenus.users ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              <div className={`admin-nav-submenu-list ${openMenus.users ? 'open' : ''}`}>
-                <Link to="/admin/users" className={`admin-submenu-item ${isActive('/admin/users') ? 'active' : ''}`}>
-                  <Users size={14} /> <span>All Users</span>
-                </Link>
-                <Link to="/admin/users/admins" className="admin-submenu-item">
-                  <Sparkles size={14} /> <span>Admins</span>
-                </Link>
-                <Link to="/admin/users/staff" className="admin-submenu-item">
-                  <User size={14} /> <span>Staff</span>
-                </Link>
-              </div>
-            </div>
+              </Link>
+            )}
 
-            {/* Payments Submenu */}
-            <div className="admin-nav-submenu-wrap">
-              <button
-                onClick={() => toggleSubmenu('payments')}
-                className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.payments ? 'expanded' : ''}`}
+            {/* Payments Link */}
+            {isTabAllowed('payments') && (
+              <Link
+                to="/admin/payments"
+                onClick={() => isOpen && toggleSidebar()}
+                className={`admin-nav-menu-item ${isActive('/admin/payments') ? 'active' : ''}`}
               >
                 <div className="flex items-center gap-4">
                   <CreditCard size={18} /> <span>Payments</span>
                 </div>
-                {openMenus.payments ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              <div className={`admin-nav-submenu-list ${openMenus.payments ? 'open' : ''}`}>
-                <Link to="/admin/payments" className={`admin-submenu-item ${isActive('/admin/payments') ? 'active' : ''}`}>
-                  <CreditCard size={14} /> <span>Transactions</span>
-                </Link>
-                <Link to="/admin/payments/refunds" className="admin-submenu-item">
-                  <XCircle size={14} /> <span>Refunds</span>
-                </Link>
-                <Link to="/admin/payments/revenue" className="admin-submenu-item">
-                  <DollarSign size={14} /> <span>Revenue</span>
-                </Link>
-              </div>
-            </div>
+              </Link>
+            )}
 
-            {/* Gallery Submenu */}
-            <div className="admin-nav-submenu-wrap">
-              <button
-                onClick={() => toggleSubmenu('gallery')}
-                className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.gallery ? 'expanded' : ''}`}
+            {/* Admin Credentials Link */}
+            {isTabAllowed('credentials') && (
+              <Link
+                to="/admin/credentials"
+                onClick={() => isOpen && toggleSidebar()}
+                className={`admin-nav-menu-item ${isActive('/admin/credentials') ? 'active' : ''}`}
               >
                 <div className="flex items-center gap-4">
-                  <Image size={18} /> <span>Gallery</span>
+                  <Key size={18} /> <span>Admin Credentials</span>
                 </div>
-                {openMenus.gallery ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-              <div className={`admin-nav-submenu-list ${openMenus.gallery ? 'open' : ''}`}>
-                <Link to="/admin/gallery" className={`admin-submenu-item ${isActive('/admin/gallery') ? 'active' : ''}`}>
-                  <Image size={14} /> <span>Photos</span>
-                </Link>
-                <Link to="/admin/gallery/videos" className="admin-submenu-item">
-                  <Eye size={14} /> <span>Videos</span>
-                </Link>
-              </div>
-            </div>
+              </Link>
+            )}
 
-            {/* Map Management Link */}
-            <Link
-              to="/admin/map"
-              className={`admin-nav-menu-item ${isActive('/admin/map') ? 'active' : ''}`}
-            >
-              <Map size={18} /> <span>Map Management</span>
-            </Link>
+            {/* Support Contact Link */}
+            {isTabAllowed('support-contact') && (
+              <Link
+                to="/admin/support-contact"
+                onClick={() => isOpen && toggleSidebar()}
+                className={`admin-nav-menu-item ${isActive('/admin/support-contact') ? 'active' : ''}`}
+              >
+                <div className="flex items-center gap-4">
+                  <Headphones size={18} /> <span>Support Contact</span>
+                </div>
+              </Link>
+            )}
+
+            {/* User View Direct Link */}
+            {isTabAllowed('userview') && (
+              <Link
+                to="/admin/user-view"
+                onClick={() => isOpen && toggleSidebar()}
+                className={`admin-nav-menu-item ${currentPath.startsWith('/admin/user-view') ? 'active' : ''}`}
+              >
+                <div className="flex items-center gap-4">
+                  <Eye size={18} /> <span>User View</span>
+                </div>
+              </Link>
+            )}
 
           </nav>
         </div>

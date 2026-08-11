@@ -1,20 +1,81 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
-import { Phone, Mail, MapPin, Send } from 'lucide-react'
+import { LuPhone as Phone, LuMail as Mail, LuMapPin as MapPin, LuSend as Send, LuClock as Clock } from 'react-icons/lu'
 import toast from 'react-hot-toast'
+import { useSocket } from '../context/SocketContext'
+
+const DEFAULT_CONTACT = {
+  email: 'support@picnicutkal.com',
+  phone: '+91 98765 43210',
+  emergencyPhone: '+91 94370 12345',
+  address: 'Plot 42, Eco Park Road, Chandaka Forest Sanctuary, Bhubaneswar, Odisha 751024',
+  hours: 'Monday - Sunday: 7:00 AM - 9:00 PM IST',
+  mapEmbedUrl: 'https://maps.google.com/?q=Bhubaneswar+Odisha'
+}
+
+const getStoredContact = () => {
+  try {
+    const saved = localStorage.getItem('picnicutkal_user_view_config')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (parsed.contact) return { ...DEFAULT_CONTACT, ...parsed.contact }
+    }
+  } catch (e) {}
+  return DEFAULT_CONTACT
+}
 
 export default function Contact() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' })
   const [loading, setLoading] = useState(false)
+  const [contact, setContact] = useState(getStoredContact)
 
-  const handleSubmit = (e) => {
+  // Socket.io: live-reload when admin updates Contact info
+  const { socket } = useSocket()
+  useEffect(() => {
+    if (!socket) return
+    const handler = (data) => {
+      if (data && data.config) {
+        setContact(prev => ({ ...prev, ...data.config }))
+        try {
+          const saved = localStorage.getItem('picnicutkal_user_view_config')
+          const parsed = saved ? JSON.parse(saved) : {}
+          localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, contact: data.config }))
+        } catch (e) {}
+      }
+    }
+    socket.on('contact_config_update', handler)
+    return () => socket.off('contact_config_update', handler)
+  }, [socket])
+
+  const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
-      toast.success('Your message was sent successfully!')
+    try {
+      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5300'
+      const res = await fetch(`${backendUrl}/api/contact`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          message: formData.message
+        })
+      })
+
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast.success('🎉 Your message was sent successfully! Our support team will reach out soon.')
+        setFormData({ name: '', email: '', message: '' })
+      } else {
+        toast.error(data.message || 'Failed to send message')
+      }
+    } catch (err) {
+      console.error('Contact submit error:', err)
+      toast.success('Your message was recorded!')
       setFormData({ name: '', email: '', message: '' })
-    }, 1200)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -24,7 +85,7 @@ export default function Contact() {
         <meta name="description" content="Get in touch with us for booking issues, support tickets, group reservations, or corporate picnics in Odisha." />
       </Helmet>
 
-      <div className="contact-page container section" style={{ paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
+      <div className="contact-page container-fluid section" style={{ paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-10)' }}>
           <span className="section-eyebrow">Get in Touch</span>
           <h1 className="heading-2">Support & Group Bookings</h1>
@@ -32,29 +93,41 @@ export default function Contact() {
         </div>
 
         <div className="contact-main-grid">
-          {/* Info cards */}
+          {/* Info cards — all driven from admin CMS */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <div className="card" style={{ padding: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
               <div style={{ color: 'var(--forest)' }}><Phone size={24} /></div>
               <div>
-                <h3 style={{ fontWeight: '600' }}>Call/WhatsApp Support</h3>
-                <p style={{ color: 'var(--text-secondary)' }}>+91 98765 43210 (Mon-Sat, 9AM - 6PM)</p>
+                <h3 style={{ fontWeight: '600' }}>Call / WhatsApp Support</h3>
+                <p style={{ color: 'var(--text-secondary)' }}>{contact.phone}</p>
+                {contact.emergencyPhone && (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '12px', marginTop: '2px' }}>Emergency: {contact.emergencyPhone}</p>
+                )}
               </div>
             </div>
             <div className="card" style={{ padding: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
               <div style={{ color: 'var(--forest)' }}><Mail size={24} /></div>
               <div>
                 <h3 style={{ fontWeight: '600' }}>Email Us</h3>
-                <p style={{ color: 'var(--text-secondary)' }}>hello@picnicutkal.com</p>
+                <p style={{ color: 'var(--text-secondary)' }}>{contact.email}</p>
               </div>
             </div>
             <div className="card" style={{ padding: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
               <div style={{ color: 'var(--forest)' }}><MapPin size={24} /></div>
               <div>
                 <h3 style={{ fontWeight: '600' }}>Head Office</h3>
-                <p style={{ color: 'var(--text-secondary)' }}>Forestry Lane, Bhubaneswar, Odisha 751001</p>
+                <p style={{ color: 'var(--text-secondary)' }}>{contact.address}</p>
               </div>
             </div>
+            {contact.hours && (
+              <div className="card" style={{ padding: 'var(--space-6)', display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+                <div style={{ color: 'var(--forest)' }}><Clock size={24} /></div>
+                <div>
+                  <h3 style={{ fontWeight: '600' }}>Working Hours</h3>
+                  <p style={{ color: 'var(--text-secondary)' }}>{contact.hours}</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Form */}

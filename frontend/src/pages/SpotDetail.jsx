@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import {
-  MapPin, Star, Share2, Calendar as CalendarIcon,
-  Clock, CloudRain, Sun, Droplets, Wind, Check, AlertTriangle,
-  ChevronRight, Sparkles, ArrowRight, ShieldCheck, Users, Wifi, Lock
-} from 'lucide-react'
+  LuMapPin as MapPin, LuStar as Star, LuShare2 as Share2, LuCalendar as CalendarIcon,
+  LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
+  LuChevronRight as ChevronRight, LuSparkles as Sparkles, LuArrowRight as ArrowRight, LuShieldCheck as ShieldCheck, LuUsers as Users, LuWifi as Wifi, LuLock as Lock
+} from 'react-icons/lu'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Thumbs, FreeMode } from 'swiper/modules'
 import toast from 'react-hot-toast'
@@ -13,6 +13,67 @@ import 'swiper/css'
 import 'swiper/css/free-mode'
 import 'swiper/css/navigation'
 import 'swiper/css/thumbs'
+
+const EVENT_ADDONS = [
+  { 
+    id: 'ad_gas_chulha', 
+    name: '🔥 Gas & Chulha Booking', 
+    desc: 'Full outdoor kitchen burner stove and filled LPG cylinder setup.', 
+    priceAddon: 250,
+    items: [
+      '1x Commercial Single-Burner Chulha (Stove)',
+      '1x 5kg LPG Gas Cylinder (Pre-filled, ready to use)',
+      'High-pressure gas regulator and safety hose pipe',
+      'Gas lighter utility included'
+    ]
+  },
+  { 
+    id: 'ad_cooking_kit', 
+    name: '🍳 Cooking Accessories Pack', 
+    desc: 'Complete picnic cookware, serving spoons and preparation kit.', 
+    priceAddon: 150,
+    items: [
+      '2x Large Aluminum Cooking Pots (Dekchi with lids)',
+      '1x Deep Frying Pan (Kadai) & 1x Tawa',
+      'Large cooking ladles, spatula & serving spoons (Khanti & Chhanki)',
+      'Heavy-duty chopping board & 2x stainless steel kitchen knives',
+      'Dishwashing gel, scrubber sponge & cleaning cloth'
+    ]
+  },
+  { 
+    id: 'ad_sound', 
+    name: '🔊 Standard Sound System', 
+    desc: 'Dual speakers, microphone, Bluetooth audio receiver', 
+    priceAddon: 150,
+    items: [
+      '2x Active Sound Tower Speakers (JBL 15-inch)',
+      '1x Audio Mixing Console (Yamaha 6-channel)',
+      '1x Wireless Handheld Vocal Microphone',
+      'Bluetooth receiver, AUX cable, and power extension leads'
+    ]
+  },
+  { 
+    id: 'ad_catering', 
+    name: '🍽 Catering Table Setup', 
+    desc: 'Elegant buffet tables with satin cloth skirting', 
+    priceAddon: 100,
+    items: [
+      '4x Buffet / food serving tables (6x3 ft metal frame)',
+      'Premium white satin fabric table spreads',
+      'Pleated gold border table skirtings'
+    ]
+  },
+  { 
+    id: 'ad_decor', 
+    name: '🌸 Floral Welcome Arch', 
+    desc: 'Decorated entry arch with fresh seasonal flowers', 
+    priceAddon: 250,
+    items: [
+      'Yellow/orange fresh marigolds & white lily floral decorations',
+      'Structure arch frame setup & tear-down after event'
+    ]
+  }
+]
 
 const SPOTS_DB = {
   '1': {
@@ -100,6 +161,8 @@ export default function SpotDetail() {
   const [guests, setGuests] = useState(1)
   const [visitDate, setVisitDate] = useState('')
   const [selectedZones, setSelectedZones] = useState([])
+  const [selectedAddons, setSelectedAddons] = useState([])
+  const [expandedAddons, setExpandedAddons] = useState([])
 
   // Auto-scroll to booking card on mobile if ?book=true is passed
   useEffect(() => {
@@ -125,13 +188,29 @@ export default function SpotDetail() {
     )
   }
 
-  // Calculate pricing breakdown
-  const baseTotal = spot.basePrice * guests
-  const addonsTotal = spot.zones
+  const handleAddonToggle = (addonId) => {
+    setSelectedAddons(prev =>
+      prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]
+    )
+  }
+
+  const toggleExpandAddon = (e, addonId) => {
+    e.stopPropagation()
+    setExpandedAddons(prev =>
+      prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]
+    )
+  }
+
+  // Calculate pricing breakdown (flat rates per pandal)
+  const baseTotal = spot.basePrice
+  const zonesTotal = spot.zones
     .filter(z => selectedZones.includes(z.id))
-    .reduce((sum, z) => sum + z.priceAddon, 0) * guests
+    .reduce((sum, z) => sum + z.priceAddon, 0)
+  const eventAddonsTotal = EVENT_ADDONS
+    .filter(a => selectedAddons.includes(a.id))
+    .reduce((sum, a) => sum + a.priceAddon, 0)
   const durationMultiplier = selectedDuration === 'custom' ? 1 : Number(selectedDuration)
-  const grandTotal = (baseTotal + addonsTotal) * durationMultiplier
+  const grandTotal = (baseTotal + zonesTotal + eventAddonsTotal) * durationMultiplier
 
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href)
@@ -165,7 +244,7 @@ export default function SpotDetail() {
         <meta name="description" content={spot.description.slice(0, 155)} />
       </Helmet>
 
-      <div className="spot-detail container section">
+      <div className="spot-detail container-fluid section">
         {/* Breadcrumb */}
         <div className="spot-breadcrumb">
           <Link to="/">Home</Link> <ChevronRight size={12} />
@@ -260,8 +339,77 @@ export default function SpotDetail() {
                       </div>
                       <div className="zone-detail-price">
                         <span>+ ₹{zone.priceAddon}</span>
-                        <small>/person addon</small>
+                        <small>/ flat addon</small>
                       </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* Custom Event Add-ons */}
+            <div className="spot-card-info section-card">
+              <h2 className="heading-4">Add Custom Event Add-ons</h2>
+              <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your booking.</p>
+              <div className="zones-list-detail">
+                {EVENT_ADDONS.map(addon => {
+                  const isSelected = selectedAddons.includes(addon.id)
+                  const isExpanded = expandedAddons.includes(addon.id)
+                  return (
+                    <div
+                      key={addon.id}
+                      className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
+                      onClick={() => handleAddonToggle(addon.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="addon-row-content">
+                        <div className="zone-detail-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{ pointerEvents: 'none' }}
+                            id={`addon-check-${addon.id}`}
+                          />
+                        </div>
+                        <div className="addon-row-body">
+                          <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
+                            <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
+                            {addon.items && (
+                              <button
+                                type="button"
+                                className="addon-details-btn"
+                                onClick={(e) => toggleExpandAddon(e, addon.id)}
+                              >
+                                {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                              </button>
+                            )}
+                          </div>
+                          <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
+                            <span>+ ₹{addon.priceAddon}</span>
+                            <small>/ flat addon</small>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Collapsible Items Details */}
+                      {isExpanded && addon.items && (
+                        <div 
+                          className="addon-expanded-box" 
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="addon-items-heading">What's Inside:</div>
+                          <div className="addon-items-grid">
+                            {addon.items.map((item, idx) => (
+                              <div key={idx} className="addon-item-row">
+                                <Check size={11} className="addon-check-icon" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -272,12 +420,12 @@ export default function SpotDetail() {
 
             {/* Amenities */}
             <div className="spot-card-info section-card">
-              <h2 className="heading-4">Amenities Provided</h2>
+              <h2 className="heading-4">Amenities Included</h2>
               <div className="amenities-grid-detail">
                 {spot.amenities.map((item, index) => (
                   <div key={index} className="amenity-item-detail">
-                    <item.icon size={16} color="var(--forest)" />
-                    <span>{item.name}</span>
+                    <ShieldCheck size={16} color="var(--forest)" />
+                    <span>{item}</span>
                   </div>
                 ))}
               </div>
@@ -285,7 +433,7 @@ export default function SpotDetail() {
 
             {/* Rules */}
             <div className="spot-card-info section-card">
-              <h2 className="heading-4">Rules & Guidelines</h2>
+              <h2 className="heading-4">Guidelines & Rules</h2>
               <div className="rules-list-detail">
                 {spot.rules.map((rule, index) => (
                   <div key={index} className="rule-item-detail">
@@ -303,7 +451,7 @@ export default function SpotDetail() {
               <div className="booking-card-price">
                 <div>
                   <span className="price-label">Starts from</span>
-                  <h2>₹{spot.basePrice} <small>/person</small></h2>
+                  <h2>₹{spot.basePrice} <small>/pandal</small></h2>
                 </div>
                 <div className="rating-box">
                   <Star size={16} fill="var(--gold)" color="var(--gold)" />
@@ -325,7 +473,7 @@ export default function SpotDetail() {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="booking-date">Select Visit Date</label>
+                  <label htmlFor="booking-date">Select Reservation Date</label>
                   <div className="input-with-icon">
                     <CalendarIcon size={16} />
                     <input
@@ -360,13 +508,19 @@ export default function SpotDetail() {
                   <span className="breakdown-title">Pricing Breakdown</span>
                   <div className="breakdown-rows">
                     <div className="breakdown-row">
-                      <span>Base Ticket (₹{spot.basePrice} × {guests})</span>
-                      <span>₹{baseTotal}</span>
+                      <span>Base Spot Rate</span>
+                      <span>₹{baseTotal} flat rate</span>
                     </div>
                     {selectedZones.length > 0 && (
                       <div className="breakdown-row">
                         <span>Zone Add-ons ({selectedZones.length} selected)</span>
-                        <span>+ ₹{addonsTotal}</span>
+                        <span>+ ₹{zonesTotal}</span>
+                      </div>
+                    )}
+                    {selectedAddons.length > 0 && (
+                      <div className="breakdown-row">
+                        <span>Event Add-ons ({selectedAddons.length} selected)</span>
+                        <span>+ ₹{eventAddonsTotal}</span>
                       </div>
                     )}
                     {durationMultiplier > 1 && (

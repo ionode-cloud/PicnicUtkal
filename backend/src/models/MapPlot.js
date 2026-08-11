@@ -23,8 +23,9 @@ const mapPlotSchema = new mongoose.Schema({
     longitude: { type: Number, default: 85.690644 }
   },
   color: { type: String, default: '#C9A84C' },
-  priority: { type: Number, default: 0 },
+  mapId: { type: String, default: 'default-map' },
   image: { type: String },
+  images: [{ type: String }],
   distanceFromGate: { type: String },
   distanceFromCanal: { type: String }
 }, { timestamps: true })

@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, RefreshCw } from 'lucide-react'
+import { LuArrowLeft as ArrowLeft, LuRefreshCw as RefreshCw } from 'react-icons/lu'
 
 export default function NotFound() {
   return (

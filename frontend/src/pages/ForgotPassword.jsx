@@ -1,7 +1,7 @@
-import { useState } from 'react'
+ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { Mail, ArrowLeft, KeyRound } from 'lucide-react'
+import { LuMail as Mail, LuArrowLeft as ArrowLeft, LuKeyRound as KeyRound } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 
 export default function ForgotPassword() {

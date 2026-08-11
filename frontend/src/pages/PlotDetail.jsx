@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import {
-  MapPin, Star, Share2, Calendar as CalendarIcon,
-  Clock, CloudRain, Sun, Droplets, Wind, Check, AlertTriangle,
-  ChevronRight, Sparkles, ArrowRight, ShieldCheck, Users, Wifi, Lock,
-  Home as HomeIcon, CheckCircle2, Music, Coffee, Sparkle, Loader2
-} from 'lucide-react'
+  LuMapPin as MapPin, LuStar as Star, LuShare2 as Share2, LuCalendar as CalendarIcon,
+  LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
+  LuChevronRight as ChevronRight, LuSparkles as Sparkles, LuArrowRight as ArrowRight, LuShieldCheck as ShieldCheck, LuUsers as Users, LuWifi as Wifi, LuLock as Lock,
+  LuHouse as HomeIcon, LuCircleCheck as CheckCircle2, LuMusic as Music, LuCoffee as Coffee, LuSparkle as Sparkle, LuLoader as Loader2
+} from 'react-icons/lu'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Thumbs, FreeMode } from 'swiper/modules'
 import toast from 'react-hot-toast'
@@ -269,7 +269,7 @@ export default function PlotDetail() {
 
   if (loading) {
     return (
-      <div className="container section flex flex-col items-center justify-center min-h-[50vh]">
+      <div className="container-fluid section flex flex-col items-center justify-center min-h-[50vh]">
         <Loader2 className="bk2-spin text-gold" size={36} />
         <p className="mt-4 text-white/50 text-sm">Loading details...</p>
       </div>
@@ -278,7 +278,7 @@ export default function PlotDetail() {
 
   if (error || !plot) {
     return (
-      <div className="container section text-center">
+      <div className="container-fluid section text-center">
         <h2 className="heading-3 text-white">Oops! Zone Not Found</h2>
         <p className="text-white/60 mt-2 mb-6">{error || 'The requested map zone could not be loaded.'}</p>
         <Link to="/map" className="btn btn-gold">Back to Interactive Map</Link>
@@ -296,13 +296,11 @@ export default function PlotDetail() {
     basePrice = selectedCot ? selectedCot.price : 999
   }
 
-  const baseTotal = basePrice * (isCottage ? 1 : guests) // Cottages are priced per room/night, Pandals are per person
+  const baseTotal = basePrice // Fixed flat price per pandal/cottage booking
   
-  const addonsTotal = isPandal
-    ? PANDAL_ADDONS
-        .filter(a => selectedAddons.includes(a.id))
-        .reduce((sum, a) => sum + a.priceAddon, 0) * guests
-    : 0
+  const addonsTotal = PANDAL_ADDONS
+    .filter(a => selectedAddons.includes(a.id))
+    .reduce((sum, a) => sum + a.priceAddon, 0) // Fixed flat price per addon
 
   const grandTotal = baseTotal + addonsTotal
 
@@ -355,7 +353,7 @@ export default function PlotDetail() {
         <meta name="description" content={plot.description} />
       </Helmet>
 
-      <div className="spot-detail container section">
+      <div className="spot-detail container-fluid section">
         {/* Breadcrumb */}
         <div className="spot-breadcrumb">
           <Link to="/">Home</Link> <ChevronRight size={12} />
@@ -463,76 +461,74 @@ export default function PlotDetail() {
               </div>
             )}
 
-            {/* Addons Selection (If Pandal) */}
-            {isPandal && (
-              <div className="spot-card-info section-card">
-                <h2 className="heading-4">Add Custom Event Add-ons</h2>
-                <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your pandal booking.</p>
-                <div className="zones-list-detail">
-                  {PANDAL_ADDONS.map(addon => {
-                    const isSelected = selectedAddons.includes(addon.id)
-                    const isExpanded = expandedAddons.includes(addon.id)
-                    return (
-                      <div
-                        key={addon.id}
-                        className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
-                        onClick={() => handleAddonToggle(addon.id)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div className="addon-row-content">
-                          <div className="zone-detail-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              style={{ pointerEvents: 'none' }}
-                              id={`addon-check-${addon.id}`}
-                            />
+            {/* Addons Selection */}
+            <div className="spot-card-info section-card">
+              <h2 className="heading-4">Add Custom Event Add-ons</h2>
+              <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your booking.</p>
+              <div className="zones-list-detail">
+                {PANDAL_ADDONS.map(addon => {
+                  const isSelected = selectedAddons.includes(addon.id)
+                  const isExpanded = expandedAddons.includes(addon.id)
+                  return (
+                    <div
+                      key={addon.id}
+                      className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
+                      onClick={() => handleAddonToggle(addon.id)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="addon-row-content">
+                        <div className="zone-detail-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => {}}
+                            style={{ pointerEvents: 'none' }}
+                            id={`addon-check-${addon.id}`}
+                          />
+                        </div>
+                        <div className="addon-row-body">
+                          <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
+                            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
+                            <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
+                            {addon.items && (
+                              <button
+                                type="button"
+                                className="addon-details-btn"
+                                onClick={(e) => toggleExpandAddon(e, addon.id)}
+                              >
+                                {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                              </button>
+                            )}
                           </div>
-                          <div className="addon-row-body">
-                            <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
-                              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
-                              <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
-                              {addon.items && (
-                                <button
-                                  type="button"
-                                  className="addon-details-btn"
-                                  onClick={(e) => toggleExpandAddon(e, addon.id)}
-                                >
-                                  {isExpanded ? 'Hide Details' : 'View details'}
-                                </button>
-                              )}
-                            </div>
-                            <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
-                              <span>+ ₹{addon.priceAddon}</span>
-                              <small>/person addon</small>
-                            </div>
+                          <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
+                            <span>+ ₹{addon.priceAddon}</span>
+                            <small>/ flat addon</small>
                           </div>
                         </div>
-
-                        {/* Collapsible Items Details */}
-                        {isExpanded && addon.items && (
-                          <div 
-                            className="addon-expanded-box" 
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="addon-items-heading">What's Inside:</div>
-                            <div className="addon-items-grid">
-                              {addon.items.map((item, idx) => (
-                                <div key={idx} className="addon-item-row">
-                                  <Check size={11} className="addon-check-icon" />
-                                  <span>{item}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    )
-                  })}
-                </div>
+
+                      {/* Collapsible Items Details */}
+                      {isExpanded && addon.items && (
+                        <div 
+                          className="addon-expanded-box" 
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="addon-items-heading">What's Inside:</div>
+                          <div className="addon-items-grid">
+                            {addon.items.map((item, idx) => (
+                              <div key={idx} className="addon-item-row">
+                                <Check size={11} className="addon-check-icon" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
-            )}
+            </div>
 
 
 
@@ -574,7 +570,7 @@ export default function PlotDetail() {
               <div className="booking-card-price">
                 <div>
                   <span className="price-label">Starts from</span>
-                  <h2>₹{basePrice} <small>{!isCottage ? '/person' : '/night'}</small></h2>
+                  <h2>₹{basePrice} <small>{!isCottage ? '/pandal' : '/night'}</small></h2>
                 </div>
                 <div className="rating-box">
                   <Star size={16} fill="var(--gold)" color="var(--gold)" />
@@ -623,7 +619,7 @@ export default function PlotDetail() {
                   <div className="breakdown-rows">
                     <div className="breakdown-row">
                       <span>Base Reservation</span>
-                      <span>₹{basePrice.toLocaleString()} {isCottage ? 'per Room' : `× ${guests} guest(s)`}</span>
+                      <span>₹{basePrice.toLocaleString()} {isCottage ? 'per Room' : 'flat rate per pandal'}</span>
                     </div>
                     {isPandal && selectedAddons.length > 0 && (
                       <div className="breakdown-row">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Search, Sun, Moon, Bell, Menu } from 'lucide-react'
+import { LuSearch as Search, LuSun as Sun, LuMoon as Moon, LuBell as Bell, LuMenu as Menu } from 'react-icons/lu'
 import { useAuthStore } from '../../store'
 import { useTheme } from '../../context/ThemeContext'
 

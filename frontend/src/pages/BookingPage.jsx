@@ -4,12 +4,12 @@ import { Helmet } from 'react-helmet-async'
 import { useAuthStore } from '../store'
 import { motion } from 'framer-motion'
 import {
-  User, Mail, Phone, Calendar, Users, FileText,
-  CreditCard, Smartphone, Banknote, CheckCircle2,
-  ArrowRight, ArrowLeft, IndianRupee, MapPin, Loader2,
-  PartyPopper, Copy, Check, ShieldCheck, Clock,
-  IdCard, Star, Sparkles, ChevronRight, ShieldAlert
-} from 'lucide-react'
+  LuUser as User, LuMail as Mail, LuPhone as Phone, LuCalendar as Calendar, LuUsers as Users, LuFileText as FileText,
+  LuCreditCard as CreditCard, LuSmartphone as Smartphone, LuBanknote as Banknote, LuCircleCheck as CheckCircle2,
+  LuArrowRight as ArrowRight, LuArrowLeft as ArrowLeft, LuIndianRupee as IndianRupee, LuMapPin as MapPin, LuLoader as Loader2,
+  LuPartyPopper as PartyPopper, LuCopy as Copy, LuCheck as Check, LuShieldCheck as ShieldCheck, LuClock as Clock,
+  LuIdCard as IdCard, LuStar as Star, LuSparkles as Sparkles, LuChevronRight as ChevronRight, LuShieldAlert as ShieldAlert
+} from 'react-icons/lu'
 
 const STEPS = [
   { label: 'Contact Details', icon: User },
@@ -123,7 +123,7 @@ export default function BookingPage() {
     }
   }, [plot, spot, searchParams])
 
-  const total = pricePerPerson * form.persons
+  const total = pricePerPerson // Fixed flat rate per pandal/spot
 
   const validateDetails = () => {
     if (!form.name.trim())                return 'Full name is required.'
@@ -221,7 +221,7 @@ export default function BookingPage() {
 
   if (fetching) {
     return (
-      <div className="bk-page-container container section flex flex-col items-center justify-center min-h-[60vh]">
+      <div className="bk-page-container container-fluid section flex flex-col items-center justify-center min-h-[60vh]">
         <Loader2 size={40} className="bk2-spin text-gold" />
         <p className="mt-4 text-white/60">Loading reservation details...</p>
       </div>
@@ -235,7 +235,7 @@ export default function BookingPage() {
         <meta name="description" content={`Booking form page for reserving ${activeTitle} at Picnic Utkal.`} />
       </Helmet>
 
-      <div className="bk-page-container container section">
+      <div className="bk-page-container container-fluid section">
         {/* Breadcrumb */}
         <div className="spot-breadcrumb">
           <Link to="/">Home</Link> <ChevronRight size={12} />
@@ -543,7 +543,7 @@ export default function BookingPage() {
                   <div className="breakdown-rows">
                     <div className="breakdown-row">
                       <span>Rate</span>
-                      <span>₹{pricePerPerson.toLocaleString()} {!plot?.isCottage ? '/person' : '/night'}</span>
+                      <span>₹{pricePerPerson.toLocaleString()} {!plot?.isCottage ? '/Pindi' : '/night'}</span>
                     </div>
                     <div className="breakdown-row">
                       <span>Persons</span>

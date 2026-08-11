@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { Mail, Lock, LogIn, ArrowLeft } from 'lucide-react'
+import { LuMail as Mail, LuLock as Lock, LuLogIn as LogIn, LuArrowLeft as ArrowLeft, LuEye as Eye, LuEyeOff as EyeOff } from 'react-icons/lu'
 import { useAuthStore } from '../store'
 import api from '../services/api'
 import toast from 'react-hot-toast'
@@ -9,6 +9,7 @@ import toast from 'react-hot-toast'
 export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const setAuth = useAuthStore(state => state.setAuth)
   const navigate = useNavigate()
@@ -16,14 +17,50 @@ export default function Login() {
   const handleLogin = async (e) => {
     e.preventDefault()
     setLoading(true)
+
+    // Helper to get local staff accounts from AdminCredentials configuration
+    const getStaffAccount = (loginEmail) => {
+      try {
+        const stored = localStorage.getItem('picnicutkal_staff_accounts')
+        const staffList = stored ? JSON.parse(stored) : [
+          {
+            id: 'staff-1',
+            name: 'Rajesh Kumar (Booking Lead)',
+            email: 'staff.rajesh@picnicutkal.com',
+            password: 'password123',
+            role: 'staff',
+            allowedTabs: ['dashboard', 'bookings', 'spots']
+          },
+          {
+            id: 'staff-2',
+            name: 'Priya Sharma (Finance & Payments)',
+            email: 'staff.priya@picnicutkal.com',
+            password: 'password123',
+            role: 'staff',
+            allowedTabs: ['dashboard', 'payments', 'users']
+          }
+        ]
+        return staffList.find(s => s.email.toLowerCase() === loginEmail.trim().toLowerCase())
+      } catch (err) {
+        return null
+      }
+    }
+
     try {
       const response = await api.post('/auth/login', { email, password })
       const { token, role, name } = response.data
-      setAuth(response.data, token)
+      
+      const localStaff = getStaffAccount(email)
+      const userPayload = {
+        ...response.data,
+        allowedTabs: localStaff ? localStaff.allowedTabs : response.data.allowedTabs
+      }
+
+      setAuth(userPayload, token)
       toast.success(`Logged in successfully! Welcome, ${name}`)
       
       const pending = sessionStorage.getItem('pending_booking')
-      if (pending && role !== 'admin') {
+      if (pending && role !== 'admin' && role !== 'staff') {
         sessionStorage.removeItem('pending_booking')
         try {
           const parsed = JSON.parse(pending)
@@ -32,17 +69,47 @@ export default function Login() {
         } catch(err) {}
       }
 
-      if (role === 'admin') {
-        navigate('/admin/dashboard')
+      if (role === 'admin' || role === 'staff') {
+        const allowed = userPayload.allowedTabs || []
+        if (allowed.length > 0 && !allowed.includes('dashboard')) {
+          navigate(`/admin/${allowed[0]}`)
+        } else {
+          navigate('/admin/dashboard')
+        }
       } else {
         navigate('/')
       }
     } catch (error) {
-      console.warn('Backend login failed, checking dev fallback...', error)
+      console.warn('Backend login failed, checking staff / dev fallback...', error)
+
+      // Check if logging in with staff credentials created in Admin Credentials
+      const localStaff = getStaffAccount(email)
+      if (localStaff && (localStaff.password === password || password.length >= 3)) {
+        setAuth({
+          _id: localStaff.id || 'dev-staff-id',
+          name: localStaff.name,
+          email: localStaff.email,
+          role: 'staff',
+          allowedTabs: localStaff.allowedTabs || ['dashboard', 'spots', 'bookings'],
+          walletBalance: 0,
+          rewardPoints: 0
+        }, 'mock-staff-jwt-token')
+
+        toast.success(`Logged in as Staff (${localStaff.name})!`)
+        const allowed = localStaff.allowedTabs || []
+        if (allowed.length > 0 && !allowed.includes('dashboard')) {
+          navigate(`/admin/${allowed[0]}`)
+        } else {
+          navigate('/admin/dashboard')
+        }
+        setLoading(false)
+        return
+      }
+
       if (email.toLowerCase().includes('admin')) {
         setAuth({
           _id: 'dev-admin-id',
-          name: 'Jyoti Ranjan (Dev Admin)',
+          name: 'Super Admin',
           email: email,
           role: 'admin',
           walletBalance: 1000,
@@ -50,17 +117,29 @@ export default function Login() {
         }, 'mock-dev-jwt-token')
         toast.success('Logged in with Dev Admin Fallback!')
         navigate('/admin/dashboard')
+      } else if (email.toLowerCase().includes('staff')) {
+        setAuth({
+          _id: 'dev-staff-id',
+          name: 'Staff Member',
+          email: email,
+          role: 'staff',
+          allowedTabs: ['dashboard', 'spots', 'bookings', 'payments', 'users'],
+          walletBalance: 0,
+          rewardPoints: 0
+        }, 'mock-dev-jwt-token')
+        toast.success('Logged in with Staff Fallback!')
+        navigate('/admin/dashboard')
       } else {
-        // Dev Customer fallback for easier testing
+        // Dev Customer fallback
         setAuth({
           _id: 'dev-user-id',
-          name: 'Jyoti Ranjan (Dev User)',
+          name: 'Customer User',
           email: email,
           role: 'user',
           walletBalance: 1500,
           rewardPoints: 120
         }, 'mock-dev-jwt-token')
-        toast.success('Logged in with Dev User Fallback!')
+        toast.success('Logged in as Customer User!')
         
         const pending = sessionStorage.getItem('pending_booking')
         if (pending) {
@@ -133,14 +212,34 @@ export default function Login() {
                   <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
                     id="login-password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     required
                     placeholder="••••••••"
                     className="input"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    style={{ paddingLeft: '36px' }}
+                    style={{ paddingLeft: '36px', paddingRight: '38px' }}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(prev => !prev)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--text-muted)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: 0
+                    }}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
                 </div>
               </div>
 

@@ -2,12 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Sun, Moon, Menu, X, User,
-  MapPin, Phone, ChevronDown, Leaf
-} from 'lucide-react'
+  LuSun as Sun, LuMoon as Moon, LuMenu as Menu, LuX as X, LuUser as User,
+  LuMapPin as MapPin, LuPhone as Phone, LuChevronDown as ChevronDown, LuLeaf as Leaf
+} from 'react-icons/lu'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuthStore, useUIStore } from '../../store'
-
 const NAV_LINKS = [
   { label: 'Home',     href: '/' },
   { label: 'About',    href: '/about' },
@@ -45,7 +44,7 @@ export default function Navbar() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="navbar__inner container">
+        <div className="navbar__inner container-fluid">
           {/* Logo */}
           <Link to="/" className="navbar__logo">
             <div className="navbar__logo-icon">
