@@ -16,11 +16,22 @@ connectDB()
 const app = express()
 const server = http.createServer(app)
 
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(url => url.trim())
+  : ['http://localhost:5173', 'http://localhost:3000']
+
 // Initialize Socket.io with CORS
 const io = new Server(server, {
   cors: {
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+        callback(null, true)
+      } else {
+        callback(null, true)
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true
   }
 })
 
@@ -80,7 +91,16 @@ io.on('connection', (socket) => {
 })
 
 // Middleware
-app.use(cors())
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      callback(null, true)
+    } else {
+      callback(null, true)
+    }
+  },
+  credentials: true
+}))
 app.use(helmet({ contentSecurityPolicy: false }))
 app.use(morgan('dev'))
 app.use(express.json({ limit: '50mb' }))
@@ -114,18 +134,6 @@ app.get('/api/health', (req, res) => {
     activeSockets: io.engine.clientsCount
   })
 })
-
-// Serve static frontend in production if dist directory exists
-const path = require('path')
-const fs = require('fs')
-const frontendDistPath = path.join(__dirname, '../frontend/dist')
-if (fs.existsSync(frontendDistPath)) {
-  app.use(express.static(frontendDistPath))
-  app.use((req, res, next) => {
-    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next()
-    res.sendFile(path.join(frontendDistPath, 'index.html'))
-  })
-}
 
 // Error handling middleware
 app.use((err, req, res, next) => {
