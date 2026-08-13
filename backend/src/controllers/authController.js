@@ -10,16 +10,17 @@ const generateToken = (id) => {
 exports.register = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body
+    const normalizedEmail = email ? email.trim().toLowerCase() : ''
 
-    const userExists = await User.findOne({ email })
+    const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' })
+      return res.status(400).json({ success: false, message: 'Gmail already exists!' })
     }
 
     const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase()
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       phone,
       password,
       referralCode,
@@ -28,18 +29,58 @@ exports.register = async (req, res) => {
     })
 
     if (user) {
+      const userData = {
+        _id: user._id,
+        id: `USR-${user._id.toString().slice(-4).toUpperCase()}`,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || 'Not Provided',
+        role: user.role || 'User',
+        joinedDate: new Date(user.createdAt || Date.now()).toISOString().split('T')[0],
+        bookingsCount: 0,
+        totalSpent: 0,
+        status: 'Active'
+      }
+
+      if (req.io) {
+        req.io.emit('user_registered', userData)
+      }
+
       res.status(201).json({
+        success: true,
         _id: user._id,
         name: user.name,
         email: user.email,
+        phone: user.phone,
         role: user.role,
         token: generateToken(user._id)
       })
     } else {
-      res.status(400).json({ message: 'Invalid user data' })
+      res.status(400).json({ success: false, message: 'Invalid user data' })
     }
   } catch (error) {
-    res.status(500).json({ message: error.message })
+    res.status(500).json({ success: false, message: error.message })
+  }
+}
+
+exports.getUsers = async (req, res) => {
+  try {
+    const users = await User.find({ role: { $ne: 'admin' } }).select('-password').sort({ createdAt: -1 })
+    const formatted = users.map(u => ({
+      _id: u._id,
+      id: `USR-${u._id.toString().slice(-4).toUpperCase()}`,
+      name: u.name,
+      email: u.email,
+      phone: u.phone || 'Not Provided',
+      role: u.role || 'User',
+      joinedDate: new Date(u.createdAt || Date.now()).toISOString().split('T')[0],
+      bookingsCount: 0,
+      totalSpent: 0,
+      status: 'Active'
+    }))
+    res.json({ success: true, data: formatted })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
   }
 }
 

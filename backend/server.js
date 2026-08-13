@@ -47,6 +47,18 @@ io.on('connection', (socket) => {
     io.emit('plot_updated', data)
   })
 
+  // Broadcast real-time plots update across public Spots and Home pages
+  socket.on('plots_update', (data) => {
+    console.log(`[Socket.io] Plots updated`)
+    io.emit('plots_update', data)
+  })
+
+  // Broadcast real-time interactive map config update
+  socket.on('map_config_update', (data) => {
+    console.log(`[Socket.io] Map config updated`)
+    io.emit('map_config_update', data)
+  })
+
   // Broadcast real-time booking created
   socket.on('new_booking', (bookingData) => {
     console.log(`[Socket.io] New booking created:`, bookingData.pandalName)
@@ -102,6 +114,18 @@ app.get('/api/health', (req, res) => {
     activeSockets: io.engine.clientsCount
   })
 })
+
+// Serve static frontend in production if dist directory exists
+const path = require('path')
+const fs = require('fs')
+const frontendDistPath = path.join(__dirname, '../frontend/dist')
+if (fs.existsSync(frontendDistPath)) {
+  app.use(express.static(frontendDistPath))
+  app.use((req, res, next) => {
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) return next()
+    res.sendFile(path.join(frontendDistPath, 'index.html'))
+  })
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {

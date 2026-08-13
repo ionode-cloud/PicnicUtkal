@@ -3,10 +3,24 @@ const router = express.Router()
 const MapPlot = require('../models/MapPlot')
 const InteractiveMap = require('../models/InteractiveMap')
 
+const SEED_MAP = {
+  title: 'Barapita Master Plan (Main Ground)',
+  image: '/src/assets/master-plan.png',
+  description: 'Central master plan containing Biotech parks, Riverside Pandals, and Main Gate.',
+  spotId: '1',
+  linkedSpot: 'Barapita Ground, Deras',
+  googleMapUrl: 'https://maps.google.com/?q=20.311450,85.690644',
+  isDefault: true
+}
+
 // GET all maps
 router.get('/maps', async (req, res) => {
   try {
-    const maps = await InteractiveMap.find().sort({ isDefault: -1, createdAt: 1 })
+    let maps = await InteractiveMap.find().sort({ isDefault: -1, createdAt: 1 })
+    if (maps.length === 0) {
+      await InteractiveMap.create(SEED_MAP).catch(() => {})
+      maps = await InteractiveMap.find().sort({ isDefault: -1, createdAt: 1 })
+    }
     res.json({ success: true, data: maps })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -18,6 +32,7 @@ router.post('/maps', async (req, res) => {
   try {
     const map = new InteractiveMap(req.body)
     await map.save()
+    if (req.io) req.io.emit('map_config_update', { map, action: 'created', timestamp: new Date() })
     res.status(201).json({ success: true, data: map })
   } catch (err) {
     res.status(400).json({ success: false, message: err.message })
@@ -29,6 +44,7 @@ router.put('/maps/:id', async (req, res) => {
   try {
     const map = await InteractiveMap.findByIdAndUpdate(req.params.id, req.body, { new: true })
     if (!map) return res.status(404).json({ success: false, message: 'Map not found' })
+    if (req.io) req.io.emit('map_config_update', { map, action: 'updated', timestamp: new Date() })
     res.json({ success: true, data: map })
   } catch (err) {
     res.status(400).json({ success: false, message: err.message })
@@ -40,11 +56,25 @@ router.delete('/maps/:id', async (req, res) => {
   try {
     const map = await InteractiveMap.findByIdAndDelete(req.params.id)
     if (!map) return res.status(404).json({ success: false, message: 'Map not found' })
+    if (req.io) req.io.emit('map_config_update', { mapId: req.params.id, action: 'deleted', timestamp: new Date() })
     res.json({ success: true, message: 'Map deleted' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
 })
+
+const SEED_PLOTS = [
+  { _id: 'main-gate', title: 'Main Gate', price: 0, area: '200 sq ft', capacity: 500, description: 'Grand entrance to Barapita Picnic Utkal. Security cabin, welcome arch and directional signage.', facilities: ['Security', 'CCTV', 'Signage', 'Entry Pass'], status: 'available', coordinates: { x: 54, y: 74, width: 9, height: 7 }, color: '#C9A84C', distanceFromGate: '0 m', distanceFromCanal: '180 m', isGate: true },
+  { _id: 'parking', title: 'Parking Zone', price: 0, area: '3200 sq ft', capacity: 80, description: 'Spacious secure parking with CCTV surveillance. Accommodates cars, buses and two-wheelers. Free parking for all visitors.', facilities: ['CCTV', 'Security Guard', 'Lighting', '24x7 Open', 'Free'], status: 'available', coordinates: { x: 62, y: 61, width: 32, height: 18 }, color: '#6B7280', distanceFromGate: '40 m', distanceFromCanal: '160 m', isParking: true },
+  { _id: 'pandal-1', title: 'Pandal — Upper Block', price: 499, area: '3500 sq ft', capacity: 120, description: 'Shaded pandal structure near the canal with cool breeze and scenic water views.', facilities: ['Shade', 'Seating', 'Lighting', 'Riverside View'], status: 'available', coordinates: { x: 46, y: 29, width: 18, height: 9 }, color: '#52B788', distanceFromGate: '120 m', distanceFromCanal: '20 m' },
+  { _id: 'pandal-2', title: 'Pandal — Center Block', price: 499, area: '3200 sq ft', capacity: 100, description: 'Central pandal with easy access to restroom facilities.', facilities: ['Shade', 'Seating', 'Lighting', 'DJ Point'], status: 'available', coordinates: { x: 37, y: 48, width: 6, height: 10 }, color: '#52B788', distanceFromGate: '85 m', distanceFromCanal: '70 m' },
+  { _id: 'pandal-3', title: 'Pandal — West Block', price: 399, area: '2800 sq ft', capacity: 90, description: 'Cozy west-side pandal nestled among trees, perfect for intimate family picnics.', facilities: ['Shade', 'Seating', 'BBQ Area', 'Garden View'], status: 'available', coordinates: { x: 30, y: 62, width: 9, height: 10 }, color: '#52B788', distanceFromGate: '130 m', distanceFromCanal: '30 m' },
+  { _id: 'pandal-4', title: 'Pandal — East Block', price: 449, area: '3000 sq ft', capacity: 95, description: 'East-side pandal with direct parking access, ideal for large group events.', facilities: ['Shade', 'Seating', 'Parking Access', 'Electricity'], status: 'available', coordinates: { x: 68, y: 50, width: 13, height: 10 }, color: '#52B788', distanceFromGate: '55 m', distanceFromCanal: '150 m' },
+  { _id: 'pandal-5', title: 'Pandal — Road Block', price: 449, area: '3000 sq ft', capacity: 100, description: 'Roadside pandal near the main pathway — convenient access and great for large gatherings.', facilities: ['Shade', 'Seating', 'Lighting', 'Road Access'], status: 'available', coordinates: { x: 27, y: 35, width: 10, height: 8 }, color: '#52B788', distanceFromGate: '95 m', distanceFromCanal: '45 m' },
+  { _id: 'pandal-6', title: 'Pandal — North East Block', price: 499, area: '3200 sq ft', capacity: 110, description: 'Premium north-east pandal with open views, near the parking zone — ideal for large events.', facilities: ['Shade', 'Seating', 'Electricity', 'Parking Access', 'Open View'], status: 'available', coordinates: { x: 83, y: 43, width: 11, height: 9 }, color: '#52B788', distanceFromGate: '35 m', distanceFromCanal: '170 m' },
+  { _id: 'stage-stair', title: 'Stage / Stair Area', price: 299, area: '1200 sq ft', capacity: 50, description: 'Elevated stage area with stairs — perfect for performances, ceremonies and photo backdrops.', facilities: ['Stage Lighting', 'Sound System', 'Backdrop', 'Steps'], status: 'available', coordinates: { x: 25, y: 44, width: 5, height: 4 }, color: '#C9A84C', distanceFromGate: '100 m', distanceFromCanal: '50 m' },
+  { _id: 'cottage-rooms', title: 'Cottage Rooms', price: 999, area: '4800 sq ft', capacity: 36, description: 'Comfortable cottage accommodation block with 3 room types — Standard (Cottage 1 ₹999/night), Deluxe (Cottage 2 ₹1499/night), and Premium Suite (Cottage 3 ₹1999/night). All rooms include AC, attached bath and scenic views.', facilities: ['AC Rooms', 'Attached Bath', 'Garden View', 'Canal View', 'Riverside View', 'TV', 'Kitchenette (Suite)'], status: 'available', coordinates: { x: 36, y: 5, width: 16, height: 18 }, color: '#A07830', distanceFromGate: '140 m', distanceFromCanal: '15 m', isCottage: true, cottageRooms: [{ name: 'Cottage 1', type: 'Standard', price: 999 }, { name: 'Cottage 2', type: 'Deluxe', price: 1499 }, { name: 'Cottage 3', type: 'Premium Suite', price: 1999 }] }
+]
 
 // GET all plots (optional mapId filter)
 router.get('/plots', async (req, res) => {
@@ -53,7 +83,11 @@ router.get('/plots', async (req, res) => {
     if (req.query.mapId) {
       filter.mapId = req.query.mapId
     }
-    const plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 })
+    let plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 })
+    if (plots.length === 0 && Object.keys(filter).length === 0) {
+      await MapPlot.insertMany(SEED_PLOTS).catch(() => {})
+      plots = await MapPlot.find().sort({ priority: -1, createdAt: 1 })
+    }
     res.json({ success: true, data: plots })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -81,14 +115,32 @@ router.get('/plots/:id', async (req, res) => {
     }
 
     const mongoose = require('mongoose')
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      const plot = await MapPlot.findOne({ $or: [{ _id: id }, { title: new RegExp(id.replace(/-/g, ' '), 'i') }] })
-      if (plot) return res.json({ success: true, data: plot })
-      return res.status(404).json({ success: false, message: 'Plot not found' })
+    let plot = null
+
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      plot = await MapPlot.findById(id)
     }
 
-    const plot = await MapPlot.findById(id)
-    if (!plot) return res.status(404).json({ success: false, message: 'Plot not found' })
+    if (!plot) {
+      const targetTitle = id.replace(/-/g, ' ')
+      plot = await MapPlot.findOne({
+        $or: [
+          { _id: id },
+          { title: new RegExp(targetTitle, 'i') }
+        ]
+      })
+    }
+
+    // Fallback: If requested ID is stale or missing, return first active plot in DB
+    if (!plot) {
+      plot = await MapPlot.findOne()
+    }
+
+    if (!plot) {
+      // Fallback to static seed
+      plot = SEED_PLOTS[0]
+    }
+
     res.json({ success: true, data: plot })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -102,6 +154,7 @@ router.post('/plots', async (req, res) => {
     delete payload._id
     const plot = new MapPlot(payload)
     await plot.save()
+    if (req.io) req.io.emit('plots_update', { plot, action: 'created', timestamp: new Date() })
     res.status(201).json({ success: true, data: plot })
   } catch (err) {
     res.status(400).json({ success: false, message: err.message })
@@ -114,28 +167,29 @@ router.put('/plots/:id', async (req, res) => {
     const id = req.params.id
     const mongoose = require('mongoose')
 
+    let updatedPlot = null
     if (!mongoose.Types.ObjectId.isValid(id)) {
       let plot = await MapPlot.findOne({ $or: [{ _id: id }, { title: req.body.title }] })
       if (plot) {
-        plot = await MapPlot.findByIdAndUpdate(plot._id, req.body, { new: true })
-        return res.json({ success: true, data: plot })
+        updatedPlot = await MapPlot.findByIdAndUpdate(plot._id, req.body, { new: true })
+      } else {
+        const payload = { ...req.body }
+        delete payload._id
+        updatedPlot = new MapPlot(payload)
+        await updatedPlot.save()
       }
-      const payload = { ...req.body }
-      delete payload._id
-      const newPlot = new MapPlot(payload)
-      await newPlot.save()
-      return res.json({ success: true, data: newPlot })
+    } else {
+      updatedPlot = await MapPlot.findByIdAndUpdate(id, req.body, { new: true, runValidators: false })
+      if (!updatedPlot) {
+        const payload = { ...req.body }
+        delete payload._id
+        updatedPlot = new MapPlot(payload)
+        await updatedPlot.save()
+      }
     }
 
-    const plot = await MapPlot.findByIdAndUpdate(id, req.body, { new: true, runValidators: false })
-    if (!plot) {
-      const payload = { ...req.body }
-      delete payload._id
-      const newPlot = new MapPlot(payload)
-      await newPlot.save()
-      return res.json({ success: true, data: newPlot })
-    }
-    res.json({ success: true, data: plot })
+    if (req.io) req.io.emit('plots_update', { plot: updatedPlot, action: 'updated', timestamp: new Date() })
+    res.json({ success: true, data: updatedPlot })
   } catch (err) {
     res.status(400).json({ success: false, message: err.message })
   }
@@ -149,10 +203,11 @@ router.delete('/plots/:id', async (req, res) => {
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       await MapPlot.deleteMany({ $or: [{ _id: id }, { title: new RegExp(id.replace(/-/g, ' '), 'i') }] })
-      return res.json({ success: true, message: 'Plot deleted' })
+    } else {
+      await MapPlot.findByIdAndDelete(id)
     }
 
-    await MapPlot.findByIdAndDelete(id)
+    if (req.io) req.io.emit('plots_update', { plotId: id, action: 'deleted', timestamp: new Date() })
     res.json({ success: true, message: 'Plot deleted' })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

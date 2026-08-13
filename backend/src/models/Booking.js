@@ -23,7 +23,7 @@ const bookingSchema = new mongoose.Schema({
   }],
 
   // Payment
-  paymentMethod: { type: String, enum: ['upi', 'card', 'cash'], default: 'upi' },
+  paymentMethod: { type: String, enum: ['upi', 'card', 'cash', 'razorpay'], default: 'upi' },
   totalAmount:   { type: Number, required: true },
   paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
 
@@ -39,7 +39,7 @@ bookingSchema.pre('save', function (next) {
     const rnd = Math.random().toString(36).substring(2, 5).toUpperCase()
     this.bookingId = `BPU-${ts}-${rnd}`
   }
-  next()
+  if (typeof next === 'function') next()
 })
 
 module.exports = mongoose.model('Booking', bookingSchema)

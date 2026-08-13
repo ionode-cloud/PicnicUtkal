@@ -5,6 +5,8 @@ const interactiveMapSchema = new mongoose.Schema({
   image: { type: String, required: true },
   description: { type: String, default: '' },
   spotId: { type: String, default: '' },
+  linkedSpot: { type: String, default: '' },
+  googleMapUrl: { type: String, default: '' },
   isDefault: { type: Boolean, default: false }
 }, { timestamps: true })
 
