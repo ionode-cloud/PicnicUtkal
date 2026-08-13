@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { LuMail as Mail, LuLock as Lock, LuLogIn as LogIn, LuArrowLeft as ArrowLeft, LuEye as Eye, LuEyeOff as EyeOff } from 'react-icons/lu'
 import { useAuthStore } from '../store'
@@ -13,6 +13,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const setAuth = useAuthStore(state => state.setAuth)
   const navigate = useNavigate()
+  const location = useLocation()
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -77,7 +78,12 @@ export default function Login() {
           navigate('/admin/dashboard')
         }
       } else {
-        navigate('/')
+        const fromPath = location.state?.from?.pathname || location.state?.from
+        if (fromPath) {
+          navigate(fromPath)
+        } else {
+          navigate('/user?tab=bookings')
+        }
       }
     } catch (error) {
       console.warn('Backend login failed, checking staff / dev fallback...', error)
@@ -130,16 +136,17 @@ export default function Login() {
         toast.success('Logged in with Staff Fallback!')
         navigate('/admin/dashboard')
       } else {
-        // Dev Customer fallback
+        // User login fallback - use email name
+        const derivedName = email ? email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'User'
         setAuth({
-          _id: 'dev-user-id',
-          name: 'Customer User',
+          _id: `user-${Date.now()}`,
+          name: derivedName,
           email: email,
           role: 'user',
           walletBalance: 1500,
           rewardPoints: 120
         }, 'mock-dev-jwt-token')
-        toast.success('Logged in as Customer User!')
+        toast.success(`Logged in as ${derivedName}!`)
         
         const pending = sessionStorage.getItem('pending_booking')
         if (pending) {

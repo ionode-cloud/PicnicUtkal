@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PicnicUtkal — Official Booking Bill & E-Pass Invoice</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary-dark: #0A2617;
+      --forest-green: #1B4332;
+      --gold-main: #C9A84C;
+      --gold-dark: #A07830;
+      --light-bg: #FAF8F5;
+      --card-bg: #FFFFFF;
+      --text-dark: #1F2937;
+      --text-muted: #6B7280;
+      --border-color: #E5E7EB;
+      --success-green: #2F9E44;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--light-bg);
+      color: var(--text-dark);
+      line-height: 1.5;
+      padding: 30px 15px;
+    }
+
+    .bill-wrapper {
+      max-width: 820px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      border: 1px solid var(--border-color);
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Top Actions Bar (Hidden when printing) */
+    .bill-actions-bar {
+      background: var(--primary-dark);
+      padding: 16px 24px;
+      display: flex;
+      justify: space-between;
+      align-items: center;
+    }
+
+    .bill-actions-bar h4 {
+      color: #FFFFFF;
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .bill-btn-group {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn {
+      padding: 9px 18px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, #D4AF37, #C9A84C);
+      color: #0A2617;
+    }
+    .btn-gold:hover {
+      background: #B6933A;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: #FFFFFF;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .btn-outline:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Invoice Content Box */
+    .bill-content {
+      padding: 36px 40px;
+    }
+
+    /* Header Section */
+    .bill-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      border-bottom: 2px solid #F3F4F6;
+      padding-bottom: 24px;
+      margin-bottom: 24px;
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo-icon {
+      width: 42px;
+      height: 42px;
+      background: var(--forest-green);
+      color: var(--gold-main);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+    }
+
+    .brand-name {
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--primary-dark);
+      letter-spacing: -0.5px;
+    }
+
+    .brand-tagline {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .invoice-badge-box {
+      text-align: right;
+    }
+
+    .invoice-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--forest-green);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-pill {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(47, 158, 68, 0.12);
+      color: var(--success-green);
+      border: 1px solid rgba(47, 158, 68, 0.3);
+      margin-top: 4px;
+    }
+
+    /* Details Grid */
+    .bill-grid-2col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .info-card {
+      background: #F9FAFB;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 18px 20px;
+    }
+
+    .info-card h5 {
+      font-size: 12px;
+      text-transform: uppercase;
+      color: var(--gold-dark);
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      margin-bottom: 10px;
+      border-bottom: 1px dashed var(--border-color);
+      padding-bottom: 6px;
+    }
+
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+    .info-row:last-child {
+      margin-bottom: 0;
+    }
+    .info-row span:first-child {
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .info-row span:last-child {
+      color: var(--text-dark);
+      font-weight: 700;
+    }
+
+    /* Financial Table */
+    .bill-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 28px;
+    }
+
+    .bill-table th {
+      background: var(--forest-green);
+      color: #FFFFFF;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      text-transform: uppercase;
+      font-weight: 700;
+      padding: 12px 16px;
+      text-align: left;
+    }
+    .bill-table th:first-child {
+      border-top-left-radius: 8px;
+      border-bottom-left-radius: 8px;
+    }
+    .bill-table th:last-child {
+      border-top-right-radius: 8px;
+      border-bottom-right-radius: 8px;
+      text-align: right;
+    }
+
+    .bill-table td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 13px;
+      color: var(--text-dark);
+    }
+    .bill-table td:last-child {
+      text-align: right;
+      font-weight: 700;
+    }
+
+    /* Total Summary Box */
+    .summary-box {
+      margin-left: auto;
+      width: 320px;
+      background: #F9FAFB;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+    }
+
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+    .summary-row.total {
+      border-top: 2px solid var(--primary-dark);
+      padding-top: 10px;
+      margin-top: 10px;
+      margin-bottom: 0;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--forest-green);
+    }
+
+    /* Footer Verification & QR */
+    .bill-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 2px solid #F3F4F6;
+      padding-top: 20px;
+      margin-top: 10px;
+    }
+
+    .qr-section {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .qr-img {
+      width: 76px;
+      height: 76px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      padding: 3px;
+      background: #FFFFFF;
+    }
+
+    .qr-text h6 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--primary-dark);
+    }
+
+    .qr-text p {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .stamp-box {
+      text-align: center;
+    }
+
+    .stamp-seal {
+      width: 84px;
+      height: 84px;
+      border: 2px dashed var(--gold-dark);
+      border-radius: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold-dark);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+      transform: rotate(-12deg);
+      background: rgba(201, 168, 76, 0.05);
+      margin: 0 auto;
+    }
+
+    /* Print Styles — Removes URL & Page Numbers on Printed PDF */
+    @page {
+      margin: 10mm;
+      size: auto;
+    }
+
+    @media print {
+      html, body {
+        background: #FFFFFF !important;
+        padding: 0 !important;
+        margin: 0 !important;
+      }
+      .bill-wrapper {
+        border: none !important;
+        box-shadow: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+      }
+      .bill-actions-bar {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div className="bill-wrapper">
+    <!-- Top Action Bar -->
+    <div class="bill-actions-bar">
+      <h4>📄 Official PicnicUtkal E-Bill & Pass</h4>
+      <div class="bill-btn-group">
+        <button class="btn btn-outline" onclick="if (document.referrer && !document.referrer.includes('bill.html')) { window.location.href = document.referrer; } else { window.location.href = '/user?tab=bookings'; }">← Back to Dashboard</button>
+        <button class="btn btn-gold" onclick="window.print()">🖨️ Print / Save PDF Bill</button>
+      </div>
+    </div>
+
+    <!-- Invoice Content Body -->
+    <div class="bill-content">
+      <!-- Header -->
+      <div class="bill-header">
+        <div class="brand-logo">
+          <div class="brand-logo-icon">🌿</div>
+          <div>
+            <div class="brand-name">PicnicUtkal</div>
+            <div class="brand-tagline">Odisha's Premier Eco-Picnic Sanctuary</div>
+          </div>
+        </div>
+
+        <div class="invoice-badge-box">
+          <div class="invoice-title">Tax Invoice</div>
+          <div class="status-pill" id="payment-status">✓ PAYMENT CONFIRMED</div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;" id="issued-date">Date: --</div>
+        </div>
+      </div>
+
+      <!-- 2-Column Info Section -->
+      <div class="bill-grid-2col">
+        <!-- Customer Info -->
+        <div class="info-card">
+          <h5>Guest & Booking Details</h5>
+          <div class="info-row">
+            <span>Booking ID:</span>
+            <span id="bk-id">--</span>
+          </div>
+          <div class="info-row">
+            <span>Lead Guest Name:</span>
+            <span id="guest-name">--</span>
+          </div>
+          <div class="info-row">
+            <span>Mobile Number:</span>
+            <span id="guest-phone">--</span>
+          </div>
+        </div>
+
+        <!-- Sanctuary Info -->
+        <div class="info-card">
+          <h5>Sanctuary & Date Info</h5>
+          <div class="info-row">
+            <span>Reserved Pandal/Zone:</span>
+            <span id="spot-title">--</span>
+          </div>
+          <div class="info-row">
+            <span>Visit Date:</span>
+            <span id="visit-date">--</span>
+          </div>
+          <div class="info-row">
+            <span>Total Duration:</span>
+            <span id="duration-days">1 Day</span>
+          </div>
+          <div class="info-row">
+            <span>Guest Capacity:</span>
+            <span id="guest-count">--</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Financial Table -->
+      <table class="bill-table">
+        <thead>
+          <tr>
+            <th>Item / Service Description</th>
+            <th>Rate / Day</th>
+            <th>Duration</th>
+            <th>Total Amount</th>
+          </tr>
+        </thead>
+        <tbody id="bill-items-body">
+          <tr>
+            <td id="spot-desc-cell">Pandal Spot Reservation</td>
+            <td id="rate-cell">₹0</td>
+            <td id="days-cell">1 Day</td>
+            <td id="spot-amount-cell">₹0</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Summary Box -->
+      <div class="summary-box">
+        <div class="summary-row">
+          <span>Subtotal:</span>
+          <span id="subtotal-val">₹0</span>
+        </div>
+        <div class="summary-row">
+          <span>Taxes & Sanctuary Maintenance:</span>
+          <span>₹0 (Included)</span>
+        </div>
+        <div class="summary-row total">
+          <span>Grand Total:</span>
+          <span id="grandtotal-val">₹0</span>
+        </div>
+      </div>
+
+      <!-- Clean Footer -->
+      <div class="bill-footer" style="border-top: 2px solid #F3F4F6; padding-top: 20px; text-align: center; display: block;">
+        <div style="font-size: 14px; font-weight: 700; color: var(--forest-green);">Thank you for choosing PicnicUtkal Sanctuary!</div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">This is a computer-generated tax invoice and booking bill receipt.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Parse URL parameters and localStorage fallbacks
+    window.addEventListener('DOMContentLoaded', () => {
+      const params = new URLSearchParams(window.location.search);
+
+      // Read saved invoice draft from localStorage if available
+      let localData = {};
+      try {
+        const saved = localStorage.getItem('picnicutkal_last_invoice') || localStorage.getItem('picnicutkal_current_booking');
+        if (saved) localData = JSON.parse(saved);
+      } catch (e) {}
+
+      const bookingId = params.get('bookingId') || params.get('id') || localData.bookingId || localData._id || 'PK-' + Math.floor(100000 + Math.random() * 900000);
+      const name = params.get('name') || localData.customerName || localData.userName || localData.user?.name || 'Guest Customer';
+      const phone = params.get('phone') || localData.phone || localData.userPhone || '--';
+      const spotTitle = params.get('spot') || params.get('spotTitle') || localData.spotTitle || localData.spot?.title || localData.plot?.title || 'Sanctuary Picnic Spot';
+      const visitDate = params.get('date') || localData.visitDate || localData.date || new Date().toISOString().split('T')[0];
+      const durationDays = Number(params.get('duration') || localData.durationDays || localData.duration || 1);
+      const guests = params.get('guests') || localData.guests || 1;
+      const totalAmount = Number(params.get('amount') || params.get('total') || localData.totalAmount || localData.amount || 0);
+
+      const baseRate = Number(params.get('rate') || localData.basePrice || localData.spot?.price || Math.round(totalAmount / durationDays));
+
+      // Populate Elements
+      document.getElementById('bk-id').textContent = bookingId;
+      document.getElementById('guest-name').textContent = name;
+      document.getElementById('guest-phone').textContent = phone;
+      document.getElementById('spot-title').textContent = spotTitle;
+      document.getElementById('visit-date').textContent = visitDate;
+      document.getElementById('duration-days').textContent = durationDays + (durationDays > 1 ? ' Days' : ' Day');
+      document.getElementById('guest-count').textContent = guests + ' Guests';
+      document.getElementById('issued-date').textContent = 'Date: ' + new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      // Table Row
+      const spotBaseTotal = baseRate * durationDays;
+      document.getElementById('spot-desc-cell').textContent = spotTitle + ' Reservation';
+      document.getElementById('rate-cell').textContent = '₹' + baseRate.toLocaleString() + ' / day';
+      document.getElementById('days-cell').textContent = durationDays + (durationDays > 1 ? ' Days' : ' Day');
+      document.getElementById('spot-amount-cell').textContent = '₹' + spotBaseTotal.toLocaleString();
+
+      // Render Selected Custom Event Add-ons
+      let addonsList = [];
+      try {
+        const rawAddons = params.get('addons') || localData.selectedAddons || localData.addons;
+        if (typeof rawAddons === 'string') {
+          addonsList = JSON.parse(rawAddons);
+        } else if (Array.isArray(rawAddons)) {
+          addonsList = rawAddons;
+        }
+      } catch (e) {
+        if (params.get('addons')) {
+          addonsList = params.get('addons').split(',').map(a => ({ name: a.trim(), priceAddon: 0 }));
+        }
+      }
+
+      if (Array.isArray(addonsList) && addonsList.length > 0) {
+        const tbody = document.getElementById('bill-items-body');
+        addonsList.forEach(ad => {
+          const tr = document.createElement('tr');
+          const nameStr = typeof ad === 'string' ? ad : (ad.name || ad.label || 'Custom Add-on');
+          const priceVal = typeof ad === 'object' && ad.priceAddon ? ad.priceAddon : 0;
+          tr.innerHTML = `
+            <td style="font-weight: 600; color: var(--forest-green);">✨ ${nameStr} (Event Add-on)</td>
+            <td>${priceVal > 0 ? '₹' + priceVal.toLocaleString() : 'Included'}</td>
+            <td>--</td>
+            <td style="font-weight: 700; color: var(--gold-dark);">${priceVal > 0 ? '₹' + priceVal.toLocaleString() : '₹0'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      // Summary
+      const grandTotal = totalAmount > 0 ? totalAmount : spotBaseTotal;
+      document.getElementById('subtotal-val').textContent = '₹' + grandTotal.toLocaleString();
+      document.getElementById('grandtotal-val').textContent = '₹' + grandTotal.toLocaleString();
+
+
+
+      // Auto Print trigger if requested
+      if (params.get('autoprint') === 'true') {
+        setTimeout(() => {
+          window.print();
+        }, 600);
+      }
+    });
+  </script>
+</body>
+</html>

@@ -16,108 +16,82 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 
-const INITIAL_USERS = [
-  {
-    id: 'USR-101',
-    name: 'Jyoti Ranjan',
-    email: 'jyoti@picnicutkal.com',
-    phone: '9876543210',
-    joinedDate: '2026-01-15',
-    role: 'Admin',
-    bookingsCount: 14,
-    totalSpent: 6986,
-    status: 'Active'
-  },
-  {
-    id: 'USR-102',
-    name: 'Sunil Mohanty',
-    email: 'sunil.mohanty@gmail.com',
-    phone: '9876543210',
-    joinedDate: '2026-03-22',
-    role: 'User',
-    bookingsCount: 3,
-    totalSpent: 1497,
-    status: 'Active'
-  },
-  {
-    id: 'USR-103',
-    name: 'Anjali Das',
-    email: 'anjali.das@gmail.com',
-    phone: '9123456789',
-    joinedDate: '2026-04-10',
-    role: 'User',
-    bookingsCount: 2,
-    totalSpent: 898,
-    status: 'Active'
-  },
-  {
-    id: 'USR-104',
-    name: 'Rajesh Tripathy',
-    email: 'rajesh.t@yahoo.com',
-    phone: '9437123456',
-    joinedDate: '2026-05-18',
-    role: 'User',
-    bookingsCount: 1,
-    totalSpent: 999,
-    status: 'Active'
-  },
-  {
-    id: 'USR-105',
-    name: 'Smruti Ranjan',
-    email: 'smruti.r@gmail.com',
-    phone: '9937001122',
-    joinedDate: '2026-06-02',
-    role: 'User',
-    bookingsCount: 4,
-    totalSpent: 1996,
-    status: 'Active'
-  },
-  {
-    id: 'USR-106',
-    name: 'Debashish Panda',
-    email: 'deba.panda@outlook.com',
-    phone: '9861098765',
-    joinedDate: '2026-06-25',
-    role: 'User',
-    bookingsCount: 1,
-    totalSpent: 449,
-    status: 'Suspended'
-  },
-  {
-    id: 'USR-107',
-    name: 'Manoj Kumar Patnaik',
-    email: 'manoj.patnaik@gmail.com',
-    phone: '9777123456',
-    joinedDate: '2026-07-04',
-    role: 'User',
-    bookingsCount: 2,
-    totalSpent: 998,
-    status: 'Active'
-  },
-  {
-    id: 'USR-108',
-    name: 'Biswajit Behera',
-    email: 'biswajit.b@gmail.com',
-    phone: '9439009988',
-    joinedDate: '2026-07-19',
-    role: 'User',
-    bookingsCount: 1,
-    totalSpent: 449,
-    status: 'Active'
-  }
-]
+import { useSocket } from '../../context/SocketContext'
+import { useEffect } from 'react'
 
 export default function Users() {
-  const [usersList, setUsersList] = useState(INITIAL_USERS)
+  const [usersList, setUsersList] = useState(() => {
+    try {
+      const stored = localStorage.getItem('picnicutkal_registered_users')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch (e) {}
+    return []
+  })
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Filter users
-  const filteredUsers = usersList.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.phone.includes(searchQuery) ||
-    u.id.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const fetchUsers = () => {
+    fetch('/api/auth/users')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.data)) {
+          const apiUsers = d.data
+          // Merge API users with localStorage users
+          try {
+            const stored = localStorage.getItem('picnicutkal_registered_users')
+            const localUsers = stored ? JSON.parse(stored) : []
+            const combinedMap = new Map()
+            apiUsers.forEach(u => combinedMap.set(u.email, u))
+            localUsers.forEach(u => combinedMap.set(u.email, u))
+            setUsersList(Array.from(combinedMap.values()))
+          } catch (e) {
+            setUsersList(apiUsers)
+          }
+        }
+      })
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    fetchUsers()
+  }, [])
+
+  // Socket.io real-time listener for new user registration
+  const { socket } = useSocket()
+  useEffect(() => {
+    if (!socket) return
+    const handleNewUser = (newUser) => {
+      if (newUser && newUser.email) {
+        setUsersList(prev => {
+          const exists = prev.some(u => u.email === newUser.email)
+          if (exists) return prev
+          return [newUser, ...prev]
+        })
+        toast.success(`👤 New user registered: ${newUser.name || newUser.email}`)
+      }
+    }
+    socket.on('user_registered', handleNewUser)
+    return () => socket.off('user_registered', handleNewUser)
+  }, [socket])
+
+  // Filter out any admin/super admin accounts and search query
+  const filteredUsers = usersList.filter(u => {
+    const roleLower = (u.role || '').toLowerCase()
+    const emailLower = (u.email || '').toLowerCase()
+
+    if (roleLower.includes('admin') || emailLower.includes('admin')) {
+      return false
+    }
+
+    return (
+      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      u.phone.includes(searchQuery) ||
+      u.id.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  })
 
   // Toggle user account status
   const handleToggleStatus = (userId) => {
@@ -183,7 +157,6 @@ export default function Users() {
               <th>Joined Date</th>
               <th>Bookings</th>
               <th>Total Spent</th>
-              <th>Role</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -191,7 +164,7 @@ export default function Users() {
           <tbody>
             {filteredUsers.length === 0 ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
                   No registered users found matching your search.
                 </td>
               </tr>
@@ -218,11 +191,6 @@ export default function Users() {
                   </td>
                   <td style={{ fontWeight: 700, color: 'var(--gold)' }}>
                     ₹{u.totalSpent.toLocaleString()}
-                  </td>
-                  <td>
-                    <span className={`badge ${u.role === 'Admin' ? 'badge-gold' : 'badge-glass'}`} style={{ fontSize: '11px' }}>
-                      {u.role}
-                    </span>
                   </td>
                   <td>
                     <span className={`badge ${u.status === 'Active' ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '11px' }}>

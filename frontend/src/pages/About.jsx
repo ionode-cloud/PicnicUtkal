@@ -65,7 +65,7 @@ export default function About() {
         <meta name="description" content="Discover our story, mission, and dedication to premium, nature-preservation nature escapes in Odisha." />
       </Helmet>
 
-      <div className="about-page container-fluid section" style={{ paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
+      <div className="about-page container-fluid">
         {/* Story Section */}
         <div className="about-story-grid">
           <div>

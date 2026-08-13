@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
+import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { useAuthStore } from '../store'
 import {
   LuMapPin as MapPin, LuStar as Star, LuShare2 as Share2, LuCalendar as CalendarIcon,
   LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
@@ -153,16 +155,47 @@ const SPOTS_DB = {
   }
 }
 
+
+
 export default function SpotDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+
+  // Load saved draft for this spot if available
+  const getDraft = () => {
+    try {
+      const saved = localStorage.getItem(`picnicutkal_spot_draft_${id}`)
+      return saved ? JSON.parse(saved) : null
+    } catch (e) { return null }
+  }
+
+  const draft = getDraft()
+
   const [thumbsSwiper, setThumbsSwiper] = useState(null)
-  const [selectedDuration, setSelectedDuration] = useState('1')
-  const [guests, setGuests] = useState(1)
-  const [visitDate, setVisitDate] = useState('')
-  const [selectedZones, setSelectedZones] = useState([])
-  const [selectedAddons, setSelectedAddons] = useState([])
+  const [selectedDuration, setSelectedDuration] = useState(() => draft?.selectedDuration || '1')
+  const [guests, setGuests] = useState(() => draft?.guests || 1)
+  const [visitDate, setVisitDate] = useState(() => {
+    return location.state?.initialDate || searchParams.get('date') || searchParams.get('visitDate') || draft?.visitDate || ''
+  })
+  const [selectedZones, setSelectedZones] = useState(() => draft?.selectedZones || [])
+  const [selectedAddons, setSelectedAddons] = useState(() => draft?.selectedAddons || [])
   const [expandedAddons, setExpandedAddons] = useState([])
+
+  useEffect(() => {
+    const passedDate = location.state?.initialDate || searchParams.get('date') || searchParams.get('visitDate')
+    if (passedDate) {
+      setVisitDate(passedDate)
+    }
+  }, [location.state, searchParams])
+
+  // Auto-save form draft on change
+  useEffect(() => {
+    if (!id) return
+    const formData = { guests, visitDate, selectedDuration, selectedZones, selectedAddons }
+    localStorage.setItem(`picnicutkal_spot_draft_${id}`, JSON.stringify(formData))
+  }, [id, guests, visitDate, selectedDuration, selectedZones, selectedAddons])
 
   // Auto-scroll to booking card on mobile if ?book=true is passed
   useEffect(() => {
@@ -217,10 +250,17 @@ export default function SpotDetail() {
     toast.success('Link copied to clipboard!')
   }
 
+  const { isAuthenticated, user } = useAuthStore()
+
   const handleBookingSubmit = (e) => {
     e.preventDefault()
     if (!visitDate) {
       toast.error('Please select a visit date first.')
+      return
+    }
+    if (!isAuthenticated || !user) {
+      toast.error('🔒 Please sign in to proceed with your booking!')
+      navigate('/login', { state: { from: location } })
       return
     }
     toast.loading('Checking zone availability...')
@@ -230,6 +270,7 @@ export default function SpotDetail() {
       navigate('/booking', {
         state: {
           spot,
+          durationDays: durationMultiplier,
           initialGuests: guests,
           initialDate: visitDate
         }
@@ -451,30 +492,53 @@ export default function SpotDetail() {
               <div className="booking-card-price">
                 <div>
                   <span className="price-label">Starts from</span>
-                  <h2>₹{spot.basePrice} <small>/pandal</small></h2>
-                </div>
-                <div className="rating-box">
-                  <Star size={16} fill="var(--gold)" color="var(--gold)" />
-                  <strong>{spot.rating}</strong>
-                  <span>({spot.reviewsCount})</span>
+                  <h2>₹{spot.basePrice} <small>/day</small></h2>
                 </div>
               </div>
 
               <div className="booking-card-form">
-                {/* Duration select */}
-                <div className="form-group">
-                  <label>Booking Duration</label>
-                  <div className="duration-selector">
-                    <button className={selectedDuration === '1' ? 'active' : ''} onClick={() => setSelectedDuration('1')}>1 Day</button>
-                    <button className={selectedDuration === '2' ? 'active' : ''} onClick={() => setSelectedDuration('2')}>2 Days</button>
-                    <button className={selectedDuration === '3' ? 'active' : ''} onClick={() => setSelectedDuration('3')}>3 Days</button>
-                    <button className={selectedDuration === 'custom' ? 'active' : ''} onClick={() => setSelectedDuration('custom')}>Custom</button>
+                {/* Total Days Input Field */}
+                <div className="form-group" style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label htmlFor="duration-days-spot-input" style={{ marginBottom: 0, fontWeight: 700 }}>
+                      Total Days / Duration
+                    </label>
+                    <span style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 700 }}>
+                      {durationMultiplier} Day(s) Selected
+                    </span>
                   </div>
+                  <div className="input-with-icon">
+                    <Clock size={16} />
+                    <input
+                      type="number"
+                      id="duration-days-spot-input"
+                      className="input"
+                      min="1"
+                      max="30"
+                      value={selectedDuration}
+                      onChange={e => {
+                        const val = Math.max(1, Math.min(30, Number(e.target.value) || 1))
+                        setSelectedDuration(String(val))
+                      }}
+                    />
+                  </div>
+                  <small style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    Enter total days, then click dates one by one on the calendar below.
+                  </small>
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="booking-date">Select Reservation Date</label>
-                  <div className="input-with-icon">
+                  <label htmlFor="booking-date">Select Reservation Dates (One by One)</label>
+                  <SpotAvailabilityCalendar
+                    spotId={spot?.id || spot?._id || id}
+                    selectedDate={visitDate}
+                    durationDays={durationMultiplier}
+                    onSelectDate={(primaryDate, allDatesArray) => {
+                      setVisitDate(primaryDate)
+                    }}
+                    title={`Availability Calendar — ${spot?.name || 'Spot'}`}
+                  />
+                  <div className="input-with-icon" style={{ marginTop: '8px' }}>
                     <CalendarIcon size={16} />
                     <input
                       type="date"
@@ -546,10 +610,6 @@ export default function SpotDetail() {
                 </button>
               </div>
 
-              <div className="booking-card-footer">
-                <p><ShieldCheck size={14} color="var(--success)" /> Razorpay Secure Payments Supported</p>
-                <p><Clock size={14} /> Easy cancellation up to 48 hours prior</p>
-              </div>
             </div>
           </div>
         </div>

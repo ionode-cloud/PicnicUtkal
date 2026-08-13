@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import SpotAvailabilityCalendar from './SpotAvailabilityCalendar'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuX as X, LuUser as User, LuMail as Mail, LuPhone as Phone, LuCalendar as Calendar, LuUsers as Users, LuFileText as FileText,
@@ -135,6 +136,7 @@ export default function BookingModal({ plot, onClose }) {
           plotId:        plot._id,
           plotTitle:     plot.title,
           plotPrice:     pricePerPerson,
+          totalAmount:   total || pricePerPerson,
           name:          form.name,
           email:         form.email,
           phone:         form.phone,
@@ -250,10 +252,19 @@ export default function BookingModal({ plot, onClose }) {
                     onChange={handleChange} placeholder="10-digit number" maxLength={10} />
                 </div>
 
-                <div className="bk2-field">
-                  <FieldLabel icon={Calendar} text="Visit Date" />
-                  <input className="bk2-input" name="visitDate" type="date" value={form.visitDate}
-                    min={tomorrowStr} onChange={handleChange} />
+                <div className="bk2-field bk2-full">
+                  <FieldLabel icon={Calendar} text="Visit Date Availability" />
+                  <SpotAvailabilityCalendar
+                    spotId={plot._id || plot.id}
+                    selectedDate={form.visitDate}
+                    onSelectDate={(d) => setForm(f => ({ ...f, visitDate: d }))}
+                    title={`Availability Calendar — ${plot.title || 'Spot'}`}
+                  />
+                  <div style={{ marginTop: '8px' }}>
+                    <FieldLabel icon={Calendar} text="Selected Date" />
+                    <input className="bk2-input" name="visitDate" type="date" value={form.visitDate}
+                      min={tomorrowStr} onChange={handleChange} />
+                  </div>
                 </div>
 
                 <div className="bk2-field">

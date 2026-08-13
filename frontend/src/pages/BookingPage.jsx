@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
 import { useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useAuthStore } from '../store'
@@ -8,20 +9,19 @@ import {
   LuCreditCard as CreditCard, LuSmartphone as Smartphone, LuBanknote as Banknote, LuCircleCheck as CheckCircle2,
   LuArrowRight as ArrowRight, LuArrowLeft as ArrowLeft, LuIndianRupee as IndianRupee, LuMapPin as MapPin, LuLoader as Loader2,
   LuPartyPopper as PartyPopper, LuCopy as Copy, LuCheck as Check, LuShieldCheck as ShieldCheck, LuClock as Clock,
-  LuIdCard as IdCard, LuStar as Star, LuSparkles as Sparkles, LuChevronRight as ChevronRight, LuShieldAlert as ShieldAlert
+  LuIdCard as IdCard, LuStar as Star, LuSparkles as Sparkles, LuChevronRight as ChevronRight, LuShieldAlert as ShieldAlert,
+  LuReceipt as Receipt, LuPrinter as Printer, LuX as X, LuTicket as Ticket, LuDownload as Download, LuHouse as HomeIcon
 } from 'react-icons/lu'
 
 const STEPS = [
-  { label: 'Contact Details', icon: User },
-  { label: 'Visitor Details', icon: Users },
-  { label: 'Review & Pay',   icon: CreditCard },
-  { label: 'Confirmation',    icon: CheckCircle2 }
+  { label: 'Review & Pay', icon: CreditCard },
+  { label: 'Confirmation', icon: CheckCircle2 }
 ]
 
 const PAYMENT_METHODS = [
-  { id: 'upi',  label: 'UPI Payment',   icon: Smartphone, desc: 'PhonePe · GPay · Paytm · BHIM' },
-  { id: 'card', label: 'Debit / Credit Card', icon: CreditCard, desc: 'Visa · MasterCard · Rupay' },
-  { id: 'cash', label: 'Pay at Venue',  icon: Banknote,    desc: 'Cash on arrival at the gate' }
+  { id: 'upi',  label: 'Pay via UPI QR Code', icon: Smartphone, desc: 'Scan & Pay via PhonePe, GPay, Paytm, BHIM' },
+  { id: 'razorpay', label: 'Razorpay Online Gateway', icon: CreditCard, desc: 'Instant Debit / Credit Card & Netbanking' },
+  { id: 'cash', label: 'Pay on Same Day (Cash / Spot Pay)', icon: Banknote, desc: 'Pay cash on arrival at picnic ground gate' }
 ]
 
 function FieldLabel({ icon: Icon, text, optional }) {
@@ -56,6 +56,32 @@ export default function BookingPage() {
   const [booking, setBooking] = useState(null)
   const [error, setError]     = useState('')
   const [copied, setCopied]   = useState(false)
+  const [showBillModal, setShowBillModal] = useState(false)
+  const [countdown, setCountdown] = useState(10)
+  const [timerActive, setTimerActive] = useState(false)
+
+  // Start countdown timer when step 1 (Confirmed) is reached
+  useEffect(() => {
+    if (step === 1) {
+      setCountdown(10)
+      setTimerActive(true)
+    }
+  }, [step])
+
+  // Countdown tick effect: auto-redirects to Home after 10 seconds
+  useEffect(() => {
+    let interval = null
+    if (step === 1 && timerActive && countdown > 0) {
+      interval = setInterval(() => {
+        setCountdown(prev => prev - 1)
+      }, 1000)
+    } else if (step === 1 && timerActive && countdown === 0) {
+      navigate('/')
+    }
+    return () => {
+      if (interval) clearInterval(interval)
+    }
+  }, [step, timerActive, countdown, navigate])
 
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -64,30 +90,51 @@ export default function BookingPage() {
   const isCottage = plot?.isCottage || spot?.isCottage || false
   const pricePerPerson = plot?.price || spot?.basePrice || 0
 
-  const [form, setForm] = useState({
-    name: '', email: '', phone: '',
-    visitDate: location.state?.initialDate || tomorrowStr,
-    persons: location.state?.initialGuests || 1,
-    specialNote: '',
-    paymentMethod: 'upi'
-  })
+  const getDraftForm = () => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_checkout_form')
+      return saved ? JSON.parse(saved) : null
+    } catch (e) { return null }
+  }
 
-  // Dynamic visitor details
-  const [visitors, setVisitors] = useState(() => {
-    const initialCount = location.state?.initialGuests || 1
-    return Array(initialCount).fill({ name: '', aadhaar: '' })
-  })
+  const draftForm = getDraftForm()
 
-  // Sync visitor details array size with number of persons
+  const [form, setForm] = useState(() => ({
+    name: location.state?.initialName || draftForm?.name || user?.name || (user?.email ? user.email.split('@')[0] : 'Valued Visitor'),
+    email: draftForm?.email || user?.email || 'visitor@picnicutkal.com',
+    phone: location.state?.initialPhone || draftForm?.phone || user?.phone || '',
+    visitDate: location.state?.initialDate || draftForm?.visitDate || tomorrowStr,
+    durationDays: location.state?.durationDays || draftForm?.durationDays || 1,
+    persons: location.state?.initialGuests || draftForm?.persons || 1,
+    specialNote: draftForm?.specialNote || '',
+    paymentMethod: draftForm?.paymentMethod || 'upi'
+  }))
+
   useEffect(() => {
-    setVisitors(prev => {
-      const count = form.persons
-      if (count > prev.length) {
-        return [...prev, ...Array(count - prev.length).fill({ name: '', aadhaar: '' })]
-      }
-      return prev.slice(0, count)
-    })
-  }, [form.persons])
+    localStorage.setItem('picnicutkal_checkout_form', JSON.stringify(form))
+  }, [form])
+
+  // Dynamic visitor details from PlotDetail
+  const [visitors] = useState(() => [
+    {
+      name: location.state?.initialName || user?.name || (user?.email ? user.email.split('@')[0] : 'Lead Visitor'),
+      aadhaar: location.state?.initialAadhaar || draftForm?.aadhaar || ''
+    }
+  ])
+
+  // Sync form state if user logs in or state changes
+  useEffect(() => {
+    if (location.state?.initialName) {
+      setForm(f => ({ ...f, name: location.state.initialName }))
+    } else if (user) {
+      setForm(f => ({
+        ...f,
+        name: f.name || user.name || (user.email ? user.email.split('@')[0] : 'Valued Visitor'),
+        email: f.email || user.email || 'visitor@picnicutkal.com',
+        phone: f.phone || user.phone || ''
+      }))
+    }
+  }, [user, location.state])
 
   // Fetch Plot or Spot details if not passed via state
   useEffect(() => {
@@ -97,7 +144,6 @@ export default function BookingPage() {
 
       if (plotId) {
         setFetching(true)
-        // Check local default plots first to make it instant for seeds
         fetch(`/api/map/plots/${plotId}`)
           .then(r => r.json())
           .then(d => {
@@ -112,7 +158,7 @@ export default function BookingPage() {
           .then(r => r.json())
           .then(d => {
             if (d.success) setSpot(d.data)
-            else if (d.name) setSpot(d) // local fallback
+            else if (d.name) setSpot(d)
             else setError('Spot not found.')
           })
           .catch(() => setError('Error loading spot details.'))
@@ -123,60 +169,15 @@ export default function BookingPage() {
     }
   }, [plot, spot, searchParams])
 
-  const total = pricePerPerson // Fixed flat rate per pandal/spot
-
-  const validateDetails = () => {
-    if (!form.name.trim())                return 'Full name is required.'
-    if (!/\S+@\S+\.\S+/.test(form.email)) return 'Valid email address is required.'
-    if (!/^[6-9]\d{9}$/.test(form.phone)) return 'Valid 10-digit Indian mobile number is required.'
-    if (!form.visitDate)                  return 'Please select a visit date.'
-    const selected = new Date(form.visitDate)
-    const today    = new Date(); today.setHours(0,0,0,0)
-    if (selected <= today)                return 'Visit date must be tomorrow or later.'
-    if (form.persons < 1)                 return 'At least 1 person is required.'
-    return ''
-  }
-
-  const validateVisitors = () => {
-    for (let i = 0; i < visitors.length; i++) {
-      const v = visitors[i]
-      if (!v.name.trim()) return `Person ${i + 1}: Full name is required.`
-      if (v.aadhaar && !/^\d{12}$/.test(v.aadhaar)) return `Person ${i + 1}: Aadhaar must be 12 digits.`
-    }
-    return ''
-  }
+  const selectedAddons = location.state?.selectedAddons || []
+  const addonsTotal = selectedAddons.reduce((sum, a) => sum + (a.priceAddon || 0), 0)
+  const baseSpotTotal = pricePerPerson * (Number(form.durationDays) || 1)
+  const total = baseSpotTotal + addonsTotal
 
   const handleChange = e => {
     const { name, value } = e.target
-    setForm(f => ({ ...f, [name]: name === 'persons' ? Math.max(1, Number(value)) : value }))
+    setForm(f => ({ ...f, [name]: value }))
     setError('')
-  }
-
-  const handleVisitorChange = (idx, field, value) => {
-    setVisitors(prev => {
-      const next = [...prev]
-      next[idx] = { ...next[idx], [field]: value }
-      return next
-    })
-    setError('')
-  }
-
-  const handleStep0Next = () => {
-    const err = validateDetails()
-    if (err) { setError(err); return }
-    // Pre-fill visitor 0 with the main contact name
-    setVisitors(prev => {
-      const next = [...prev]
-      if (!next[0]?.name) next[0] = { ...next[0], name: form.name }
-      return next
-    })
-    setStep(1)
-  }
-
-  const handleStep1Next = () => {
-    const err = validateVisitors()
-    if (err) { setError(err); return }
-    setStep(2)
   }
 
   const handleConfirmPayment = async () => {
@@ -189,21 +190,34 @@ export default function BookingPage() {
         body: JSON.stringify({
           plotId:        plot?._id || spot?.id || 'spot-booking',
           plotTitle:     plot?.title || spot?.name || 'Picnic Spot Booking',
-          plotPrice:     pricePerPerson,
-          name:          form.name,
-          email:         form.email,
-          phone:         form.phone,
-          visitDate:     form.visitDate,
-          persons:       form.persons,
-          specialNote:   form.specialNote,
-          paymentMethod: form.paymentMethod,
+          plotPrice:     pricePerPerson || 499,
+          durationDays:  Number(form.durationDays || 1),
+          totalAmount:   total || pricePerPerson || 499,
+          name:          form.name || user?.name || (user?.email ? user.email.split('@')[0] : 'Valued Visitor'),
+          email:         form.email || user?.email || 'visitor@picnicutkal.com',
+          phone:         form.phone || location.state?.initialPhone || user?.phone || '9876543210',
+          visitDate:     form.visitDate || tomorrowStr,
+          persons:       Number(form.persons || location.state?.initialGuests || 1),
+          specialNote:   form.specialNote || '',
+          paymentMethod: form.paymentMethod || 'upi',
           visitors:      visitors
         })
       })
       const data = await res.json()
       if (!res.ok || !data.success) throw new Error(data.message || 'Booking failed. Please try again.')
+      
       setBooking(data.data)
-      setStep(3)
+      setStep(1)
+      toast.success('🎉 Booking Confirmed Successfully!')
+
+      try {
+        const newBooking = data.data
+        localStorage.setItem('picnicutkal_last_invoice', JSON.stringify(newBooking))
+        const existing = JSON.parse(localStorage.getItem('picnicutkal_my_bookings') || '[]')
+        const updated = [newBooking, ...existing.filter(b => b.bookingId !== newBooking.bookingId && b._id !== newBooking._id)]
+        localStorage.setItem('picnicutkal_my_bookings', JSON.stringify(updated))
+        localStorage.removeItem('picnicutkal_checkout_form')
+      } catch (e) {}
     } catch (err) {
       setError(err.message)
     } finally {
@@ -215,6 +229,48 @@ export default function BookingPage() {
     navigator.clipboard?.writeText(booking?.bookingId || '')
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const triggerDirectBillDownload = (targetBk) => {
+    const bkData = targetBk || booking || {}
+    const addonsToPass = bkData.selectedAddons || selectedAddons || []
+    const params = new URLSearchParams({
+      bookingId: bkData.bookingId || bkData._id || 'PK-1001',
+      name: bkData.name || form.name || '',
+      phone: bkData.phone || form.phone || '',
+      spot: bkData.plotTitle || activeTitle || 'Picnic Spot',
+      date: bkData.visitDate || form.visitDate || '',
+      duration: bkData.durationDays || form.durationDays || 1,
+      guests: bkData.persons || form.persons || 1,
+      total: bkData.totalAmount || total || 0,
+      addons: JSON.stringify(addonsToPass),
+      autoprint: 'true'
+    })
+
+    let iframe = document.getElementById('direct-bill-download-iframe')
+    if (!iframe) {
+      iframe = document.createElement('iframe')
+      iframe.id = 'direct-bill-download-iframe'
+      iframe.style.position = 'fixed'
+      iframe.style.right = '-9999px'
+      iframe.style.bottom = '-9999px'
+      iframe.style.width = '0'
+      iframe.style.height = '0'
+      iframe.style.border = '0'
+      document.body.appendChild(iframe)
+    }
+
+    iframe.src = `/bill.html?${params.toString()}`
+    iframe.onload = () => {
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.focus()
+          iframe.contentWindow.print()
+        } catch (e) {
+          window.open(`/bill.html?${params.toString()}`, '_blank')
+        }
+      }, 300)
+    }
   }
 
   const activeTitle = plot?.title || spot?.name || 'Booking Form'
@@ -244,9 +300,9 @@ export default function BookingPage() {
         </div>
 
         {/* Outer Grid Layout */}
-        <div className="bk-page-grid">
+        <div className={`bk-page-grid ${step === 1 ? 'bk-page-grid--full' : ''}`}>
           {/* Left Column: Form & Stepper */}
-          <div className="bk-page-main">
+          <div className="bk-page-main" style={step === 1 ? { width: '100%', maxWidth: '780px' } : {}}>
             <div className="glass-card bk-card-wrapper">
               {!isAuthenticated || !token || !user ? (
                 <div style={{ padding: '30px 20px', textAlign: 'center' }}>
@@ -293,7 +349,7 @@ export default function BookingPage() {
                         <h1 className="bk-page-main-title">Book {activeTitle}</h1>
                         <div className="bk2-header-meta">
                           {!isCottage
-                            ? <><IndianRupee size={11} />{pricePerPerson.toLocaleString()} per person</>
+                            ? <><IndianRupee size={11} />{pricePerPerson.toLocaleString()} per day</>
                             : <>₹{pricePerPerson.toLocaleString()} per night</>
                           }
                         </div>
@@ -315,108 +371,8 @@ export default function BookingPage() {
                   </div>
 
                   <div className="bk-page-body-content">
-                    {/* ══ STEP 0: Contact Details ══ */}
+                    {/* ══ STEP 0: Review & Pay ══ */}
                     {step === 0 && (
-                      <div className="bk2-section-wrap">
-                        <div className="bk2-section-title"><User size={14} />Contact Details</div>
-
-                        <div className="bk2-grid-2">
-                          <div className="bk2-field bk2-full">
-                            <FieldLabel icon={User} text="Full Name" />
-                            <input className="bk2-input" name="name" value={form.name}
-                              onChange={handleChange} placeholder="Your full name" />
-                          </div>
-
-                          <div className="bk2-field">
-                            <FieldLabel icon={Mail} text="Email" />
-                            <input className="bk2-input" name="email" type="email" value={form.email}
-                              onChange={handleChange} placeholder="you@email.com" />
-                          </div>
-
-                          <div className="bk2-field">
-                            <FieldLabel icon={Phone} text="Mobile" />
-                            <input className="bk2-input" name="phone" type="tel" value={form.phone}
-                              onChange={handleChange} placeholder="10-digit number" maxLength={10} />
-                          </div>
-
-                          <div className="bk2-field">
-                            <FieldLabel icon={Calendar} text="Visit Date" />
-                            <input className="bk2-input" name="visitDate" type="date" value={form.visitDate}
-                              min={tomorrowStr} onChange={handleChange} />
-                          </div>
-
-                          <div className="bk2-field">
-                            <FieldLabel icon={Users} text="Number of Persons" />
-                            <div className="bk2-stepper">
-                              <button className="bk2-step-btn"
-                                onClick={() => setForm(f => ({ ...f, persons: Math.max(1, f.persons - 1) }))}>−</button>
-                              <span className="bk2-step-val">{form.persons}</span>
-                              <button className="bk2-step-btn"
-                                onClick={() => setForm(f => ({ ...f, persons: Math.min(plot?.capacity || spot?.capacity || 500, f.persons + 1) }))}>+</button>
-                            </div>
-                          </div>
-
-                          <div className="bk2-field bk2-full">
-                            <FieldLabel icon={FileText} text="Special Note" optional />
-                            <textarea className="bk2-input bk2-textarea" name="specialNote"
-                              value={form.specialNote} onChange={handleChange}
-                              placeholder="Any special requirements..." rows={2} />
-                          </div>
-                        </div>
-
-                        {error && <div className="bk2-error">{error}</div>}
-
-                        <button className="bk2-btn-gold" onClick={handleStep0Next}>
-                          Continue — Add Visitor Details <ArrowRight size={15} />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* ══ STEP 1: Visitor Names & Aadhaar ══ */}
-                    {step === 1 && (
-                      <div className="bk2-section-wrap">
-                        <div className="bk2-section-title"><IdCard size={14} />Visitor Details</div>
-                        <p className="bk2-hint">Please provide names and Aadhaar details for all visitors for gate entry clearance.</p>
-
-                        <div className="bk2-visitors-list">
-                          {visitors.map((v, i) => (
-                            <div key={i} className="bk2-visitor-card">
-                              <div className="bk2-visitor-num">
-                                <span>{i + 1}</span>
-                                {i === 0 && <div className="bk2-visitor-lead-tag">Lead Contact</div>}
-                              </div>
-                              <div className="bk2-visitor-fields">
-                                <div className="bk2-field">
-                                  <FieldLabel icon={User} text="Full Name" />
-                                  <input className="bk2-input" value={v.name} placeholder={`Visitor ${i + 1} Name`}
-                                    onChange={e => handleVisitorChange(i, 'name', e.target.value)} />
-                                </div>
-                                <div className="bk2-field">
-                                  <FieldLabel icon={IdCard} text="Aadhaar Number" optional />
-                                  <input className="bk2-input" value={v.aadhaar} placeholder="12-digit Aadhaar"
-                                    maxLength={12} inputMode="numeric"
-                                    onChange={e => handleVisitorChange(i, 'aadhaar', e.target.value.replace(/\D/g, ''))} />
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        {error && <div className="bk2-error">{error}</div>}
-
-                        <div className="bk2-btn-row">
-                          <button className="bk2-btn-ghost" onClick={() => setStep(0)}>
-                            <ArrowLeft size={14} /> Back
-                          </button>
-                          <button className="bk2-btn-gold" onClick={handleStep1Next}>
-                            Review &amp; Payment <ArrowRight size={15} />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* ══ STEP 2: Review & Pay ══ */}
-                    {step === 2 && (
                       <div className="bk2-section-wrap">
                         <div className="bk2-section-title"><CreditCard size={14} />Select Payment Method</div>
 
@@ -438,7 +394,36 @@ export default function BookingPage() {
                         </div>
 
                         {form.paymentMethod === 'upi' && (
-                          <div className="bk2-upi-note">📱 UPI app checkout prompt will launch on confirmation.</div>
+                          <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', textAlign: 'center', margin: '16px 0' }}>
+                            <div style={{ background: '#ffffff', padding: '16px', borderRadius: '14px', display: 'inline-block', marginBottom: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                              <img
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=picnicutkal@upi%26pn=PicnicUtkal%26am=${total}%26cu=INR`}
+                                alt="UPI QR Code"
+                                style={{ width: '160px', height: '160px', display: 'block', margin: '0 auto' }}
+                              />
+                              <div style={{ fontSize: '12px', color: '#111827', marginTop: '8px', fontWeight: 800, fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                                picnicutkal@upi
+                              </div>
+                            </div>
+                            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--gold)', marginBottom: '4px' }}>
+                              Scan QR Code to Pay ₹{total.toLocaleString()}
+                            </div>
+                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
+                              Open PhonePe, Google Pay, Paytm, or BHIM app and scan the QR code to finish your reservation.
+                            </p>
+                          </div>
+                        )}
+
+                        {form.paymentMethod === 'razorpay' && (
+                          <div className="bk2-upi-note" style={{ background: 'rgba(59, 130, 246, 0.12)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa' }}>
+                            💳 Instant Razorpay Gateway checkout will launch for Debit/Credit Cards &amp; Netbanking.
+                          </div>
+                        )}
+
+                        {form.paymentMethod === 'cash' && (
+                          <div className="bk2-upi-note" style={{ background: 'rgba(82, 183, 136, 0.12)', border: '1px solid rgba(82, 183, 136, 0.3)', color: '#52b788' }}>
+                            💵 Pay cash on arrival at the picnic ground main gate entrance. Spot reservation confirmed!
+                          </div>
                         )}
 
                         <div className="bk2-secure-note">
@@ -447,9 +432,9 @@ export default function BookingPage() {
 
                         {error && <div className="bk2-error">{error}</div>}
 
-                        <div className="bk2-btn-row">
-                          <button className="bk2-btn-ghost" onClick={() => setStep(1)}>
-                            <ArrowLeft size={14} /> Back
+                        <div className="bk2-btn-row" style={{ marginTop: '20px' }}>
+                          <button className="bk2-btn-ghost" onClick={() => navigate(-1)}>
+                            <ArrowLeft size={14} /> Back to Spot Details
                           </button>
                           <button className="bk2-btn-green" onClick={handleConfirmPayment} disabled={loading}>
                             {loading
@@ -461,62 +446,52 @@ export default function BookingPage() {
                       </div>
                     )}
 
-                    {/* ══ STEP 3: Confirmed ══ */}
-                    {step === 3 && booking && (
-                      <div className="bk2-section-wrap bk2-confirmed-wrap">
-                        <div className="bk2-confetti-icon">🎉</div>
-                        <h3 className="bk2-confirmed-h">Booking Confirmed!</h3>
-                        <p className="bk2-confirmed-sub">Your booking has been successful. Please show the booking receipt at the gate entrance.</p>
+                    {/* ══ STEP 1: Confirmed Success Alert Card ══ */}
+                    {step === 1 && booking && (
+                      <div style={{
+                        maxWidth: '480px',
+                        margin: '40px auto',
+                        padding: '36px 28px',
+                        background: '#0d1f14',
+                        border: '1.5px solid var(--gold)',
+                        borderRadius: '24px',
+                        textAlign: 'center',
+                        boxShadow: '0 20px 60px rgba(0,0,0,0.6)',
+                        color: '#ffffff'
+                      }}>
+                        <div style={{ fontSize: '52px', marginBottom: '12px' }}>🎉</div>
+                        <h3 style={{ fontSize: '24px', fontWeight: 800, color: '#ffffff', margin: '0 0 8px' }}>
+                          Booking Confirmed Successfully!
+                        </h3>
+                        <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.75)', margin: '0 0 24px', lineHeight: '1.5' }}>
+                          Your spot reservation is confirmed. Show your bill receipt at entrance or view it anytime under My Bookings.
+                        </p>
 
-                        <div className="bk2-booking-id-box">
-                          <div className="bk2-booking-id-lbl">Booking ID</div>
-                          <div className="bk2-booking-id-row">
-                            <span className="bk2-booking-id">{booking.bookingId}</span>
-                            <button className="bk2-copy-btn" onClick={copyId}>
-                              {copied ? <Check size={14} /> : <Copy size={14} />}
-                            </button>
-                          </div>
+                        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            className="btn btn-gold"
+                            onClick={() => triggerDirectBillDownload(booking)}
+                            style={{ flex: 1, minWidth: '140px', justifyContent: 'center', gap: '8px', padding: '12px 16px', fontSize: '14px', fontWeight: 700 }}
+                          >
+                            <Receipt size={16} /> View Bill
+                          </button>
+
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => navigate('/')}
+                            style={{ flex: 1, minWidth: '120px', justifyContent: 'center', gap: '8px', padding: '12px 16px', fontSize: '14px', fontWeight: 700, borderColor: 'var(--gold)', color: 'var(--gold)' }}
+                          >
+                            <HomeIcon size={16} /> Home
+                          </button>
+
+                          <button
+                            className="btn btn-outline"
+                            onClick={() => navigate('/user?tab=bookings')}
+                            style={{ flex: 1, minWidth: '140px', justifyContent: 'center', gap: '8px', padding: '12px 16px', fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.9)' }}
+                          >
+                            <Ticket size={16} /> My Bookings
+                          </button>
                         </div>
-
-                        <div className="bk2-conf-table">
-                          {[
-                            ['Zone / Spot', booking.plotTitle],
-                            ['Lead Guest',  booking.name],
-                            ['Phone',      booking.phone],
-                            ['Email',      booking.email],
-                            ['Visit Date', new Date(booking.visitDate).toLocaleDateString('en-IN', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric' })],
-                            ['Persons',    `${booking.persons} person(s)`],
-                            ['Total Paid', `₹${booking.totalAmount?.toLocaleString()}`],
-                            ['Payment',    booking.paymentMethod?.toUpperCase()],
-                            ['Status',     '✅ Confirmed'],
-                          ].map(([lbl, val]) => (
-                            <div key={lbl} className="bk2-conf-row">
-                              <span className="bk2-conf-lbl">{lbl}</span>
-                              <span className="bk2-conf-val">{val}</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {visitors.length > 0 && (
-                          <div className="bk2-conf-visitors">
-                            <div className="bk2-section-title"><Users size={13} />Registered Visitors</div>
-                            {visitors.map((v, i) => (
-                              <div key={i} className="bk2-cv-row">
-                                <span className="bk2-cv-num">{i + 1}</span>
-                                <span className="bk2-cv-name">{v.name}</span>
-                                {v.aadhaar && <span className="bk2-cv-aadh">••••••••{v.aadhaar.slice(-4)}</span>}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
-                        <div className="bk2-help-note">
-                          📞 Reservation Support: <strong>+91 98765 43210</strong>
-                        </div>
-
-                        <button className="bk2-btn-gold" onClick={() => navigate(plot ? '/map' : '/spots')}>
-                          Done — Return to Map
-                        </button>
                       </div>
                     )}
                   </div>
@@ -525,11 +500,19 @@ export default function BookingPage() {
             </div>
           </div>
 
-          {/* Right Column: Sticky Summary & Sidebar (Only for Steps 0, 1, 2) */}
-          {step < 3 && (
+          {/* Right Column: Sticky Summary & Sidebar (Only for Step 0) */}
+          {step < 1 && (
             <div className="bk-page-sidebar">
-              <div className="booking-sticky-card glass-card">
-                <div className="bk2-section-title" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+              <div className="glass-card booking-card-summary sticky-summary">
+                <SpotAvailabilityCalendar
+                  spotId={plot?._id || spot?.id || 'spot-booking'}
+                  selectedDate={form.visitDate}
+                  durationDays={form.durationDays}
+                  onSelectDate={(d) => setForm(f => ({ ...f, visitDate: d }))}
+                  title="Date Availability Calendar"
+                  variant="light"
+                />
+                <div className="booking-card-summary-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
                   <Star size={14} /> Booking Summary
                 </div>
 
@@ -542,9 +525,19 @@ export default function BookingPage() {
                   <span className="breakdown-title">Pricing &amp; Details</span>
                   <div className="breakdown-rows">
                     <div className="breakdown-row">
-                      <span>Rate</span>
+                      <span>Base Spot Rate</span>
                       <span>₹{pricePerPerson.toLocaleString()} {!plot?.isCottage ? '/Pindi' : '/night'}</span>
                     </div>
+                    <div className="breakdown-row" style={{ color: 'var(--gold)', fontWeight: 600 }}>
+                      <span>Total Days / Duration</span>
+                      <span>{form.durationDays} Day{form.durationDays > 1 ? 's' : ''} (₹{(pricePerPerson * form.durationDays).toLocaleString()})</span>
+                    </div>
+                    {selectedAddons.map((addon, idx) => (
+                      <div key={idx} className="breakdown-row" style={{ color: 'var(--gold)', fontSize: '13px' }}>
+                        <span>{addon.name}</span>
+                        <span>+ ₹{(addon.priceAddon || 0).toLocaleString()}</span>
+                      </div>
+                    ))}
                     <div className="breakdown-row">
                       <span>Persons</span>
                       <span>{form.persons} visitor{form.persons > 1 ? 's' : ''}</span>
@@ -565,29 +558,79 @@ export default function BookingPage() {
                     </div>
                   </div>
                 </div>
-
-                {step === 2 && visitors.length > 0 && (
-                  <div className="bk-sidebar-visitors">
-                    <span className="breakdown-title">Visitor Checklist</span>
-                    <div className="bk-sidebar-v-list">
-                      {visitors.map((v, idx) => (
-                        <div key={idx} className="bk-sidebar-v-item">
-                          <CheckCircle2 size={12} className="text-gold" />
-                          <span>{v.name || `Visitor ${idx + 1}`}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="booking-card-footer mt-4">
-                  <p><ShieldCheck size={14} color="var(--success)" /> Verified Secured Reservation</p>
-                  <p><Clock size={14} /> Full refund cancellation up to 48h prior</p>
-                </div>
               </div>
             </div>
           )}
         </div>
+
+        {/* Bill Receipt Modal */}
+        {showBillModal && booking && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+            <div style={{ background: '#0d1f14', border: '1px solid rgba(212, 175, 55, 0.5)', borderRadius: '22px', width: '100%', maxWidth: '480px', padding: '24px', position: 'relative', boxShadow: '0 25px 60px rgba(0,0,0,0.75)', color: '#ffffff' }}>
+              <button 
+                onClick={() => setShowBillModal(false)} 
+                style={{ position: 'absolute', top: '14px', right: '14px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ffffff', cursor: 'pointer', zIndex: 10 }}
+              >
+                <X size={18} />
+              </button>
+
+              <div style={{ textAlign: 'center', borderBottom: '1px dashed rgba(255,255,255,0.15)', paddingBottom: '16px', marginBottom: '16px' }}>
+                <span className="badge badge-gold" style={{ marginBottom: '8px', display: 'inline-block' }}>OFFICIAL BILL RECEIPT</span>
+                <h3 style={{ margin: 0, color: '#ffffff', fontSize: '20px', fontWeight: 700 }}>PicnicUtkal Eco Tourism</h3>
+                <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: '12px', margin: '4px 0 0' }}>Bhubaneswar, Odisha · GSTIN: 21AAACP1234F1Z0</p>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '10px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.65)' }}>Receipt Ref No:</span>
+                <strong style={{ color: '#d4af37', fontFamily: 'monospace' }}>INV-{booking.bookingId}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '10px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.65)' }}>Billed To:</span>
+                <strong style={{ color: '#ffffff' }}>{booking.name}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '16px' }}>
+                <span style={{ color: 'rgba(255,255,255,0.65)' }}>Date &amp; Time:</span>
+                <strong style={{ color: '#ffffff' }}>{new Date(booking.createdAt || Date.now()).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+              </div>
+
+              <div style={{ background: 'rgba(0, 0, 0, 0.4)', borderRadius: '14px', padding: '16px', marginBottom: '20px', border: '1px solid rgba(255, 255, 255, 0.12)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px', fontWeight: 600 }}>
+                  <span style={{ color: '#ffffff' }}>{booking.plotTitle}</span>
+                  <strong style={{ color: '#d4af37' }}>₹{booking.totalAmount?.toLocaleString()}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'rgba(255,255,255,0.65)', marginBottom: '8px' }}>
+                  <span>Payment Method ({booking.paymentMethod?.toUpperCase()})</span>
+                  <span>Included</span>
+                </div>
+                <hr style={{ borderColor: 'rgba(255,255,255,0.12)', margin: '10px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800 }}>
+                  <span>Total Amount Paid</span>
+                  <span style={{ color: '#52b788' }}>
+                    ₹{booking.totalAmount?.toLocaleString()}
+                  </span>
+                </div>
+              </div>
+
+              <button onClick={() => {
+                const params = new URLSearchParams({
+                  bookingId: booking?.bookingId || booking?._id || 'PK-1001',
+                  name: booking?.name || customerName || '',
+                  phone: booking?.phone || phone || '',
+                  aadhaar: booking?.aadhaar || aadhaar || '',
+                  spot: booking?.plotTitle || activeTitle || '',
+                  date: booking?.visitDate || visitDate || '',
+                  duration: booking?.durationDays || durationDays || 1,
+                  guests: booking?.guests || guests || 1,
+                  total: booking?.totalAmount || grandTotal || 0,
+                  autoprint: 'true'
+                })
+                window.open(`/bill.html?${params.toString()}`, '_blank')
+              }} className="btn btn-gold w-full" style={{ justifyContent: 'center', gap: '8px', padding: '12px', fontSize: '14px', fontWeight: 700 }}>
+                <Printer size={16} /> Print / Download PDF Bill
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </>
   )

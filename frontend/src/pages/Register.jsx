@@ -2,22 +2,68 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { LuMail as Mail, LuLock as Lock, LuUser as User, LuPhone as Phone, LuArrowLeft as ArrowLeft, LuSquareCheck as CheckSquare, LuEye as Eye, LuEyeOff as EyeOff } from 'react-icons/lu'
+import { useAuthStore } from '../store'
+import api from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function Register() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '' })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const setAuth = useAuthStore(state => state.setAuth)
   const navigate = useNavigate()
 
-  const handleRegister = (e) => {
+  const handleRegister = async (e) => {
     e.preventDefault()
     setLoading(true)
-    setTimeout(() => {
+
+    try {
+      const response = await api.post('/auth/register', formData)
+      const data = response.data
+
+      if (data && (data.token || data._id || data.success)) {
+        const userData = {
+          _id: data._id || `user-${Date.now()}`,
+          name: data.name || formData.name,
+          email: data.email || formData.email,
+          role: data.role || 'user'
+        }
+        const userRecord = {
+          id: `USR-${(data._id || Date.now().toString()).slice(-4).toUpperCase()}`,
+          name: data.name || formData.name,
+          email: data.email || formData.email,
+          phone: formData.phone || 'Not Provided',
+          role: 'User',
+          joinedDate: new Date().toISOString().split('T')[0],
+          bookingsCount: 0,
+          totalSpent: 0,
+          status: 'Active'
+        }
+
+        try {
+          const stored = localStorage.getItem('picnicutkal_registered_users')
+          const parsed = stored ? JSON.parse(stored) : []
+          const updated = [userRecord, ...parsed.filter(u => u.email !== userRecord.email)]
+          localStorage.setItem('picnicutkal_registered_users', JSON.stringify(updated))
+        } catch (e) {}
+
+        // Direct Login
+        setAuth(userData, data.token || 'user-demo-token-123')
+        toast.success(`🎉 Registration successful! Welcome, ${userData.name}!`)
+        navigate('/')
+      } else {
+        toast.error(data.message || 'Registration failed')
+      }
+    } catch (err) {
+      const errMsg = err.response?.data?.message || err.message || 'Gmail already exists!'
+      if (errMsg.toLowerCase().includes('exist') || errMsg.toLowerCase().includes('already')) {
+        toast.error('❌ Gmail already exists! Please login or use another email.')
+      } else {
+        toast.error(errMsg)
+      }
+    } finally {
       setLoading(false)
-      toast.success('Registration successful! Please login.')
-      navigate('/login')
-    }, 1000)
+    }
   }
 
   return (

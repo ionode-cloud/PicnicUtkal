@@ -3,7 +3,8 @@ import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuSun as Sun, LuMoon as Moon, LuMenu as Menu, LuX as X, LuUser as User,
-  LuMapPin as MapPin, LuPhone as Phone, LuChevronDown as ChevronDown, LuLeaf as Leaf
+  LuMapPin as MapPin, LuPhone as Phone, LuChevronDown as ChevronDown, LuLeaf as Leaf,
+  LuCalendar as CalendarIcon, LuCreditCard as CreditCard, LuCircleHelp as HelpCircle, LuLogOut as LogOut, LuShieldCheck as ShieldCheck
 } from 'react-icons/lu'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuthStore, useUIStore } from '../../store'
@@ -105,10 +106,10 @@ export default function Navbar() {
                     <img src={user.avatar} alt={user.name} className="navbar__avatar" />
                   ) : (
                     <div className="navbar__avatar-placeholder">
-                      {user?.name?.[0]?.toUpperCase()}
+                      {(user?.name || user?.email || 'U')[0]?.toUpperCase()}
                     </div>
                   )}
-                  <span className="navbar__user-name">{user?.name?.split(' ')[0]}</span>
+                  <span className="navbar__user-name">{user?.name || (user?.email ? user.email.split('@')[0] : 'User')}</span>
                   <ChevronDown size={14} className={userMenuOpen ? 'rotate-180' : ''} style={{ transition: 'transform 0.2s' }} />
                 </button>
                 <AnimatePresence>
@@ -120,14 +121,37 @@ export default function Navbar() {
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.18 }}
                     >
-                      {user?.role === 'admin' && (
-                        <Link to="/admin" className="navbar__dropdown-item navbar__dropdown-item--admin" onClick={() => setUserMenuOpen(false)}>
-                          Admin Panel
-                        </Link>
+                      {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'staff') ? (
+                        <>
+                          <Link to="/admin" className="navbar__dropdown-item navbar__dropdown-item--admin" onClick={() => setUserMenuOpen(false)}>
+                            <ShieldCheck size={15} /> Admin Console
+                          </Link>
+                          <Link to="/admin/spots" className="navbar__dropdown-item" onClick={() => setUserMenuOpen(false)}>
+                            <MapPin size={15} /> Manage Spots
+                          </Link>
+                          <Link to="/admin/users" className="navbar__dropdown-item" onClick={() => setUserMenuOpen(false)}>
+                            <User size={15} /> Registered Users
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          <Link to="/user?tab=profile" className="navbar__dropdown-item" onClick={() => setUserMenuOpen(false)}>
+                            <User size={15} /> Profile
+                          </Link>
+                          <Link to="/user?tab=bookings" className="navbar__dropdown-item" onClick={() => setUserMenuOpen(false)}>
+                            <CalendarIcon size={15} /> Bookings
+                          </Link>
+                          <Link to="/user?tab=payments" className="navbar__dropdown-item" onClick={() => setUserMenuOpen(false)}>
+                            <CreditCard size={15} /> Payments
+                          </Link>
+                          <Link to="/user?tab=help" className="navbar__dropdown-item" onClick={() => setUserMenuOpen(false)}>
+                            <HelpCircle size={15} /> Help
+                          </Link>
+                        </>
                       )}
                       <hr className="navbar__dropdown-divider" />
                       <button className="navbar__dropdown-item navbar__dropdown-item--danger" onClick={handleLogout}>
-                        Sign Out
+                        <LogOut size={15} /> Logout
                       </button>
                     </motion.div>
                   )}

@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link, useNavigate } from 'react-router-dom'
+import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
+import { useSocket } from '../context/SocketContext'
+import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
+import { useAuthStore } from '../store'
 import {
   LuMapPin as MapPin, LuStar as Star, LuShare2 as Share2, LuCalendar as CalendarIcon,
   LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
   LuChevronRight as ChevronRight, LuSparkles as Sparkles, LuArrowRight as ArrowRight, LuShieldCheck as ShieldCheck, LuUsers as Users, LuWifi as Wifi, LuLock as Lock,
-  LuHouse as HomeIcon, LuCircleCheck as CheckCircle2, LuMusic as Music, LuCoffee as Coffee, LuSparkle as Sparkle, LuLoader as Loader2
+  LuHouse as HomeIcon, LuCircleCheck as CheckCircle2, LuMusic as Music, LuCoffee as Coffee, LuSparkle as Sparkle, LuLoader as Loader2,
+  LuPhone as Phone, LuCreditCard as CreditCard, LuUser as User
 } from 'react-icons/lu'
 import { Swiper, SwiperSlide } from 'swiper/react'
-import { Navigation, Thumbs, FreeMode } from 'swiper/modules'
+import { Navigation, Thumbs, FreeMode, Autoplay } from 'swiper/modules'
 import toast from 'react-hot-toast'
 import 'swiper/css'
 import 'swiper/css/free-mode'
 import 'swiper/css/navigation'
 import 'swiper/css/thumbs'
+import 'swiper/css/autoplay'
 
 const PLOT_IMAGES = {
   pandal: [
@@ -198,44 +203,131 @@ const DEFAULT_PLOTS = [
 export default function PlotDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
   const [thumbsSwiper, setThumbsSwiper] = useState(null)
   
   const [plot, setPlot] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  // Form selections
-  const [guests, setGuests] = useState(1)
-  const [visitDate, setVisitDate] = useState('')
-  const [selectedAddons, setSelectedAddons] = useState([])
-  const [selectedCottageId, setSelectedCottageId] = useState('cottage-2') // default deluxe cottage
+  // Load saved draft for this plot if available
+  const getDraft = () => {
+    try {
+      const saved = localStorage.getItem(`picnicutkal_plot_draft_${id}`)
+      return saved ? JSON.parse(saved) : null
+    } catch (e) { return null }
+  }
+
+  const draft = getDraft()
+  const { isAuthenticated, user } = useAuthStore()
+
+  // Form selections with draft restoration
+  const [customerName, setCustomerName] = useState(() => draft?.customerName || '')
+  const [guests, setGuests] = useState(() => draft?.guests || 1)
+  const [rawGuests, setRawGuests] = useState(() => String(draft?.guests || 1))
+  const [phone, setPhone] = useState(() => draft?.phone || '')
+  const [aadhaar, setAadhaar] = useState(() => draft?.aadhaar || '')
+  const [durationDays, setDurationDays] = useState(() => draft?.durationDays || 1)
+  const [visitDate, setVisitDate] = useState(() => {
+    return location.state?.initialDate || searchParams.get('date') || searchParams.get('visitDate') || draft?.visitDate || ''
+  })
+  const [selectedDates, setSelectedDates] = useState(() => draft?.selectedDates || [])
+  const [selectedAddons, setSelectedAddons] = useState(() => draft?.selectedAddons || [])
+  const [selectedCottageId, setSelectedCottageId] = useState(() => draft?.selectedCottageId || 'cottage-2')
+  const [selectedVehicle, setSelectedVehicle] = useState(() => draft?.selectedVehicle || 'car')
   const [expandedAddons, setExpandedAddons] = useState([])
+
+  const getStoredRules = () => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_guidelines_rules')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.filter(r => r.status === 'Active')
+        }
+      }
+    } catch (e) {}
+    return [
+      { text: 'Alcohol consumption is strictly prohibited inside the sanctuary picnic campus' },
+      { text: 'Littering is an offense; please dispose of plastic trash in colored bins only' },
+      { text: 'Fires or self-organized BBQ must be restricted within designated brick fire pits' },
+      { text: 'Decorations using cello tape or nails on trees/walls are strictly banned' }
+    ]
+  }
+
+  const [activeRules, setActiveRules] = useState(getStoredRules)
+  const { socket } = useSocket()
+
+  useEffect(() => {
+    if (!socket) return
+    const handler = (data) => {
+      if (data && Array.isArray(data.rules)) {
+        setActiveRules(data.rules.filter(r => r.status === 'Active'))
+      }
+    }
+    socket.on('guidelines_rules_update', handler)
+    return () => socket.off('guidelines_rules_update', handler)
+  }, [socket])
 
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
   useEffect(() => {
+    const passedDate = location.state?.initialDate || searchParams.get('date') || searchParams.get('visitDate')
+    if (passedDate) {
+      setVisitDate(passedDate)
+    }
+  }, [location.state, searchParams])
+
+  // Auto-save form draft on change
+  useEffect(() => {
+    if (!id) return
+    const formData = { customerName, guests, phone, aadhaar, visitDate, selectedDates, durationDays, selectedAddons, selectedCottageId, selectedVehicle }
+    localStorage.setItem(`picnicutkal_plot_draft_${id}`, JSON.stringify(formData))
+  }, [id, customerName, guests, phone, aadhaar, visitDate, selectedDates, durationDays, selectedAddons, selectedCottageId, selectedVehicle])
+
+  useEffect(() => {
     setLoading(true)
+    let isMounted = true
+
+    // Safety timeout: stop spinner after 2 seconds max
+    const timer = setTimeout(() => {
+      if (isMounted && loading) {
+        const fallback = DEFAULT_PLOTS.find(p => p._id === id || p.id === id) || DEFAULT_PLOTS[0]
+        setPlot(fallback)
+        setLoading(false)
+      }
+    }, 2000)
+
     fetch(`/api/map/plots/${id}`)
       .then(r => r.json())
       .then(d => {
-        if (d.success) {
+        if (!isMounted) return
+        if (d.success && d.data) {
           setPlot(d.data)
         } else {
-          // Fallback to static seed
-          const local = DEFAULT_PLOTS.find(p => p._id === id)
-          if (local) setPlot(local)
-          else setError('Zone/Pandal details not found.')
+          const local = DEFAULT_PLOTS.find(p => p._id === id || p.id === id) || DEFAULT_PLOTS[0]
+          setPlot(local)
         }
       })
       .catch(() => {
-        // Fallback to static seed on fetch error
-        const local = DEFAULT_PLOTS.find(p => p._id === id)
-        if (local) setPlot(local)
-        else setError('Error loading zone details.')
+        if (!isMounted) return
+        const local = DEFAULT_PLOTS.find(p => p._id === id || p.id === id) || DEFAULT_PLOTS[0]
+        setPlot(local)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (isMounted) {
+          clearTimeout(timer)
+          setLoading(false)
+        }
+      })
+
+    return () => {
+      isMounted = false
+      clearTimeout(timer)
+    }
   }, [id])
 
   // Auto-scroll to booking card on mobile if ?book=true is passed
@@ -244,7 +336,7 @@ export default function PlotDetail() {
       const searchParams = new URLSearchParams(window.location.search)
       if (searchParams.get('book') === 'true') {
         setTimeout(() => {
-          const element = document.getElementById('booking-date')
+          const element = document.getElementById('booking-date') || document.getElementById('duration-days-input')
           if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'center' })
             element.focus()
@@ -269,9 +361,11 @@ export default function PlotDetail() {
 
   if (loading) {
     return (
-      <div className="container-fluid section flex flex-col items-center justify-center min-h-[50vh]">
-        <Loader2 className="bk2-spin text-gold" size={36} />
-        <p className="mt-4 text-white/50 text-sm">Loading details...</p>
+      <div className="plot-loading-container">
+        <Loader2 className="spin" size={38} color="var(--gold)" />
+        <p style={{ marginTop: '16px', color: 'var(--text-muted)', fontSize: '14px', fontWeight: 600 }}>
+          Loading picnic zone details...
+        </p>
       </div>
     )
   }
@@ -296,11 +390,11 @@ export default function PlotDetail() {
     basePrice = selectedCot ? selectedCot.price : 999
   }
 
-  const baseTotal = basePrice // Fixed flat price per pandal/cottage booking
+  const baseTotal = basePrice * (Number(durationDays) || 1)
   
-  const addonsTotal = PANDAL_ADDONS
-    .filter(a => selectedAddons.includes(a.id))
-    .reduce((sum, a) => sum + a.priceAddon, 0) // Fixed flat price per addon
+  const selectedAddonsObjects = PANDAL_ADDONS.filter(a => selectedAddons.includes(a.id))
+
+  const addonsTotal = selectedAddonsObjects.reduce((sum, a) => sum + a.priceAddon, 0)
 
   const grandTotal = baseTotal + addonsTotal
 
@@ -308,16 +402,61 @@ export default function PlotDetail() {
     ? COTTAGE_ROOM_TYPES.find(c => c.id === selectedCottageId)?.name 
     : ''
 
+  const maxCapacity = plot ? (Number(plot.capacity) || 100) : 100
+
   const handleBookingSubmit = (e) => {
     e.preventDefault()
+    if (!customerName || !customerName.trim()) {
+      toast.error('Please enter the lead guest name.')
+      return
+    }
     if (!visitDate) {
       toast.error('Please select a visit date first.')
+      return
+    }
+    if (guests > maxCapacity) {
+      toast.error(`Pindi has only ${maxCapacity} capacity!`)
+      return
+    }
+    if (!phone || !/^[6-9]\d{9}$/.test(phone)) {
+      toast.error('Please enter a valid 10-digit mobile number.')
+      return
+    }
+    if (!aadhaar || !/^\d{12}$/.test(aadhaar)) {
+      toast.error('Please enter a valid 12-digit Aadhaar Card number.')
+      return
+    }
+
+    if (!isAuthenticated || !user) {
+      toast.error('🔒 Please sign in to complete your reservation!')
+      const selectedPlotObj = {
+        _id: plot._id,
+        title: isCottage ? activeCottageName : plot.title,
+        price: basePrice,
+        capacity: plot.capacity,
+        color: plot.color,
+        isCottage: isCottage,
+        description: plot.description
+      }
+      const pendingData = {
+        plot: selectedPlotObj,
+        durationDays: durationDays,
+        initialName: customerName,
+        initialGuests: guests,
+        initialDate: visitDate,
+        initialPhone: phone,
+        initialAadhaar: aadhaar,
+        selectedAddons: selectedAddonsObjects
+      }
+      sessionStorage.setItem('pending_booking', JSON.stringify(pendingData))
+      navigate('/login', { state: { from: location, bookingIntent: true } })
       return
     }
 
     toast.loading('Preparing booking form...')
     setTimeout(() => {
       toast.dismiss()
+      try { localStorage.removeItem(`picnicutkal_plot_draft_${id}`); } catch (err) {}
       
       const selectedPlotObj = {
         _id: plot._id,
@@ -332,15 +471,24 @@ export default function PlotDetail() {
       navigate('/booking', {
         state: {
           plot: selectedPlotObj,
+          durationDays: durationDays,
+          initialName: customerName,
           initialGuests: guests,
-          initialDate: visitDate
+          initialDate: visitDate,
+          initialPhone: phone,
+          initialAadhaar: aadhaar,
+          selectedAddons: selectedAddonsObjects
         }
       })
-    }, 1200)
+    }, 800)
   }
 
-  // Get gallery images
-  const images = isCottage ? PLOT_IMAGES.cottage : (isPandal ? PLOT_IMAGES.pandal : PLOT_IMAGES.default)
+  // Get gallery images (use updated plot.images / plot.image from admin backend, fallback to default)
+  const images = (Array.isArray(plot.images) && plot.images.filter(Boolean).length > 0)
+    ? plot.images.filter(Boolean)
+    : (plot.image
+        ? [plot.image]
+        : (isCottage ? PLOT_IMAGES.cottage : (isPandal ? PLOT_IMAGES.pandal : PLOT_IMAGES.default)))
 
   const facilities = plot.facilities?.length > 0
     ? plot.facilities
@@ -387,13 +535,19 @@ export default function PlotDetail() {
               <Swiper
                 spaceBetween={10}
                 navigation={true}
+                autoplay={{
+                  delay: 3000,
+                  disableOnInteraction: false,
+                  pauseOnMouseEnter: true
+                }}
+                loop={images.length > 1}
                 thumbs={{ swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null }}
-                modules={[Navigation, Thumbs]}
+                modules={[Navigation, Thumbs, FreeMode, Autoplay]}
                 className="spot-main-slider"
               >
                 {images.map((img, i) => (
                   <SwiperSlide key={i}>
-                    <img src={img} alt={`${plot.title} View ${i + 1}`} />
+                    <img src={img} alt={`${plot.title} View ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   </SwiperSlide>
                 ))}
               </Swiper>
@@ -549,15 +703,10 @@ export default function PlotDetail() {
             <div className="spot-card-info section-card">
               <h2 className="heading-4">Guidelines &amp; Rules</h2>
               <div className="rules-list-detail">
-                {[
-                  'Alcohol consumption is strictly prohibited inside the sanctuary picnic campus',
-                  'Littering is an offense; please dispose of plastic trash in colored bins only',
-                  'Fires or self-organized BBQ must be restricted within designated brick fire pits',
-                  'Decorations using cello tape or nails on trees/walls are strictly banned'
-                ].map((rule, index) => (
+                {activeRules.map((rule, index) => (
                   <div key={index} className="rule-item-detail">
                     <AlertTriangle size={16} color="var(--gold-dark)" />
-                    <span>{rule}</span>
+                    <span>{rule.text || rule}</span>
                   </div>
                 ))}
               </div>
@@ -570,63 +719,191 @@ export default function PlotDetail() {
               <div className="booking-card-price">
                 <div>
                   <span className="price-label">Starts from</span>
-                  <h2>₹{basePrice} <small>{!isCottage ? '/pandal' : '/night'}</small></h2>
-                </div>
-                <div className="rating-box">
-                  <Star size={16} fill="var(--gold)" color="var(--gold)" />
-                  <strong>4.9</strong>
-                  <span>(120 reviews)</span>
+                  <h2>₹{basePrice} <small>{!isCottage ? '/day' : '/night'}</small></h2>
                 </div>
               </div>
 
               <div className="booking-card-form">
-                <div className="form-group">
-                  <label htmlFor="booking-date">Select Reservation Date</label>
-                  <div className="input-with-icon">
-                    <CalendarIcon size={16} />
-                    <input
-                      type="date"
-                      id="booking-date"
-                      className="input"
-                      value={visitDate}
-                      onChange={e => setVisitDate(e.target.value)}
-                      min={tomorrowStr}
-                    />
-                  </div>
+                {/* 1. FULL WIDTH CALENDAR */}
+                <div className="form-group plot-calendar-fullwidth" >
+                  <label style={{ fontWeight: 700, display: 'block', fontSize: '14px' }}>
+                    Select Reservation Dates (One by One)
+                  </label>
+                  <SpotAvailabilityCalendar
+                    spotId={plot?.id || plot?._id || id}
+                    selectedDate={selectedDates.length > 0 ? selectedDates : visitDate}
+                    durationDays={durationDays}
+                    onSelectDate={(primaryDate, allDatesArray) => {
+                      setVisitDate(primaryDate)
+                      setSelectedDates(allDatesArray || [primaryDate])
+                    }}
+                    title={`Availability Calendar — ${plot?.title || 'Spot'}`}
+                  />
                 </div>
 
-                {!isCottage && (
-                  <div className="form-group">
-                    <label htmlFor="guest-count">Number of Guests</label>
+                {/* 2. ROW 1: LEFT = SELECT VISIT DATE, RIGHT = NUMBER OF GUESTS */}
+                <div className="plot-form-bottom-grid-2col" >
+                  {/* Left: Select Visit Date */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor="booking-date" style={{ fontWeight: 700, display: 'block' }}>
+                      Select Visit Date *
+                    </label>
                     <div className="input-with-icon">
-                      <Users size={16} />
+                      <CalendarIcon size={16} />
                       <input
-                        type="number"
-                        id="guest-count"
+                        type="date"
+                        id="booking-date"
                         className="input"
-                        placeholder="Guests"
-                        value={guests}
-                        onChange={e => setGuests(Math.max(1, Number(e.target.value)))}
-                        min={1}
+                        value={visitDate}
+                        onChange={e => setVisitDate(e.target.value)}
+                        min={tomorrowStr}
+                        required
                       />
                     </div>
                   </div>
-                )}
+
+                  {/* Right: Number of Guests */}
+                  {!isCottage && (
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', }}>
+                        <label htmlFor="guest-count" style={{ marginBottom: 0, fontWeight: 700 }}>Number of Guests</label>
+                        <span style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: 600 }}>
+                          Max: {maxCapacity} Guests
+                        </span>
+                      </div>
+                      <div className="input-with-icon">
+                        <Users size={16} />
+                        <input
+                          type="number"
+                          id="guest-count"
+                          className="input"
+                          placeholder="Enter guest count"
+                          value={rawGuests}
+                          onChange={e => {
+                            const valStr = e.target.value
+                            setRawGuests(valStr)
+                            const valNum = Number(valStr)
+                            if (valNum > maxCapacity) {
+                              toast.error(`Pindi has only ${maxCapacity} capacity!`, { id: 'pindi-cap-toast' })
+                            }
+                            setGuests(valNum)
+                          }}
+                          min={1}
+                        />
+                      </div>
+                      {Number(rawGuests) > maxCapacity && (
+                        <div style={{ background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.4)', color: '#fca5a5', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}>
+                          <AlertTriangle size={13} color="#fca5a5" /> Pindi has only {maxCapacity} capacity!
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. ROW 2: LEFT = TOTAL DAYS, RIGHT = LEAD GUEST NAME */}
+                <div className="plot-form-bottom-grid-2col" >
+                  {/* Left: Total Days / Duration */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', }}>
+                      <label htmlFor="duration-days-input" style={{ marginBottom: 0, fontWeight: 700 }}>
+                        Total Days / Duration *
+                      </label>
+                      <span style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: 700 }}>
+                        {selectedDates.length > 0 ? selectedDates.length : (visitDate ? 1 : 0)} of {durationDays} Day(s)
+                      </span>
+                    </div>
+                    <div className="input-with-icon">
+                      <Clock size={16} />
+                      <input
+                        type="number"
+                        id="duration-days-input"
+                        className="input"
+                        min="1"
+                        max="30"
+                        value={durationDays}
+                        onChange={e => {
+                          const val = Math.max(1, Math.min(30, Number(e.target.value) || 1))
+                          setDurationDays(val)
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right: Lead Guest Name */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor="user-name" style={{ fontWeight: 700 }}>Lead Guest Name *</label>
+                    <div className="input-with-icon">
+                      <User size={16} />
+                      <input
+                        type="text"
+                        id="user-name"
+                        className="input"
+                        placeholder="Enter full name"
+                        value={customerName}
+                        onChange={e => setCustomerName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. ROW 3: LEFT = AADHAAR CARD NUMBER, RIGHT = MOBILE NUMBER */}
+                <div className="plot-form-bottom-grid-2col" >
+                  {/* Left: Aadhaar Card Number */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor="user-aadhaar" style={{ fontWeight: 700 }}>Adhaar Card Number *</label>
+                    <div className="input-with-icon">
+                      <CreditCard size={16} />
+                      <input
+                        type="text"
+                        id="user-aadhaar"
+                        className="input"
+                        placeholder="12-digit Aadhaar number"
+                        maxLength={12}
+                        value={aadhaar}
+                        onChange={e => setAadhaar(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right: Mobile Number */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label htmlFor="user-phone" style={{ fontWeight: 700 }}>Mobile Number *</label>
+                    <div className="input-with-icon">
+                      <Phone size={16} />
+                      <input
+                        type="tel"
+                        id="user-phone"
+                        className="input"
+                        placeholder="10-digit mobile number"
+                        maxLength={10}
+                        value={phone}
+                        onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
 
                 {/* Price Calculator Breakdown */}
                 <div className="price-breakdown-card">
                   <span className="breakdown-title">Pricing Breakdown</span>
                   <div className="breakdown-rows">
                     <div className="breakdown-row">
-                      <span>Base Reservation</span>
-                      <span>₹{basePrice.toLocaleString()} {isCottage ? 'per Room' : 'flat rate per pandal'}</span>
+                      <span>Pandal Rate</span>
+                      <span>₹{basePrice.toLocaleString()} / day</span>
                     </div>
-                    {isPandal && selectedAddons.length > 0 && (
-                      <div className="breakdown-row">
-                        <span>Event Add-ons</span>
-                        <span>+ ₹{addonsTotal.toLocaleString()}</span>
+                    <div className="breakdown-row" style={{ color: 'var(--gold)', fontWeight: 600 }}>
+                      <span>Total Days</span>
+                      <span>{durationDays} Day{durationDays > 1 ? 's' : ''} (₹{baseTotal.toLocaleString()})</span>
+                    </div>
+                    {selectedAddonsObjects.map(addon => (
+                      <div key={addon.id} className="breakdown-row" style={{ color: 'var(--gold)', fontSize: '13px' }}>
+                        <span>{addon.name}</span>
+                        <span>+ ₹{addon.priceAddon.toLocaleString()}</span>
                       </div>
-                    )}
+                    ))}
                     <hr className="breakdown-divider" />
                     <div className="breakdown-row breakdown-row--total">
                       <span>Total Amount</span>
@@ -640,14 +917,10 @@ export default function PlotDetail() {
                   className="btn btn-gold btn-lg w-full booking-submit-btn"
                   id="book-spot-submit"
                 >
-                  Reserve Now <ArrowRight size={16} />
+                  Book Now <ArrowRight size={16} />
                 </button>
               </div>
 
-              <div className="booking-card-footer">
-                <p><ShieldCheck size={14} color="var(--success)" /> Secure UPI / Razorpay checkout enabled</p>
-                <p><Clock size={14} /> Full refund cancellation up to 48 hours prior</p>
-              </div>
             </div>
           </div>
         </div>

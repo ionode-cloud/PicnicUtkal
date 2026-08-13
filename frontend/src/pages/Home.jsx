@@ -31,85 +31,28 @@ const POPULAR_ZONES = [
   { icon: Camera, label: 'Photo Zone',    count: '9 spots',  color: '#C9A84C', href: '/spots?zone=photo'    },
 ]
 
-const FEATURED_SPOTS = [
-  {
-    id: 'pandal-1',
-    name: 'Pandal — Upper Block',
-    location: 'Barapita Picnic Ground, Odisha',
-    price: 499,
-    rating: 4.9,
-    reviews: 142,
-    image: 'https://images.unsplash.com/photo-1547082299-de196ea013d6?w=600&q=80',
-    zones: ['Shade', 'Seating', 'Lighting', 'Riverside View'],
-    badge: 'Riverside View'
-  },
-  {
-    id: 'pandal-5',
-    name: 'Pandal — Road Block',
-    location: 'Barapita Picnic Ground, Odisha',
-    price: 449,
-    rating: 4.7,
-    reviews: 96,
-    image: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&q=80',
-    zones: ['Shade', 'Seating', 'Lighting', 'Road Access'],
-    badge: 'Road Access'
-  },
-  {
-    id: 'cottage-rooms',
-    name: 'Cottage Rooms',
-    location: 'Barapita Picnic Ground, Odisha',
-    price: 999,
-    rating: 4.9,
-    reviews: 180,
-    image: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=600&q=80',
-    zones: ['AC Rooms', 'Attached Bath', 'Garden View', 'Canal View'],
-    badge: 'Overnight Stay'
-  },
-  {
-    id: 'pandal-6',
-    name: 'Pandal — North East Block',
-    location: 'Barapita Picnic Ground, Odisha',
-    price: 499,
-    rating: 4.8,
-    reviews: 82,
-    image: 'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=600&q=80',
-    zones: ['Shade', 'Seating', 'Electricity', 'Open View'],
-    badge: 'Open View'
-  },
-  {
-    id: 'pandal-2',
-    name: 'Pandal — Center Block',
-    location: 'Barapita Picnic Ground, Odisha',
-    price: 499,
-    rating: 4.6,
-    reviews: 114,
-    image: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=600&q=80',
-    zones: ['Shade', 'Seating', 'Lighting', 'DJ Point'],
-    badge: 'Central Location'
-  },
-  {
-    id: 'pandal-4',
-    name: 'Pandal — East Block',
-    location: 'Barapita Picnic Ground, Odisha',
-    price: 449,
-    rating: 4.8,
-    reviews: 105,
-    image: 'https://images.unsplash.com/photo-1533850595620-7b1711221751?w=600&q=80',
-    zones: ['Shade', 'Seating', 'Parking Access', 'Electricity'],
-    badge: 'Parking Access'
-  },
-  {
-    id: 'pandal-3',
-    name: 'Pandal — West Block',
-    location: 'Barapita Picnic Ground, Odisha',
-    price: 399,
-    rating: 4.7,
-    reviews: 73,
-    image: 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=600&q=80',
-    zones: ['Shade', 'Seating', 'BBQ Area', 'Garden View'],
-    badge: 'Garden View'
+const FALLBACK_IMG = 'https://images.unsplash.com/photo-1547082299-de196ea013d6?w=600&q=80'
+
+function normalizePlot(p) {
+  const facilities = Array.isArray(p.facilities)
+    ? p.facilities
+    : typeof p.facilities === 'string'
+      ? p.facilities.split(',').map(f => f.trim()).filter(Boolean)
+      : []
+  return {
+    id: p._id || p.id,
+    name: p.title || p.name || 'Unnamed Spot',
+    location: p.location || (p.mapId === 'chilika-map-02' ? 'Chilika Lake Sanctuary, Puri' : (p.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Picnic Ground, Odisha')),
+    price: Number(p.price) || 499,
+    rating: p.rating || 4.8,
+    reviews: p.reviews || 0,
+    image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image || FALLBACK_IMG),
+    zones: facilities.length > 0 ? facilities.slice(0, 4) : ['Shade', 'Seating'],
+    capacity: Number(p.capacity) || 100,
+    badge: p.badge || 'Map Zone',
+    mapId: p.mapId || 'default-master-plan'
   }
-]
+}
 
 const TESTIMONIALS = [
   {
@@ -155,18 +98,20 @@ function SpotCard({ spot, index }) {
       whileHover={{ y: -8 }}
     >
       <div className="spot-card__image-wrap">
-        <img src={spot.image} alt={spot.name} className="spot-card__image" loading="lazy" />
+        <img
+          src={spot.image || FALLBACK_IMG}
+          alt={spot.name}
+          className="spot-card__image"
+          loading="lazy"
+          onError={e => { e.target.src = FALLBACK_IMG }}
+        />
         <div className="spot-card__image-overlay" />
         <span className="spot-card__badge badge badge-gold">{spot.badge}</span>
+        <span className="spot-card__capacity badge badge-glass">👥 {spot.capacity} capacity</span>
       </div>
       <div className="spot-card__body">
         <div className="spot-card__meta">
           <span className="spot-card__location"><MapPin size={13} /> {spot.location}</span>
-          <div className="spot-card__rating">
-            <Star size={13} fill="var(--gold)" color="var(--gold)" />
-            <span>{spot.rating}</span>
-            <span className="spot-card__reviews">({spot.reviews})</span>
-          </div>
         </div>
         <h3 className="spot-card__name">{spot.name}</h3>
         <div className="spot-card__zones">
@@ -176,7 +121,6 @@ function SpotCard({ spot, index }) {
         </div>
         <div className="spot-card__footer">
           <div className="spot-card__price">
-            <span className="spot-card__price-from">from</span>
             <span className="spot-card__price-amount">₹{spot.price}</span>
             <span className="spot-card__price-unit">{spot.id === 'cottage-rooms' ? '/night' : '/pandal'}</span>
           </div>
@@ -243,14 +187,95 @@ export default function Home() {
     return () => socket.off('home_config_update', handler)
   }, [socket])
 
+  const [maps, setMaps] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_admin_maps')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (e) {}
+    return [
+      { _id: 'default-master-plan', title: 'Barapita Master Plan (Main Ground)', linkedSpot: 'Barapita Ground, Deras' },
+      { _id: 'chilika-map-02', title: 'Chilika Lake Sanctuary Map', linkedSpot: 'Chilika Lake Sanctuary, Puri' },
+      { _id: 'simlipal-map-03', title: 'Simlipal Forest & Waterfall Map', linkedSpot: 'Simlipal Forest Reserve, Mayurbhanj' }
+    ]
+  })
+
+  // Listen to Socket.io for live maps update
+  useEffect(() => {
+    if (!socket) return
+    const mapHandler = (data) => {
+      if (data && Array.isArray(data.maps)) {
+        setMaps(data.maps)
+      }
+    }
+    socket.on('map_config_update', mapHandler)
+    return () => socket.off('map_config_update', mapHandler)
+  }, [socket])
+
+  const [isSearched, setIsSearched] = useState(false)
+
   const handleSearch = (e) => {
     e.preventDefault()
+    setIsSearched(true)
     const params = new URLSearchParams()
-    if (searchData.location) params.set('location', searchData.location)
+    if (searchData.location) params.set('mapId', searchData.location)
     if (searchData.date) params.set('date', searchData.date)
     if (searchData.people) params.set('people', searchData.people)
     navigate(`/spots?${params.toString()}`)
   }
+
+  // Load featured spots from backend (same source as admin Spots panel)
+  const [featuredSpots, setFeaturedSpots] = useState([])
+  const fetchFeatured = () => {
+    fetch('/api/map/plots')
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          setFeaturedSpots(d.data.map(normalizePlot))
+        }
+      })
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    fetchFeatured()
+  }, [])
+
+  // Listen for live real-time spot updates via Socket.io
+  useEffect(() => {
+    if (!socket) return
+    const handleUpdate = () => fetchFeatured()
+    socket.on('plots_update', handleUpdate)
+    socket.on('plot_updated', handleUpdate)
+    return () => {
+      socket.off('plots_update', handleUpdate)
+      socket.off('plot_updated', handleUpdate)
+    }
+  }, [socket])
+
+  // Filter spots based on location map dropdown and guest count
+  const displayedSpots = featuredSpots.filter(spot => {
+    if (searchData.location) {
+      const isDefaultSel = searchData.location === 'default-master-plan' || searchData.location === 'default-map'
+      const spotMap = spot.mapId || 'default-master-plan'
+      if (isDefaultSel) {
+        if (spotMap !== 'default-master-plan' && spotMap !== 'default-map') return false
+      } else {
+        const selectedMap = maps.find(m => m._id === searchData.location)
+        const matchesMapId = spotMap === searchData.location
+        const matchesTitle = selectedMap && spot.location?.toLowerCase().includes(selectedMap.title?.toLowerCase())
+        const matchesLinked = selectedMap && selectedMap.linkedSpot && spot.location?.toLowerCase().includes(selectedMap.linkedSpot?.toLowerCase())
+        if (!matchesMapId && !matchesTitle && !matchesLinked) return false
+      }
+    }
+    if (searchData.people) {
+      const minGuests = Number(searchData.people)
+      if (spot.capacity && Number(spot.capacity) < minGuests) return false
+    }
+    return true
+  })
 
   return (
     <>
@@ -321,13 +346,19 @@ export default function Home() {
             <form onSubmit={handleSearch} className="hero__search-form">
               <div className="hero__search-field">
                 <label htmlFor="search-location"><MapPin size={16} className="hero__search-icon" />Location</label>
-                <input
+                <select
                   id="search-location"
-                  type="text"
-                  placeholder="Bhubaneswar, Puri, Chilika..."
+                  className="hero__search-select"
                   value={searchData.location}
                   onChange={e => setSearchData(d => ({ ...d, location: e.target.value }))}
-                />
+                >
+                  <option value="">All Locations</option>
+                  {maps.map(m => (
+                    <option key={m._id} value={m._id}>
+                      {m.title}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="hero__search-divider" />
               <div className="hero__search-field">
@@ -412,12 +443,16 @@ export default function Home() {
       </section>
 
       {/* FEATURED SPOTS */}
-      <section className="section spots-section">
+      <section className="section spots-section" id="featured-spots-section">
         <div className="container-fluid">
           <div className="section-header">
             <span className="section-eyebrow">{homeConfig.spotsEyebrow || "Top Destinations"}</span>
             <h2 className="section-title">{homeConfig.spotsTitle || "Featured Picnic Spots"}</h2>
-            <p className="section-subtitle">{homeConfig.spotsSubtitle || "Handpicked premium picnic destinations across Odisha's most beautiful landscapes."}</p>
+            <p className="section-subtitle">
+              {isSearched && searchData.location
+                ? `Showing spots for "${maps.find(m => m._id === searchData.location)?.title || 'Selected Location'}" (${displayedSpots.length} found)`
+                : (homeConfig.spotsSubtitle || "Handpicked premium picnic destinations across Odisha's most beautiful landscapes.")}
+            </p>
           </div>
           <motion.div
             className="spots-grid"
@@ -426,12 +461,24 @@ export default function Home() {
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
           >
-            {FEATURED_SPOTS.slice(0, 6).map((spot, i) => (
-              <SpotCard key={spot.id} spot={spot} index={i} />
-            ))}
+            {displayedSpots.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0' }}>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>No picnic spots found matching your search criteria.</p>
+                <button
+                  className="btn btn-outline btn-sm"
+                  onClick={() => { setSearchData({ location: '', date: '', people: '' }); setIsSearched(false); }}
+                >
+                  Clear Search Filters
+                </button>
+              </div>
+            ) : (
+              displayedSpots.slice(0, 8).map((spot, i) => (
+                <SpotCard key={spot.id} spot={spot} index={i} />
+              ))
+            )}
           </motion.div>
           <div style={{ textAlign: 'center', marginTop: 'var(--space-10)' }}>
-            <Link to="/map" className="btn btn-primary btn-lg" id="view-all-spots-btn">
+            <Link to={`/map${searchData.location ? `?mapId=${searchData.location}` : ''}`} className="btn btn-primary btn-lg" id="view-all-spots-btn">
               View All on Map <ArrowRight size={18} />
             </Link>
           </div>
@@ -501,42 +548,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* TESTIMONIALS */}
-      <section className="section testimonials-section">
-        <div className="container-fluid">
-          <div className="section-header">
-            <span className="section-eyebrow">{homeConfig.reviewsEyebrow || "Happy Families"}</span>
-            <h2 className="section-title">{homeConfig.reviewsTitle || "What Our Guests Say"}</h2>
-          </div>
-          <div className="testimonials-grid">
-            {(homeConfig.testimonials || TESTIMONIALS).map((t, i) => (
-              <motion.div
-                key={t.name + i}
-                className="testimonial-card card"
-                custom={i}
-                variants={fadeUp}
-                initial="hidden"
-                whileInView="visible"
-                viewport={{ once: true }}
-              >
-                <div className="testimonial-card__stars">
-                  {Array.from({ length: t.rating || 5 }).map((_, j) => (
-                    <Star key={j} size={14} fill="var(--gold)" color="var(--gold)" />
-                  ))}
-                </div>
-                <p className="testimonial-card__comment">"{t.comment}"</p>
-                <div className="testimonial-card__author">
-                  <img src={t.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${t.name}`} alt={t.name} className="testimonial-card__avatar" />
-                  <div>
-                    <div className="testimonial-card__name">{t.name}</div>
-                    <div className="testimonial-card__loc">{t.location} · {t.spot}</div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* GALLERY PREVIEW */}
       <section className="section-sm gallery-preview-section">

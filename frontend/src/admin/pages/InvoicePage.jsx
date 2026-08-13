@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { 
   LuPrinter as Printer, 
@@ -60,10 +61,33 @@ const SAMPLE_BOOKINGS = {
     bookingStatus: 'Pending'
   }
 }
-
 export default function InvoicePage() {
   const { id } = useParams()
-  const booking = SAMPLE_BOOKINGS[id] || {
+  const [realBooking, setRealBooking] = useState(null)
+
+  useEffect(() => {
+    if (!id) return
+    fetch(`/api/bookings/${id}`)
+      .then(r => r.json())
+      .then(d => { if (d.success && d.data) setRealBooking(d.data) })
+      .catch(() => {})
+  }, [id])
+
+  const booking = realBooking ? {
+    bookingId:     realBooking.bookingId || id,
+    plotTitle:     realBooking.plotTitle || 'Picnic Spot Booking',
+    name:          realBooking.name || 'Valued Visitor',
+    email:         realBooking.email || 'visitor@picnicutkal.com',
+    phone:         realBooking.phone || '9876543210',
+    bookingDate:   realBooking.createdAt ? new Date(realBooking.createdAt).toISOString().split('T')[0] : '',
+    visitDate:     realBooking.visitDate ? new Date(realBooking.visitDate).toISOString().split('T')[0] : '',
+    duration:      '1 Day',
+    persons:       realBooking.persons || 1,
+    totalPrice:    realBooking.totalAmount || realBooking.plotPrice || 499,
+    paymentMethod: (realBooking.paymentMethod || 'UPI').toUpperCase(),
+    paymentStatus: realBooking.paymentStatus === 'paid' ? 'Paid' : 'Pending',
+    bookingStatus: realBooking.status ? (realBooking.status.charAt(0).toUpperCase() + realBooking.status.slice(1)) : 'Confirmed'
+  } : (SAMPLE_BOOKINGS[id] || {
     bookingId: id || 'BK-928341',
     plotTitle: 'Pandal — Riverside Spot',
     name: 'Valued Customer',
@@ -77,10 +101,22 @@ export default function InvoicePage() {
     paymentMethod: 'Online Payment',
     paymentStatus: 'Paid',
     bookingStatus: 'Confirmed'
-  }
+  })
 
   const handlePrint = () => {
-    window.print()
+    const params = new URLSearchParams({
+      bookingId: booking.bookingId || booking._id || id || 'PK-1001',
+      name: booking.name || '',
+      phone: booking.phone || '',
+      aadhaar: booking.aadhaar || '',
+      spot: booking.plotTitle || 'Picnic Spot',
+      date: booking.visitDate || '',
+      duration: booking.duration || '1 Day',
+      guests: booking.persons || 1,
+      total: booking.totalPrice || 0,
+      autoprint: 'true'
+    })
+    window.open(`/bill.html?${params.toString()}`, '_blank')
   }
 
   return (

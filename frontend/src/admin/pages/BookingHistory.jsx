@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   LuSearch as Search, 
   LuEye as Eye, 
@@ -14,128 +14,79 @@ import {
   LuCircleX as XCircle,
   LuMapPin as MapPin,
   LuUsers as Users,
-  LuSparkles as Sparkles
+  LuSparkles as Sparkles,
+  LuRefreshCw as RefreshCw,
+  LuTrash2 as Trash2
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
+import { useSocket } from '../../context/SocketContext'
 
-const HISTORICAL_BOOKINGS = [
-  {
-    bookingId: 'BK-928341',
-    plotTitle: 'Pandal — Upper Block (Riverside View)',
-    name: 'Sunil Mohanty',
-    email: 'sunil.mohanty@gmail.com',
-    phone: '9876543210',
-    bookingDate: '2026-08-08',
-    visitDate: '2026-08-15',
-    duration: '1 Day',
-    persons: 8,
-    totalPrice: 499,
-    paymentMethod: 'UPI (PhonePe)',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed'
-  },
-  {
-    bookingId: 'BK-928342',
-    plotTitle: 'Pandal — Road Block',
-    name: 'Anjali Das',
-    email: 'anjali.das@gmail.com',
-    phone: '9123456789',
-    bookingDate: '2026-08-08',
-    visitDate: '2026-08-16',
-    duration: '2 Days',
-    persons: 5,
-    totalPrice: 449,
-    paymentMethod: 'Credit Card',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed'
-  },
-  {
-    bookingId: 'BK-928343',
-    plotTitle: 'Barapita Deluxe Cottage & AC Suite Rooms',
-    name: 'Rajesh Tripathy',
-    email: 'rajesh.t@yahoo.com',
-    phone: '9437123456',
-    bookingDate: '2026-08-09',
-    visitDate: '2026-08-20',
-    duration: '3 Days',
-    persons: 4,
-    totalPrice: 999,
-    paymentMethod: 'Net Banking',
-    paymentStatus: 'Pending',
-    bookingStatus: 'Pending'
-  },
-  {
-    bookingId: 'BK-928344',
-    plotTitle: 'Pandal — Middle Lawn',
-    name: 'Smruti Ranjan',
-    email: 'smruti.r@gmail.com',
-    phone: '9937001122',
-    bookingDate: '2026-08-05',
-    visitDate: '2026-08-05',
-    duration: '1 Day',
-    persons: 12,
-    totalPrice: 499,
-    paymentMethod: 'UPI (GPay)',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Completed'
-  },
-  {
-    bookingId: 'BK-928345',
-    plotTitle: 'Pandal — Garden Edge',
-    name: 'Debashish Panda',
-    email: 'deba.panda@outlook.com',
-    phone: '9861098765',
-    bookingDate: '2026-08-06',
-    visitDate: '2026-08-10',
-    duration: '1 Day',
-    persons: 6,
-    totalPrice: 449,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Refunded',
-    bookingStatus: 'Cancelled'
-  },
-  {
-    bookingId: 'BK-928340',
-    plotTitle: 'Pandal — Riverside Grove',
-    name: 'Manoj Kumar Patnaik',
-    email: 'manoj.patnaik@gmail.com',
-    phone: '9777123456',
-    bookingDate: '2026-08-01',
-    visitDate: '2026-08-02',
-    duration: '1 Day',
-    persons: 15,
-    totalPrice: 499,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Completed'
-  },
-  {
-    bookingId: 'BK-928339',
-    plotTitle: 'Pandal — Hill View',
-    name: 'Biswajit Behera',
-    email: 'biswajit.b@gmail.com',
-    phone: '9439009988',
-    bookingDate: '2026-08-02',
-    visitDate: '2026-08-04',
-    duration: '2 Days',
-    persons: 10,
-    totalPrice: 449,
-    paymentMethod: 'Card',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Completed'
-  }
-]
+// Normalise a DB booking for this page
+const normalise = (b) => ({
+  ...b,
+  bookingId:     b.bookingId || b._id,
+  plotTitle:     b.plotTitle || 'Picnic Spot',
+  bookingDate:   b.createdAt ? new Date(b.createdAt).toISOString().split('T')[0] : '',
+  visitDate:     b.visitDate ? new Date(b.visitDate).toISOString().split('T')[0] : '',
+  persons:       b.persons || 1,
+  totalPrice:    b.totalAmount || b.totalPrice || 0,
+  paymentMethod: (b.paymentMethod || 'UPI').toUpperCase(),
+  paymentStatus: b.paymentStatus === 'paid' ? 'Paid' : b.paymentStatus === 'failed' ? 'Failed' : 'Pending',
+  bookingStatus: b.status ? (b.status.charAt(0).toUpperCase() + b.status.slice(1)) : 'Confirmed',
+  duration:      '1 Day',
+})
 
 export default function BookingHistory() {
-  const [history, setHistory] = useState(HISTORICAL_BOOKINGS)
+  const { socket } = useSocket()
+  const [history, setHistory] = useState([])
+  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   
-  // Date Range Filters (default to current month)
-  const [fromDate, setFromDate] = useState('2026-08-01')
-  const [toDate, setToDate]     = useState('2026-08-31')
+  // Date Range Filters
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate]     = useState('')
 
   const [selectedBill, setSelectedBill] = useState(null)
+
+  const fetchHistory = () => {
+    setLoading(true)
+    fetch('/api/bookings')
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.data)) setHistory(d.data.map(normalise)) })
+      .catch(() => toast.error('Failed to load booking history'))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchHistory() }, [])
+
+  // Socket listener for real-time changes
+  useEffect(() => {
+    if (!socket) return
+    const handleUpdate = () => fetchHistory()
+    socket.on('plots_update', handleUpdate)
+    return () => socket.off('plots_update', handleUpdate)
+  }, [socket])
+
+  const handleDeleteBooking = async (bookingId) => {
+    const bk = history.find(b => b.bookingId === bookingId || b._id === bookingId)
+    if (window.confirm(`Are you sure you want to permanently delete booking #${bookingId} for ${bk?.name || 'guest'}? This will remove it from all records and free the spot.`)) {
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' })
+        const data = await res.json()
+        if (data.success) {
+          setHistory(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
+          toast.success(`Booking #${bookingId} deleted permanently!`)
+        } else {
+          toast.error(data.message || 'Failed to delete booking')
+        }
+      } catch (err) {
+        toast.error('Error connecting to server to delete booking')
+      }
+    }
+  }
+
+
 
   // Filter historical records by date range, status, search query
   const filteredRecords = history.filter(bk => {
@@ -218,9 +169,14 @@ export default function BookingHistory() {
           <p className="text-muted text-sm" style={{ margin: '4px 0 0' }}>Filter historical booking archives by date range and export complete Excel (.csv) reports.</p>
         </div>
 
-        <button className="btn btn-gold btn-lg flex items-center gap-2" onClick={handleExportExcel}>
-          <Download size={18} /> Download Excel Report
-        </button>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={fetchHistory} disabled={loading}>
+            <RefreshCw size={14} /> {loading ? 'Loading…' : 'Refresh'}
+          </button>
+          <button className="btn btn-gold btn-lg flex items-center gap-2" onClick={handleExportExcel}>
+            <Download size={18} /> Download Excel Report
+          </button>
+        </div>
       </div>
 
       {/* Date Range Selector & Filters Box */}
@@ -313,10 +269,17 @@ export default function BookingHistory() {
             </tr>
           </thead>
           <tbody>
-            {filteredRecords.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                  No historical booking records found in the selected date range ({fromDate} to {toDate}).
+                <td colSpan={8} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                  ⏳ Loading booking history…
+                </td>
+              </tr>
+            ) : filteredRecords.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>📚</div>
+                  {history.length === 0 ? 'No booking history yet. Bookings will appear here in real time.' : 'No records found for the selected filters.'}
                 </td>
               </tr>
             ) : (
@@ -350,15 +313,37 @@ export default function BookingHistory() {
                     </span>
                   </td>
                   <td>
-                    <a 
-                      href={`/admin/bookings/invoice/${bk.bookingId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-outline btn-sm flex items-center gap-1"
-                      title="Open Official Bill in New Page"
-                    >
-                      <Eye size={13} /> View Bill
-                    </a>
+                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                      <button 
+                        onClick={() => {
+                          const params = new URLSearchParams({
+                            bookingId: bk.bookingId || bk._id || 'PK-1001',
+                            name: bk.name || '',
+                            phone: bk.phone || '',
+                            aadhaar: bk.aadhaar || '',
+                            spot: bk.plotTitle || bk.spotTitle || 'Picnic Spot',
+                            date: bk.visitDate || '',
+                            duration: bk.duration || bk.durationDays || 1,
+                            guests: bk.guests || 1,
+                            total: bk.totalPrice || bk.totalAmount || 0,
+                            autoprint: 'true'
+                          })
+                          window.open(`/bill.html?${params.toString()}`, '_blank')
+                        }}
+                        className="btn btn-outline btn-sm flex items-center gap-1"
+                        title="Print / Save PDF Bill"
+                      >
+                        <Printer size={13} /> Print Bill
+                      </button>
+                      <button
+                        onClick={() => handleDeleteBooking(bk.bookingId || bk._id)}
+                        className="btn btn-outline btn-sm flex items-center gap-1"
+                        style={{ color: '#FA5252', borderColor: 'rgba(250,82,82,0.3)', padding: '4px 8px' }}
+                        title="Delete booking permanently"
+                      >
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -446,7 +431,7 @@ export default function BookingHistory() {
               {/* Modal Buttons */}
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '16px' }}>
                 <button className="btn btn-gold btn-sm flex items-center gap-1" onClick={handlePrintBill}>
-                  <Printer size={15} /> Print / Save PDF Bill
+                  <Printer size={15} /> Print Bill
                 </button>
                 <button className="btn btn-outline btn-sm" onClick={() => setSelectedBill(null)}>
                   Close

@@ -85,7 +85,7 @@ export default function Contact() {
         <meta name="description" content="Get in touch with us for booking issues, support tickets, group reservations, or corporate picnics in Odisha." />
       </Helmet>
 
-      <div className="contact-page container-fluid section" style={{ paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
+      <div className="contact-page container-fluid">
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-10)' }}>
           <span className="section-eyebrow">Get in Touch</span>
           <h1 className="heading-2">Support & Group Bookings</h1>

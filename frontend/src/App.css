@@ -297,6 +297,7 @@ h6 {
 }
 
 .glass-card {
+  padding: 10px;
   background: var(--bg-card);
   color: var(--text-primary);
   backdrop-filter: blur(16px);
@@ -1676,7 +1677,8 @@ h6 {
   opacity: 0.7;
 }
 
-.hero__search-field input {
+.hero__search-field input,
+.hero__search-field select {
   background: transparent;
   border: none;
   outline: none;
@@ -1685,6 +1687,13 @@ h6 {
   font-weight: 500;
   padding: 0;
   width: 100%;
+  cursor: pointer;
+}
+
+.hero__search-field select option {
+  background: #12291e;
+  color: #f5f0e8;
+  padding: 8px;
 }
 
 .hero__search-field input::placeholder {
@@ -1800,7 +1809,7 @@ h6 {
 /* ── Spot Cards ── */
 .spots-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-6);
   align-items: stretch;
 }
@@ -3023,10 +3032,8 @@ h6 {
   padding: 24px;
   box-shadow: var(--shadow-md);
   width: 100%;
-  max-height: calc(100vh - 120px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: rgba(201, 168, 76, 0.25) transparent;
+  height: fit-content;
+  max-height: none;
 }
 
 .booking-sticky-card::-webkit-scrollbar {
@@ -4718,7 +4725,7 @@ h6 {
   right: 24px;
   transform: translateY(-50%);
   z-index: 100;
-  width: 360px;
+  width: 450px;
   max-height: 88vh;
   overflow-y: auto;
   background: rgba(10, 38, 23, 0.75);
@@ -7609,10 +7616,17 @@ h6 {
 
 .bk-page-grid {
   display: grid;
-  grid-template-columns: 1.6fr 1fr;
+  grid-template-columns: 1.4fr 1fr;
   gap: 30px;
   align-items: start;
   margin-top: 60px;
+}
+
+.bk-page-grid--full {
+  display: flex !important;
+  justify-content: center !important;
+  max-width: 820px;
+  margin: 40px auto 0 !important;
 }
 
 @media (max-width: 991px) {
@@ -8048,5 +8062,507 @@ h6 {
 @media (max-width: 480px) {
   .auth-form-card {
     padding: var(--space-5) var(--space-4);
+  }
+}
+
+/* Spot Detail Swiper Gallery Styling */
+.spot-gallery-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+}
+
+.spot-main-slider {
+  width: 100%;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  height: 420px;
+}
+
+.spot-main-slider .swiper-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-xl);
+}
+
+.spot-gallery-wrapper .swiper-button-next,
+.spot-gallery-wrapper .swiper-button-prev {
+  color: #ffffff !important;
+  background: rgba(18, 41, 30, 0.75);
+  backdrop-filter: blur(8px);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  transition: all 0.25s ease;
+  z-index: 10;
+}
+
+.spot-gallery-wrapper .swiper-button-next:after,
+.spot-gallery-wrapper .swiper-button-prev:after {
+  font-size: 18px !important;
+  font-weight: bold;
+}
+
+.spot-gallery-wrapper .swiper-button-next:hover,
+.spot-gallery-wrapper .swiper-button-prev:hover {
+  background: var(--gold, #d4af37);
+  color: #12291e !important;
+  border-color: #ffffff;
+  transform: scale(1.1);
+}
+
+.spot-thumbs-slider {
+  margin-top: 12px;
+  height: 90px;
+}
+
+.spot-thumbs-slider .swiper-slide {
+  opacity: 0.5;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.spot-thumbs-slider .swiper-slide-thumb-active {
+  opacity: 1;
+  border-color: var(--gold, #d4af37);
+}
+
+.spot-thumbs-slider .swiper-slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+/* ==========================================================================
+   USER DASHBOARD RESPONSIVE & REFINED STYLES
+   ========================================================================== */
+.udash-container {
+  padding-top: calc(var(--nav-height) + 24px);
+  padding-bottom: 60px;
+  min-height: 85vh;
+}
+
+.udash-hero {
+  background: linear-gradient(135deg, rgba(20, 40, 25, 0.95), rgba(10, 25, 15, 0.98));
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  margin-bottom: 28px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.udash-hero-grid {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.udash-user-badge {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.udash-avatar {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), #d4af37);
+  color: var(--dark-green);
+  font-size: 24px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.35);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  flex-shrink: 0;
+}
+
+.udash-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 20px;
+}
+
+.udash-stat-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+
+.udash-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+.udash-stat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(212, 175, 55, 0.12);
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* 2-Column Dashboard Grid */
+.udash-layout {
+  display: grid;
+  grid-template-columns: 270px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.udash-sidebar {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: sticky;
+  top: calc(var(--nav-height) + 20px);
+}
+
+.udash-nav-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.udash-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--cream);
+}
+
+.udash-nav-btn.active {
+  background: linear-gradient(135deg, var(--gold), #c59b27);
+  color: var(--dark-green);
+  font-weight: 700;
+  box-shadow: 0 4px 15px rgba(212, 175, 55, 0.25);
+}
+
+.udash-content-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive Media Queries */
+@media (max-width: 992px) {
+  .udash-layout {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .udash-hero-grid {
+    gap: 16px;
+  }
+
+  .udash-sidebar {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 8px;
+    gap: 8px;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .udash-sidebar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .udash-nav-btn {
+    width: auto;
+    padding: 10px 16px;
+    flex-shrink: 0;
+    font-size: 13px;
+  }
+
+  .udash-content-card {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .udash-container {
+    padding-top: calc(var(--nav-height) + 16px);
+    padding-bottom: 40px;
+  }
+
+  .udash-hero {
+    padding: 18px 16px;
+    border-radius: 16px;
+    margin-bottom: 16px;
+  }
+
+  .udash-hero-grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .udash-user-badge {
+    gap: 12px;
+  }
+
+  .udash-avatar {
+    width: 52px;
+    height: 52px;
+    font-size: 20px;
+  }
+
+  .udash-center-stats {
+    width: 100%;
+    justify-content: space-between !important;
+  }
+
+  .udash-stat-card {
+    flex: 1;
+    min-width: 130px;
+    padding: 8px 12px !important;
+  }
+
+  .udash-signout-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .udash-booking-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  .udash-booking-right {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    width: 100% !important;
+    border-top: 1px dashed var(--border);
+    padding-top: 12px;
+    margin-top: 4px;
+    text-align: left !important;
+  }
+
+  .udash-booking-right .btn {
+    margin-top: 0 !important;
+  }
+
+  .udash-txn-card {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .udash-txn-right {
+    justify-content: space-between !important;
+    width: 100% !important;
+    border-top: 1px dashed var(--border);
+    padding-top: 10px;
+    margin-top: 2px;
+    text-align: left !important;
+  }
+}
+
+/* Parking Zone & Spot Booking Sidebar Mobile Responsive */
+@media (max-width: 768px) {
+  .spot-booking-sidebar {
+    width: 100% !important;
+    margin-top: 20px !important;
+  }
+
+  .booking-sticky-card {
+    padding: 20px 16px !important;
+    border-radius: 18px !important;
+  }
+
+  .booking-card-price h2 {
+    font-size: 26px !important;
+  }
+
+  .booking-card-form .form-group label {
+    font-size: 13px !important;
+  }
+
+  .booking-card-form .input {
+    padding: 12px 14px 12px 42px !important;
+    font-size: 14px !important;
+  }
+
+  .booking-submit-btn {
+    font-size: 16px !important;
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  .zone-detail-row {
+    padding: 14px 16px !important;
+    border-radius: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .booking-sticky-card {
+    padding: 16px 12px !important;
+  }
+
+  .price-breakdown-card {
+    padding: 14px 12px !important;
+  }
+}
+
+/* ── Spot Grid Layout & Loading Container Responsive Fixes ── */
+.plot-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 55vh;
+  padding: 60px 20px;
+  text-align: center;
+}
+
+.spot-grid-layout {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 32px;
+  align-items: start;
+  margin-top: 24px;
+}
+
+.spot-main-content {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  min-width: 0;
+}
+
+.spot-booking-sidebar {
+  position: sticky;
+  top: 90px;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .spot-grid-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .spot-booking-sidebar {
+    position: static;
+    top: auto;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   GLOBAL COMPACT PAGE PADDING OVERRIDES (HOME, ABOUT, SPOTS, MAP, GALLERY, CONTACT)
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* Tighten global section gaps */
+.section {
+  padding-block: 32px !important;
+}
+
+.section-sm {
+  padding-block: 20px !important;
+}
+
+/* Page container top & bottom gaps */
+.about-page,
+.contact-page,
+.gallery-page,
+.spots-page,
+.mp-page,
+.spot-detail-page {
+  padding-top: calc(var(--nav-height) + 16px) !important;
+  padding-bottom: 32px !important;
+  margin-top: 0 !important;
+}
+
+/* Header banners & controls top/bottom gaps */
+.spots-header {
+  padding-top: calc(var(--nav-height) + 16px) !important;
+  padding-bottom: 20px !important;
+  margin-bottom: 16px !important;
+}
+
+.mp-header-content {
+  padding-top: 12px !important;
+  margin-bottom: 16px !important;
+}
+
+/* Hero compact gaps */
+.hero {
+  padding-top: calc(var(--nav-height) + 10px) !important;
+  padding-bottom: 24px !important;
+  min-height: auto !important;
+}
+
+/* Section titles compact margins */
+.section-header {
+  margin-bottom: 20px !important;
+}
+
+/* ── Plot Details Form Full Width Calendar & 2-Column Inputs ── */
+.plot-calendar-fullwidth {
+  width: 100%;
+}
+
+.plot-form-bottom-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.plot-form-col {
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 768px) {
+  .plot-form-bottom-grid-2col {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
   }
 }

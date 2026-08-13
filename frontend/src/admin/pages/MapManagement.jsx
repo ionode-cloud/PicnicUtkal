@@ -16,6 +16,8 @@ const DEFAULT_MAPS = [
     image: masterPlanImg,
     description: 'Central master plan containing Biotech parks, Riverside Pandals, and Main Gate.',
     spotId: '1',
+    linkedSpot: 'Barapita Ground, Deras',
+    googleMapUrl: 'https://maps.google.com/?q=20.311450,85.690644',
     isDefault: true
   },
   {
@@ -24,6 +26,8 @@ const DEFAULT_MAPS = [
     image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80',
     description: 'Waterfront camping pandals, boating docks, and island picnic spots.',
     spotId: '2',
+    linkedSpot: 'Chilika Lake Sanctuary, Puri',
+    googleMapUrl: 'https://maps.google.com/?q=19.7042,85.3218',
     isDefault: false
   },
   {
@@ -32,6 +36,8 @@ const DEFAULT_MAPS = [
     image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&q=80',
     description: 'Deep forest camping zones, safari trails, and canopy watchtowers.',
     spotId: '3',
+    linkedSpot: 'Simlipal Forest Reserve, Mayurbhanj',
+    googleMapUrl: 'https://maps.google.com/?q=21.9333,86.3333',
     isDefault: false
   }
 ]
@@ -243,7 +249,7 @@ export default function AdminMapManagement() {
   
   const [showMapModal, setShowMapModal] = useState(false)
   const [editingMapId, setEditingMapId] = useState(null)
-  const [mapForm, setMapForm] = useState({ title: '', image: '', description: '', spotId: '' })
+  const [mapForm, setMapForm] = useState({ title: '', image: '', description: '', linkedSpot: '', googleMapUrl: '' })
   const [mapImgInputType, setMapImgInputType] = useState('url') // 'url' | 'file'
   const [plotImgInputType, setPlotImgInputType] = useState('file') // 'url' | 'file'
   const [tempImgUrl, setTempImgUrl] = useState('')
@@ -462,7 +468,13 @@ export default function AdminMapManagement() {
   // ── MAP MODAL HANDLERS ──
   const handleOpenAddMap = () => {
     setEditingMapId(null)
-    setMapForm({ title: '', image: '', description: '', spotId: '1' })
+    setMapForm({
+      title: '',
+      image: '',
+      description: '',
+      linkedSpot: 'Barapita Ground, Deras',
+      googleMapUrl: 'https://maps.google.com/?q=20.311450,85.690644'
+    })
     setMapImgInputType('url')
     setShowMapModal(true)
   }
@@ -473,7 +485,8 @@ export default function AdminMapManagement() {
       title: mapObj.title || '',
       image: mapObj.image || '',
       description: mapObj.description || '',
-      spotId: mapObj.spotId || '1'
+      linkedSpot: mapObj.linkedSpot || mapObj.spotId || '',
+      googleMapUrl: mapObj.googleMapUrl || 'https://maps.google.com/?q=20.311450,85.690644'
     })
     setMapImgInputType('url')
     setShowMapModal(true)
@@ -511,7 +524,8 @@ export default function AdminMapManagement() {
         title: mapForm.title.trim(),
         image: mapForm.image,
         description: mapForm.description.trim(),
-        spotId: mapForm.spotId,
+        linkedSpot: mapForm.linkedSpot.trim(),
+        googleMapUrl: mapForm.googleMapUrl.trim(),
         isDefault: false
       }
       setMaps(prev => [newMap, ...prev])
@@ -811,15 +825,24 @@ export default function AdminMapManagement() {
 
                 <div className="input-wrapper">
                   <label className="input-label">Linked Picnic Spot</label>
-                  <select
+                  <input
+                    type="text"
                     className="input"
-                    value={mapForm.spotId}
-                    onChange={e => setMapForm(m => ({ ...m, spotId: e.target.value }))}
-                  >
-                    {DEFAULT_SPOTS.map(s => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                  </select>
+                    placeholder="e.g. Barapita Picnic Ground, Odisha"
+                    value={mapForm.linkedSpot || ''}
+                    onChange={e => setMapForm(m => ({ ...m, linkedSpot: e.target.value }))}
+                  />
+                </div>
+
+                <div className="input-wrapper">
+                  <label className="input-label">Google Map Location / URL</label>
+                  <input
+                    type="url"
+                    className="input"
+                    placeholder="e.g. https://maps.google.com/?q=20.311450,85.690644"
+                    value={mapForm.googleMapUrl || ''}
+                    onChange={e => setMapForm(m => ({ ...m, googleMapUrl: e.target.value }))}
+                  />
                 </div>
 
                 <div className="input-wrapper">

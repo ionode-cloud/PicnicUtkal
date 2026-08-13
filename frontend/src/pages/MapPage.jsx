@@ -11,204 +11,15 @@ import {
 import masterPlanImg from '../assets/master-plan.png'
 import { useSocket } from '../context/SocketContext'
 
-/* ─── Static seed plots (Landscape % positions) ─── */
-const DEFAULT_PLOTS = [
-  {
-    _id: 'main-gate',
-    title: 'Main Gate',
-    price: 0,
-    area: '200 sq ft',
-    capacity: 500,
-    description: 'Grand entrance to Barapita Picnic Utkal. Security cabin, welcome arch and directional signage.',
-    facilities: ['Security', 'CCTV', 'Signage', 'Entry Pass'],
-    status: 'available',
-    coordinates: { x: 54, y: 74, width: 9, height: 7 },
-    color: '#C9A84C',
-    distanceFromGate: '0 m',
-    distanceFromCanal: '180 m',
-    isGate: true
-  },
-  {
-    _id: 'parking',
-    title: 'Parking Zone',
-    price: 0,
-    area: '3200 sq ft',
-    capacity: 80,
-    description: 'Spacious secure parking with CCTV surveillance. Accommodates cars, buses and two-wheelers. Free parking for all visitors.',
-    facilities: ['CCTV', 'Security Guard', 'Lighting', '24x7 Open', 'Free'],
-    status: 'available',
-    coordinates: { x: 62, y: 61, width: 32, height: 18 },
-    color: '#6B7280',
-    distanceFromGate: '40 m',
-    distanceFromCanal: '160 m',
-    isParking: true
-  },
-  {
-    _id: 'pandal-1',
-    title: 'Pandal — Upper Block',
-    price: 499,
-    area: '3500 sq ft',
-    capacity: 120,
-    description: 'Shaded pandal structure near the canal with cool breeze and scenic water views.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'Riverside View'],
-    status: 'available',
-    coordinates: { x: 46, y: 29, width: 18, height: 9 },
-    color: '#52B788',
-    distanceFromGate: '120 m',
-    distanceFromCanal: '20 m'
-  },
-  {
-    _id: 'pandal-2',
-    title: 'Pandal — Center Block',
-    price: 499,
-    area: '3200 sq ft',
-    capacity: 100,
-    description: 'Central pandal with easy access to restroom facilities.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'DJ Point'],
-    status: 'booked',
-    coordinates: { x: 37, y: 48, width: 6, height: 10 },
-    color: '#52B788',
-    distanceFromGate: '85 m',
-    distanceFromCanal: '70 m'
-  },
-  {
-    _id: 'pandal-3',
-    title: 'Pandal — West Block',
-    price: 399,
-    area: '2800 sq ft',
-    capacity: 90,
-    description: 'Cozy west-side pandal nestled among trees, perfect for intimate family picnics.',
-    facilities: ['Shade', 'Seating', 'BBQ Area', 'Garden View'],
-    status: 'available',
-    coordinates: { x: 30, y: 62, width: 9, height: 10 },
-    color: '#52B788',
-    distanceFromGate: '130 m',
-    distanceFromCanal: '30 m'
-  },
-  {
-    _id: 'pandal-4',
-    title: 'Pandal — East Block',
-    price: 449,
-    area: '3000 sq ft',
-    capacity: 95,
-    description: 'East-side pandal with direct parking access, ideal for large group events.',
-    facilities: ['Shade', 'Seating', 'Parking Access', 'Electricity'],
-    status: 'available',
-    coordinates: { x: 68, y: 50, width: 13, height: 10 },
-    color: '#52B788',
-    distanceFromGate: '55 m',
-    distanceFromCanal: '150 m'
-  },
-  {
-    _id: 'pandal-5',
-    title: 'Pandal — Road Block',
-    price: 449,
-    area: '3000 sq ft',
-    capacity: 100,
-    description: 'Roadside pandal near the main pathway — convenient access and great for large gatherings.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'Road Access'],
-    status: 'available',
-    coordinates: { x: 27, y: 35, width: 10, height: 8 },
-    color: '#52B788',
-    distanceFromGate: '95 m',
-    distanceFromCanal: '45 m'
-  },
-  {
-    _id: 'pandal-6',
-    title: 'Pandal — North East Block',
-    price: 499,
-    area: '3200 sq ft',
-    capacity: 110,
-    description: 'Premium north-east pandal with open views, near the parking zone — ideal for large events.',
-    facilities: ['Shade', 'Seating', 'Electricity', 'Parking Access', 'Open View'],
-    status: 'available',
-    coordinates: { x: 83, y: 43, width: 11, height: 9 },
-    color: '#52B788',
-    distanceFromGate: '35 m',
-    distanceFromCanal: '170 m'
-  },
-  {
-    _id: 'stage-stair',
-    title: 'Stage / Stair Area',
-    price: 299,
-    area: '1200 sq ft',
-    capacity: 50,
-    description: 'Elevated stage area with stairs — perfect for performances, ceremonies and photo backdrops.',
-    facilities: ['Stage Lighting', 'Sound System', 'Backdrop', 'Steps'],
-    status: 'available',
-    coordinates: { x: 25, y: 44, width: 5, height: 4 },
-    color: '#C9A84C',
-    distanceFromGate: '100 m',
-    distanceFromCanal: '50 m'
-  },
-  {
-    _id: 'cottage-rooms',
-    title: 'Cottage Rooms',
-    price: 999,
-    area: '4800 sq ft',
-    capacity: 36,
-    description: 'Comfortable cottage accommodation block with 3 room types — Standard (Cottage 1 ₹999/night), Deluxe (Cottage 2 ₹1499/night), and Premium Suite (Cottage 3 ₹1999/night). All rooms include AC, attached bath and scenic views.',
-    facilities: ['AC Rooms', 'Attached Bath', 'Garden View', 'Canal View', 'Riverside View', 'TV', 'Kitchenette (Suite)'],
-    status: 'available',
-    coordinates: { x: 36, y: 5, width: 16, height: 18 },
-    color: '#A07830',
-    distanceFromGate: '140 m',
-    distanceFromCanal: '15 m',
-    isCottage: true,
-    cottageRooms: [
-      { name: 'Cottage 1', type: 'Standard', price: 999 },
-      { name: 'Cottage 2', type: 'Deluxe', price: 1499 },
-      { name: 'Cottage 3', type: 'Premium Suite', price: 1999 }
-    ]
-  }
-]
 
-/* ─── Route paths in Landscape coordinate space ─── */
-const ROUTE_PATHS = {
-  'main-gate':    [{ x: 58.5, y: 77.5 }],
-  'parking':      [{ x: 58.5, y: 77.5 }, { x: 75, y: 70 }],
-  'pandal-1':     [{ x: 58.5, y: 77.5 }, { x: 58.5, y: 46.5 }, { x: 55, y: 34 }],
-  'pandal-2':     [{ x: 58.5, y: 77.5 }, { x: 58.5, y: 55 }, { x: 40, y: 53 }],
-  'pandal-3':     [{ x: 58.5, y: 77.5 }, { x: 58.5, y: 55 }, { x: 35, y: 67 }],
-  'pandal-4':     [{ x: 58.5, y: 77.5 }, { x: 74, y: 55 }],
-  'pandal-5':     [{ x: 58.5, y: 77.5 }, { x: 58.5, y: 50.5 }, { x: 40, y: 44 }, { x: 32, y: 39 }],
-  'pandal-6':     [{ x: 58.5, y: 77.5 }, { x: 75, y: 65 }, { x: 88, y: 52 }],
-  'stage-stair':  [{ x: 58.5, y: 77.5 }, { x: 58.5, y: 50.5 }, { x: 31.5, y: 49.5 }, { x: 27.5, y: 46 }],
-  'cottage-rooms':[{ x: 58.5, y: 77.5 }, { x: 58.5, y: 46.5 }, { x: 50, y: 28 }, { x: 44, y: 14 }],
-}
 
 const STATUS_CONFIG = {
-  available:   { label: 'Available',   color: '#40C057', icon: CheckCircle },
-  booked:      { label: 'Booked',      color: '#FA5252', icon: AlertCircle },
+  available:   { label: 'Picnic Spot', color: '#52B788', icon: CheckCircle },
+  booked:      { label: 'Picnic Spot', color: '#52B788', icon: CheckCircle },
   maintenance: { label: 'Maintenance', color: '#FAB005', icon: Clock }
 }
 
-const DEFAULT_MAPS = [
-  {
-    _id: 'default-master-plan',
-    title: 'Barapita Master Plan (Main Ground)',
-    image: masterPlanImg,
-    description: 'Central master plan containing Biotech parks, Riverside Pandals, and Main Gate.',
-    spotId: '1',
-    isDefault: true
-  },
-  {
-    _id: 'chilika-map-02',
-    title: 'Chilika Lake Sanctuary Map',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80',
-    description: 'Waterfront camping pandals, boating docks, and island picnic spots.',
-    spotId: '2',
-    isDefault: false
-  },
-  {
-    _id: 'simlipal-map-03',
-    title: 'Simlipal Forest & Waterfall Map',
-    image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&q=80',
-    description: 'Deep forest camping zones, safari trails, and canopy watchtowers.',
-    spotId: '3',
-    isDefault: false
-  }
-]
+import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
 
 function buildPathD(points, svgW, svgH) {
   if (!points || points.length < 2) return ''
@@ -218,6 +29,7 @@ function buildPathD(points, svgW, svgH) {
 
 export default function MapPage() {
   const navigate = useNavigate()
+  const [mapVisitDate, setMapVisitDate] = useState('')
   const [maps, setMaps] = useState(() => {
     try {
       const saved = localStorage.getItem('picnicutkal_admin_maps')
@@ -226,10 +38,10 @@ export default function MapPage() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
       }
     } catch (e) {}
-    return DEFAULT_MAPS
+    return []
   })
-  const [selectedMapId, setSelectedMapId] = useState(() => maps[0]?._id || 'default-master-plan')
-  const [plots, setPlots] = useState(DEFAULT_PLOTS)
+  const [selectedMapId, setSelectedMapId] = useState(() => maps[0]?._id || '')
+  const [plots, setPlots] = useState([])
   const [selected, setSelected] = useState(null)
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -245,7 +57,23 @@ export default function MapPage() {
 
   const { socket } = useSocket()
 
-  /* Real-time Socket.io listener for maps updates */
+  const fetchMapPlots = () => {
+    fetch('/api/map/maps')
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.data) && d.data.length > 0) setMaps(d.data) })
+      .catch(() => {})
+
+    fetch('/api/map/plots')
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.data)) setPlots(d.data) })
+      .catch(() => {})
+  }
+
+  /* Real-time Socket.io listener for maps and plot updates */
+  useEffect(() => {
+    fetchMapPlots()
+  }, [selectedMapId])
+
   useEffect(() => {
     if (!socket) return
     const handler = (data) => {
@@ -256,19 +84,23 @@ export default function MapPage() {
         } catch (e) {}
       }
     }
+    const handlePlotUpdate = (data) => {
+      fetchMapPlots()
+      if (data?.plotId) {
+        setPlots(prev => prev.map(p => (p._id === data.plotId || p.id === data.plotId) ? { ...p, status: 'booked', isBooked: true } : p))
+      }
+    }
     socket.on('map_config_update', handler)
-    return () => socket.off('map_config_update', handler)
+    socket.on('plot_updated', handlePlotUpdate)
+    socket.on('plots_update', fetchMapPlots)
+    return () => {
+      socket.off('map_config_update', handler)
+      socket.off('plot_updated', handlePlotUpdate)
+      socket.off('plots_update', fetchMapPlots)
+    }
   }, [socket])
 
-  const currentMap = maps.find(m => m._id === selectedMapId) || maps[0] || DEFAULT_MAPS[0]
-
-  /* Fetch from API */
-  useEffect(() => {
-    fetch('/api/map/plots')
-      .then(r => r.json())
-      .then(d => { if (d.success && d.data.length > 0) setPlots(d.data) })
-      .catch(() => {})
-  }, [])
+  const currentMap = maps.find(m => m._id === selectedMapId) || maps[0] || null
 
   /* Measure visual dimensions of landscape image for SVG scaling */
   useEffect(() => {
@@ -316,16 +148,20 @@ export default function MapPage() {
       ? (pMapId === 'default-master-plan' || pMapId === 'default-map' || !p.mapId)
       : (pMapId === selectedMapId)
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase())
-    const matchStatus = filterStatus === 'all' || p.status === filterStatus
-    return matchMap && matchSearch && matchStatus
+    return matchMap && matchSearch
   })
 
-  const routePoints = selected ? (ROUTE_PATHS[selected._id] || ROUTE_PATHS['main-gate']) : []
+  const routePoints = selected ? (
+    selected.routePath || [
+      { x: 58.5, y: 77.5 },
+      { x: (selected.coordinates?.x || 50) + (selected.coordinates?.width || 0) / 2, y: (selected.coordinates?.y || 50) + (selected.coordinates?.height || 0) / 2 }
+    ]
+  ) : []
   const routeD = buildPathD(routePoints, svgSize.w, svgSize.h)
 
-  const StatusIcon  = selected ? STATUS_CONFIG[selected.status]?.icon  : null
-  const statusColor = selected ? STATUS_CONFIG[selected.status]?.color : '#40C057'
-  const statusLabel = selected ? STATUS_CONFIG[selected.status]?.label : ''
+  const StatusIcon  = CheckCircle
+  const statusColor = '#52B788'
+  const statusLabel = 'Picnic Spot'
 
   return (
     <>
@@ -346,7 +182,7 @@ export default function MapPage() {
           >
             <div className="mp-header-badge">
               <MapPin size={14} />
-              <span>{currentMap?.title || 'Barapita, Deras — Odisha'}</span>
+              <span>{currentMap?.linkedSpot || currentMap?.title || 'Barapita, Deras — Odisha'}</span>
             </div>
             <h1 className="mp-header-title">Interactive Resort &amp; Sanctuary Maps</h1>
             <p className="mp-header-sub">Click any zone to explore pricing, availability &amp; navigate</p>
@@ -403,6 +239,17 @@ export default function MapPage() {
               </button>
               <button id="mp-share"      className="mp-ctrl-btn" onClick={handleShare}       title="Share"><Share2 size={16}/></button>
             </div>
+            <a
+              id="mp-open-google-maps"
+              href={currentMap?.googleMapUrl || 'https://maps.google.com/?q=20.311450,85.690644'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mp-btn-open-maps"
+              style={{ padding: '7px 16px', fontSize: '13px', whiteSpace: 'nowrap' }}
+            >
+              <Navigation size={14} />
+              Open in Google Maps
+            </a>
           </div>
         </div>
 
@@ -691,6 +538,18 @@ export default function MapPage() {
                     </div>
                   )}
 
+                  {/* Spot Date-wise Availability Calendar */}
+                  {!selected.isGate && !selected.isParking && (
+                    <div style={{ marginTop: '12px' }}>
+                      <SpotAvailabilityCalendar
+                        spotId={selected._id || selected.id}
+                        selectedDate={mapVisitDate}
+                        onSelectDate={(d) => setMapVisitDate(d)}
+                        title={`Availability Calendar — ${selected.title}`}
+                      />
+                    </div>
+                  )}
+
                   <div className="mp-popup-coords">
                     <MapPin size={12} />
                     <span>20°18'41.2"N &nbsp;85°41'26.3"E</span>
@@ -720,13 +579,12 @@ export default function MapPage() {
                         </button>
                         <button
                           id={`mp-book-${selected._id}`}
-                          className={`mp-btn-book ${selected.status !== 'available' ? 'mp-btn-book--disabled' : ''}`}
-                          disabled={selected.status !== 'available'}
+                          className="mp-btn-book"
                           style={{ flex: 1 }}
-                          onClick={() => navigate(`/plots/${selected._id}?book=true`)}
+                          onClick={() => navigate(`/plots/${selected._id}?book=true`, { state: { initialDate: mapVisitDate } })}
                         >
                           <Star size={14} />
-                          {selected.status === 'available' ? 'Book Now' : 'Not Available'}
+                          {mapVisitDate ? `Book for ${mapVisitDate}` : 'Book Now'}
                         </button>
                       </div>
                     )}
@@ -737,65 +595,7 @@ export default function MapPage() {
           )}
         </AnimatePresence>
 
-        {/* ── Cottage Rooms Pricing Section ── */}
-        <motion.div
-          className="mp-cottage-section"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35, duration: 0.6 }}
-        >
-          <div className="mp-cottage-header">
-            <div className="mp-cottage-badge"><IndianRupee size={14} />Room Pricing</div>
-            <h2 className="mp-cottage-title">Cottage Accommodation</h2>
-            <p className="mp-cottage-sub">Choose from our cozy cottage rooms — perfect for overnight stays</p>
-          </div>
-          <div className="mp-cottage-grid">
-            {[
-              {
-                id: 'cottage-1', name: 'Cottage 1', type: 'Standard Room',
-                price: 999, perNight: true,
-                features: ['2 Beds', 'AC', 'Attached Bath', 'Garden View'],
-                color: '#52B788', icon: '🏡'
-              },
-              {
-                id: 'cottage-2', name: 'Cottage 2', type: 'Deluxe Room',
-                price: 1499, perNight: true,
-                features: ['3 Beds', 'AC', 'Attached Bath', 'Canal View', 'TV'],
-                color: '#C9A84C', icon: '🏘️', featured: true
-              },
-              {
-                id: 'cottage-3', name: 'Cottage 3', type: 'Premium Suite',
-                price: 1999, perNight: true,
-                features: ['4 Beds', 'AC', 'Attached Bath', 'Riverside View', 'TV', 'Kitchenette'],
-                color: '#A07830', icon: '🏠'
-              }
-            ].map(cottage => (
-              <div key={cottage.id} className={`mp-cottage-card ${cottage.featured ? 'mp-cottage-card--featured' : ''}`}
-                style={{ '--cot-color': cottage.color }}>
-                {cottage.featured && <div className="mp-cottage-badge-top">Most Popular</div>}
-                <div className="mp-cottage-card-icon">{cottage.icon}</div>
-                <div className="mp-cottage-card-name">{cottage.name}</div>
-                <div className="mp-cottage-card-type">{cottage.type}</div>
-                <div className="mp-cottage-card-price">
-                  <span className="mp-cottage-rupee">₹</span>
-                  <span className="mp-cottage-amount">{cottage.price.toLocaleString()}</span>
-                  <span className="mp-cottage-per">/night</span>
-                </div>
-                <ul className="mp-cottage-features">
-                  {cottage.features.map(f => (
-                    <li key={f}><CheckCircle size={11} />{f}</li>
-                  ))}
-                </ul>
-                <button
-                  className="mp-cottage-book-btn"
-                  onClick={() => navigate('/plots/cottage-rooms')}
-                >
-                  <Star size={13} /> Book Room
-                </button>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+
 
         {/* ── Bottom Info Card ── */}
         <motion.div
@@ -808,9 +608,8 @@ export default function MapPage() {
             <div className="mp-info-left">
               <div className="mp-info-loc-badge"><MapPin size={16} /></div>
               <div>
-                <h3 className="mp-info-name">Barapita Picnic Utkal</h3>
-                <p className="mp-info-sub">Near Deras Dam · Beautiful Riverside Picnic Destination</p>
-                <p className="mp-info-coords">📍 20.311450, 85.690644 &nbsp;|&nbsp; 20°18'41.2"N 85°41'26.3"E</p>
+                <h3 className="mp-info-name">{currentMap?.title || 'Barapita Picnic Utkal'}</h3>
+                <p className="mp-info-sub">{currentMap?.linkedSpot ? `📍 Spot: ${currentMap.linkedSpot}` : (currentMap?.description || 'Near Deras Dam · Beautiful Riverside Picnic Destination')}</p>
               </div>
             </div>
             <div className="mp-info-nearby">
@@ -824,16 +623,6 @@ export default function MapPage() {
               </div>
             </div>
             <div className="mp-info-right">
-              <a
-                id="mp-open-google-maps"
-                href="https://maps.google.com/?q=20.311450,85.690644"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mp-btn-open-maps"
-              >
-                <Navigation size={16} />
-                Open in Google Maps
-              </a>
               <div className="mp-info-stats-row">
                 <div className="mp-info-stat-item">
                   <span className="mp-info-stat-num">{plots.filter(p => p.status === 'available').length}</span>

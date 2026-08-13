@@ -7,6 +7,7 @@ import Footer from './components/layout/Footer'
 import ScrollToTopFAB from './components/ui/ScrollToTopFAB'
 import PageLoader from './components/ui/PageLoader'
 import AdminProtectedRoute from './admin/components/AdminProtectedRoute'
+import UserProtectedRoute from './components/UserProtectedRoute'
 
 // Lazy loaded pages
 const Home       = lazy(() => import('./pages/Home'))
@@ -21,6 +22,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword'))
 const Map        = lazy(() => import('./pages/MapPage'))
 const BookingPage = lazy(() => import('./pages/BookingPage'))
 const PlotDetail = lazy(() => import('./pages/PlotDetail'))
+const UserDashboard = lazy(() => import('./pages/UserDashboard'))
 const NotFound   = lazy(() => import('./pages/NotFound'))
 
 // Admin lazy pages
@@ -28,6 +30,7 @@ const AdminLayout = lazy(() => import('./admin/layout/AdminLayout'))
 const Dashboard   = lazy(() => import('./admin/pages/Dashboard'))
 const AdminSpots  = lazy(() => import('./admin/pages/Spots'))
 const EventAddons = lazy(() => import('./admin/pages/EventAddons'))
+const GuidelinesRules = lazy(() => import('./admin/pages/GuidelinesRules'))
 const AdminZones  = lazy(() => import('./admin/pages/Zones'))
 const Bookings    = lazy(() => import('./admin/pages/Bookings'))
 const BookingHistory = lazy(() => import('./admin/pages/BookingHistory'))
@@ -69,9 +72,10 @@ export default function App() {
             <Route path="/contact"            element={<Contact />} />
             <Route path="/map"                element={<Map />} />
             <Route path="/plots/:id"          element={<PlotDetail />} />
-            <Route path="/booking"            element={<BookingPage />} />
+            <Route path="/booking"            element={<UserProtectedRoute><BookingPage /></UserProtectedRoute>} />
             <Route path="/login"              element={<Login />} />
             <Route path="/register"           element={<Register />} />
+            <Route path="/user"               element={<UserProtectedRoute><UserDashboard /></UserProtectedRoute>} />
             <Route path="/forgot-password"    element={<ForgotPassword />} />
 
 
@@ -88,6 +92,7 @@ export default function App() {
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="spots"     element={<AdminSpots />} />
               <Route path="spots/addons" element={<EventAddons />} />
+              <Route path="spots/guidelines" element={<GuidelinesRules />} />
               <Route path="zones"     element={<AdminZones />} />
               <Route path="bookings"  element={<Bookings />} />
               <Route path="bookings/history" element={<BookingHistory />} />

@@ -7,7 +7,7 @@ import {
   LuChevronDown as ChevronDown, LuChevronRight as ChevronRight, LuLeaf as Leaf, LuEye as Eye, LuCirclePlus as PlusCircle, LuFolderHeart as FolderHeart,
   LuDroplets as Droplets, LuFlame as Flame, LuMusic as Music, LuTent as Tent, LuCompass as Compass, LuSparkles as Sparkles, LuSmile as Smile,
   LuHourglass as Hourglass, LuCircleCheck as CheckCircle2, LuCircleX as XCircle, LuFileSpreadsheet as FileSpreadsheet, LuListTodo as ListTodo, LuTriangleAlert as AlertTriangle, LuDollarSign as DollarSign,
-  LuMap as Map, LuDownload as Download, LuKey as Key, LuMail as Mail, LuHeadphones as Headphones
+  LuMap as Map, LuDownload as Download, LuKey as Key, LuMail as Mail, LuHeadphones as Headphones, LuFileText as FileText
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 
@@ -102,6 +102,9 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
                   </Link>
                   <Link to="/admin/spots/addons" className={`admin-submenu-item ${isActive('/admin/spots/addons') ? 'active' : ''}`}>
                     <Sparkles size={14} /> <span>Custom Event Add-ons</span>
+                  </Link>
+                  <Link to="/admin/spots/guidelines" className={`admin-submenu-item ${isActive('/admin/spots/guidelines') ? 'active' : ''}`}>
+                    <FileText size={14} /> <span>Guidelines & Rules</span>
                   </Link>
                 </div>
               </div>

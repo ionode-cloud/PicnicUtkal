@@ -30,316 +30,26 @@ import {
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
 
-const INITIAL_BOOKINGS = [
-  {
-    bookingId: 'BK-928341',
-    plotId: 'pandal-1',
-    plotTitle: 'Pandal — Upper Block (Riverside View)',
-    name: 'Sunil Mohanty',
-    email: 'sunil.mohanty@gmail.com',
-    phone: '9876543210',
-    bookingDate: '2026-08-08',
-    visitDate: '2026-08-15',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 8,
-    totalPrice: 499,
-    paymentMethod: 'UPI (PhonePe)',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-08T10:30:00Z',
-    visitors: [{ name: 'Sunil Mohanty', phone: '9876543210' }]
-  },
-  {
-    bookingId: 'BK-928342',
-    plotId: 'pandal-5',
-    plotTitle: 'Pandal — Road Block',
-    name: 'Anjali Das',
-    email: 'anjali.das@gmail.com',
-    phone: '9123456789',
-    bookingDate: '2026-08-08',
-    visitDate: '2026-08-16',
-    duration: '2 Days',
-    durationDays: 2,
-    persons: 5,
-    totalPrice: 449,
-    paymentMethod: 'Credit Card',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-08T14:20:00Z',
-    visitors: [{ name: 'Anjali Das', phone: '9123456789' }]
-  },
-  {
-    bookingId: 'BK-928343',
-    plotId: 'cottage-rooms',
-    plotTitle: 'Barapita Deluxe Cottage & AC Suite Rooms',
-    name: 'Rajesh Tripathy',
-    email: 'rajesh.t@yahoo.com',
-    phone: '9437123456',
-    bookingDate: '2026-08-09',
-    visitDate: '2026-08-20',
-    duration: '3 Days',
-    durationDays: 3,
-    persons: 4,
-    totalPrice: 999,
-    paymentMethod: 'Net Banking',
-    paymentStatus: 'Pending',
-    bookingStatus: 'Pending',
-    createdAt: '2026-08-09T09:15:00Z',
-    visitors: [{ name: 'Rajesh Tripathy', phone: '9437123456' }]
-  },
-  {
-    bookingId: 'BK-928344',
-    plotId: 'pandal-3',
-    plotTitle: 'Pandal — Middle Lawn',
-    name: 'Smruti Ranjan',
-    email: 'smruti.r@gmail.com',
-    phone: '9937001122',
-    bookingDate: '2026-08-05',
-    visitDate: '2026-08-05',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 12,
-    totalPrice: 499,
-    paymentMethod: 'UPI (GPay)',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Completed',
-    createdAt: '2026-08-05T16:00:00Z',
-    visitors: [{ name: 'Smruti Ranjan', phone: '9937001122' }]
-  },
-  {
-    bookingId: 'BK-928345',
-    plotId: 'pandal-4',
-    plotTitle: 'Pandal — Garden Edge',
-    name: 'Debashish Panda',
-    email: 'deba.panda@outlook.com',
-    phone: '9861098765',
-    bookingDate: '2026-08-06',
-    visitDate: '2026-08-10',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 6,
-    totalPrice: 449,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Refunded',
-    bookingStatus: 'Cancelled',
-    createdAt: '2026-08-06T11:45:00Z',
-    visitors: [{ name: 'Debashish Panda', phone: '9861098765' }]
-  },
-  {
-    bookingId: 'BK-928346',
-    plotId: 'pandal-2',
-    plotTitle: 'Pandal — Riverside Grove',
-    name: 'Manoj Kumar Patnaik',
-    email: 'manoj.patnaik@gmail.com',
-    phone: '9777123456',
-    bookingDate: '2026-08-07',
-    visitDate: '2026-08-18',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 10,
-    totalPrice: 499,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-07T12:00:00Z',
-    visitors: [{ name: 'Manoj Patnaik', phone: '9777123456' }]
-  },
-  {
-    bookingId: 'BK-928347',
-    plotId: 'pandal-6',
-    plotTitle: 'Pandal — Hillside View',
-    name: 'Biswajit Behera',
-    email: 'biswajit.b@gmail.com',
-    phone: '9439009988',
-    bookingDate: '2026-08-06',
-    visitDate: '2026-08-19',
-    duration: '2 Days',
-    durationDays: 2,
-    persons: 7,
-    totalPrice: 449,
-    paymentMethod: 'Card',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-06T15:30:00Z',
-    visitors: [{ name: 'Biswajit Behera', phone: '9439009988' }]
-  },
-  {
-    bookingId: 'BK-928348',
-    plotId: 'pandal-1',
-    plotTitle: 'Pandal — Upper Block (Riverside View)',
-    name: 'Priyabrata Mishra',
-    email: 'priyabrata.m@gmail.com',
-    phone: '9861234567',
-    bookingDate: '2026-08-07',
-    visitDate: '2026-08-21',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 6,
-    totalPrice: 499,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-07T18:00:00Z',
-    visitors: [{ name: 'Priyabrata Mishra', phone: '9861234567' }]
-  },
-  {
-    bookingId: 'BK-928349',
-    plotId: 'pandal-3',
-    plotTitle: 'Pandal — Middle Lawn',
-    name: 'Sourav Ganguly',
-    email: 'sourav.g@outlook.com',
-    phone: '9112233445',
-    bookingDate: '2026-08-08',
-    visitDate: '2026-08-22',
-    duration: '2 Days',
-    durationDays: 2,
-    persons: 14,
-    totalPrice: 499,
-    paymentMethod: 'Card',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-08T11:00:00Z',
-    visitors: [{ name: 'Sourav Ganguly', phone: '9112233445' }]
-  },
-  {
-    bookingId: 'BK-928350',
-    plotId: 'pandal-5',
-    plotTitle: 'Pandal — Road Block',
-    name: 'Subhashree Sahoo',
-    email: 'subhashree.s@yahoo.com',
-    phone: '9988776655',
-    bookingDate: '2026-08-09',
-    visitDate: '2026-08-23',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 9,
-    totalPrice: 449,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-09T08:30:00Z',
-    visitors: [{ name: 'Subhashree Sahoo', phone: '9988776655' }]
-  },
-  {
-    bookingId: 'BK-928351',
-    plotId: 'cottage-rooms',
-    plotTitle: 'Barapita Deluxe Cottage & AC Suite Rooms',
-    name: 'Deepak Rout',
-    email: 'deepak.rout@gmail.com',
-    phone: '9337112233',
-    bookingDate: '2026-08-09',
-    visitDate: '2026-08-24',
-    duration: '3 Days',
-    durationDays: 3,
-    persons: 5,
-    totalPrice: 999,
-    paymentMethod: 'Net Banking',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-09T14:15:00Z',
-    visitors: [{ name: 'Deepak Rout', phone: '9337112233' }]
-  },
-  {
-    bookingId: 'BK-928352',
-    plotId: 'pandal-2',
-    plotTitle: 'Pandal — Riverside Grove',
-    name: 'Sushant Nayak',
-    email: 'sushant.n@gmail.com',
-    phone: '9448877665',
-    bookingDate: '2026-08-08',
-    visitDate: '2026-08-25',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 11,
-    totalPrice: 499,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-08T16:45:00Z',
-    visitors: [{ name: 'Sushant Nayak', phone: '9448877665' }]
-  },
-  {
-    bookingId: 'BK-928353',
-    plotId: 'pandal-4',
-    plotTitle: 'Pandal — Garden Edge',
-    name: 'Ashok Swain',
-    email: 'ashok.swain@gmail.com',
-    phone: '9853001122',
-    bookingDate: '2026-08-07',
-    visitDate: '2026-08-26',
-    duration: '2 Days',
-    durationDays: 2,
-    persons: 8,
-    totalPrice: 449,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-07T09:10:00Z',
-    visitors: [{ name: 'Ashok Swain', phone: '9853001122' }]
-  },
-  {
-    bookingId: 'BK-928354',
-    plotId: 'pandal-6',
-    plotTitle: 'Pandal — Hillside View',
-    name: 'Alok Ranjan Jena',
-    email: 'alok.jena@outlook.com',
-    phone: '9938887766',
-    bookingDate: '2026-08-06',
-    visitDate: '2026-08-27',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 6,
-    totalPrice: 449,
-    paymentMethod: 'Card',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-06T10:00:00Z',
-    visitors: [{ name: 'Alok Jena', phone: '9938887766' }]
-  },
-  {
-    bookingId: 'BK-928355',
-    plotId: 'pandal-1',
-    plotTitle: 'Pandal — Upper Block (Riverside View)',
-    name: 'Niharika Mahapatra',
-    email: 'niharika.m@gmail.com',
-    phone: '9778009911',
-    bookingDate: '2026-08-09',
-    visitDate: '2026-08-28',
-    duration: '1 Day',
-    durationDays: 1,
-    persons: 12,
-    totalPrice: 499,
-    paymentMethod: 'UPI',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-09T17:20:00Z',
-    visitors: [{ name: 'Niharika Mahapatra', phone: '9778009911' }]
-  },
-  {
-    bookingId: 'BK-928356',
-    plotId: 'pandal-3',
-    plotTitle: 'Pandal — Middle Lawn',
-    name: 'Pradeep Sethi',
-    email: 'pradeep.sethi@gmail.com',
-    phone: '9437998877',
-    bookingDate: '2026-08-08',
-    visitDate: '2026-08-29',
-    duration: '2 Days',
-    durationDays: 2,
-    persons: 15,
-    totalPrice: 499,
-    paymentMethod: 'Net Banking',
-    paymentStatus: 'Paid',
-    bookingStatus: 'Confirmed',
-    createdAt: '2026-08-08T19:00:00Z',
-    visitors: [{ name: 'Pradeep Sethi', phone: '9437998877' }]
-  }
-]
+// Normalise a raw DB booking doc into the shape the component expects
+const normalise = (b) => ({
+  ...b,
+  bookingId:     b.bookingId || b._id,
+  plotTitle:     b.plotTitle || 'Picnic Spot',
+  bookingDate:   b.createdAt ? new Date(b.createdAt).toISOString().split('T')[0] : '',
+  visitDate:     b.visitDate ? new Date(b.visitDate).toISOString().split('T')[0] : '',
+  persons:       b.persons || 1,
+  totalPrice:    b.totalAmount || b.totalPrice || 0,
+  paymentMethod: (b.paymentMethod || 'UPI').toUpperCase(),
+  paymentStatus: b.paymentStatus === 'paid' ? 'Paid' : b.paymentStatus === 'failed' ? 'Failed' : 'Pending',
+  bookingStatus: b.status ? (b.status.charAt(0).toUpperCase() + b.status.slice(1)) : 'Confirmed',
+  visitors:      b.visitors || [],
+  durationDays:  1
+})
 
 export default function Bookings() {
-  const { lastBooking, emitPlotStatusChange } = useSocket()
-  const [bookings, setBookings] = useState(INITIAL_BOOKINGS)
+  const { socket } = useSocket()
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
 
@@ -350,20 +60,36 @@ export default function Bookings() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(15)
 
+  const fetchBookings = () => {
+    setLoading(true)
+    fetch('/api/bookings')
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.data)) setBookings(d.data.map(normalise)) })
+      .catch(() => toast.error('Failed to load bookings'))
+      .finally(() => setLoading(false))
+  }
+
+  // Initial fetch
+  useEffect(() => { fetchBookings() }, [])
+
+  // Real-time: refetch when a new booking is created
+  useEffect(() => {
+    if (!socket) return
+    const handleNew = () => fetchBookings()
+    socket.on('plots_update', handleNew)
+    return () => socket.off('plots_update', handleNew)
+  }, [socket])
+
   // Esc Key Listener for Closing Left Slide-in Panel
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setSelectedBillDrawer(null)
-      }
+      if (e.key === 'Escape') setSelectedBillDrawer(null)
     }
-    if (selectedBillDrawer) {
-      window.addEventListener('keydown', handleKeyDown)
-    }
+    if (selectedBillDrawer) window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedBillDrawer])
 
-  // Auto-check expired bookings on mount
+  // Auto-expire past bookings
   useEffect(() => {
     const today = new Date()
     setBookings(prev => prev.map(bk => {
@@ -371,55 +97,29 @@ export default function Bookings() {
         const vDate = new Date(bk.visitDate)
         const expiryDate = new Date(vDate)
         expiryDate.setDate(expiryDate.getDate() + (bk.durationDays || 1))
-        if (today > expiryDate) {
-          return { ...bk, isExpired: true }
-        }
+        if (today > expiryDate) return { ...bk, isExpired: true }
       }
       return bk
     }))
-  }, [])
+  }, [bookings.length])
 
-  // Reset page when search or status filter changes
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchQuery, statusFilter, itemsPerPage])
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1) }, [searchQuery, statusFilter, itemsPerPage])
 
-  // Listen to real-time socket booking alerts
-  useEffect(() => {
-    if (lastBooking) {
-      const todayStr = new Date().toISOString().split('T')[0]
-      const newBk = {
-        bookingId: `BK-${Math.floor(100000 + Math.random() * 900000)}`,
-        plotId: lastBooking.plotId || 'pandal-new',
-        plotTitle: lastBooking.pandalName || 'Picnic Pandal',
-        name: lastBooking.customerName || 'Online Visitor',
-        email: 'customer@picnicutkal.com',
-        phone: '9876543210',
-        bookingDate: todayStr,
-        visitDate: lastBooking.visitDate || todayStr,
-        duration: '1 Day',
-        durationDays: 1,
-        persons: 4,
-        totalPrice: lastBooking.total || 499,
-        paymentMethod: 'Online Payment',
-        paymentStatus: 'Paid',
-        bookingStatus: 'Confirmed',
-        createdAt: new Date().toISOString()
-      }
-      setBookings(prev => [newBk, ...prev])
-    }
-  }, [lastBooking])
-
-  // Filter bookings
+  // Filter bookings: All Bookings tab shows active bookings (excludes cancelled/reset bookings)
   const filteredBookings = bookings.filter(bk => {
-    const matchesSearch = 
-      bk.bookingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.plotTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.phone.includes(searchQuery)
+    const isCancelled = bk.status === 'cancelled' || bk.bookingStatus?.toLowerCase() === 'cancelled'
+    if (isCancelled) return false
 
-    const matchesStatus = statusFilter === 'All' || bk.bookingStatus.toLowerCase() === statusFilter.toLowerCase()
+    const q = searchQuery.trim().toLowerCase()
+    const matchesSearch = !q ||
+      (bk.name && bk.name.toLowerCase().includes(q)) ||
+      (bk.bookingId && String(bk.bookingId).toLowerCase().includes(q)) ||
+      (bk.email && bk.email.toLowerCase().includes(q)) ||
+      (bk.plotTitle && bk.plotTitle.toLowerCase().includes(q)) ||
+      (bk.phone && String(bk.phone).includes(q))
+
+    const matchesStatus = statusFilter === 'All' || bk.bookingStatus?.toLowerCase() === statusFilter.toLowerCase()
 
     return matchesSearch && matchesStatus
   })
@@ -432,50 +132,92 @@ export default function Bookings() {
   )
 
   // Status Change
-  const handleStatusChange = (bookingId, newStatus) => {
-    setBookings(prev => prev.map(bk => bk.bookingId === bookingId ? { ...bk, bookingStatus: newStatus } : bk))
+  const handleStatusChange = async (bookingId, newStatus) => {
+    const bk = bookings.find(b => b.bookingId === bookingId || b._id === bookingId)
+    const id = bk?._id || bookingId
+    const apiStatus = newStatus.toLowerCase()
+    try {
+      await fetch(`/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: apiStatus })
+      })
+      if (socket) socket.emit('plots_update')
+    } catch (e) {}
+
+    if (apiStatus === 'cancelled') {
+      setBookings(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
+    } else {
+      setBookings(prev => prev.map(b => (b.bookingId === bookingId || b._id === bookingId) ? { ...b, bookingStatus: newStatus, status: apiStatus } : b))
+    }
     toast.success(`Booking ${bookingId} status updated to ${newStatus}`)
-    if (selectedBillDrawer && selectedBillDrawer.bookingId === bookingId) {
-      setSelectedBillDrawer(prev => ({ ...prev, bookingStatus: newStatus }))
+    if (selectedBillDrawer && (selectedBillDrawer.bookingId === bookingId || selectedBillDrawer._id === bookingId)) {
+      setSelectedBillDrawer(prev => ({ ...prev, bookingStatus: newStatus, status: apiStatus }))
     }
   }
 
-  // Delete / Cancel Booking
-  const handleDeleteBooking = (bookingId) => {
-    const bk = bookings.find(b => b.bookingId === bookingId)
-    if (window.confirm(`Are you sure you want to cancel & delete booking #${bookingId} for ${bk?.name || 'guest'}?`)) {
-      setBookings(prev => prev.filter(b => b.bookingId !== bookingId))
-      if (bk?.plotId) {
-        emitPlotStatusChange(bk.plotId, 'available')
+  // Delete Booking permanently (removes from All Bookings tab and updates history)
+  const handleDeleteBooking = async (bookingId) => {
+    const bk = bookings.find(b => b.bookingId === bookingId || b._id === bookingId)
+    if (window.confirm(`Are you sure you want to permanently delete booking #${bookingId} for ${bk?.name || 'guest'}? This will remove it from All Bookings and free the spot date.`)) {
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' })
+        const data = await res.json()
+        if (data.success) {
+          setBookings(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
+          if (socket) socket.emit('plots_update')
+          toast.success(`Booking #${bookingId} deleted from All Bookings! Date freed on calendar.`)
+        } else {
+          toast.error(data.message || 'Failed to delete booking')
+        }
+      } catch (err) {
+        toast.error('Error deleting booking from server')
       }
-      toast.success(`Booking #${bookingId} deleted & spot released on Spots section!`)
     }
   }
 
   // Reset Spot Availability button click
-  const handleResetSpot = (booking) => {
-    setBookings(prev => prev.map(b => b.bookingId === booking.bookingId ? { ...b, bookingStatus: 'Completed', isExpired: false } : b))
-    emitPlotStatusChange(booking.plotId || 'pandal-1', 'available')
-    toast.success(`Spot "${booking.plotTitle}" reset to AVAILABLE on Spots Section!`, {
-      icon: '🔄',
-      style: { background: 'var(--forest-dark)', color: '#fff', border: '1px solid var(--gold)' }
-    })
+  const handleResetSpot = async (booking) => {
+    const id = booking._id || booking.bookingId
+    try {
+      const res = await fetch(`/api/bookings/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setBookings(prev => prev.filter(b => b.bookingId !== id && b._id !== id))
+        if (socket) socket.emit('plots_update')
+        toast.success(`Spot "${booking.plotTitle}" reset! Removed from All Bookings and saved in Booking History.`, {
+          icon: '🔄',
+          style: { background: 'var(--forest-dark)', color: '#fff', border: '1px solid var(--gold)' }
+        })
+      } else {
+        toast.error(data.message || 'Failed to reset spot')
+      }
+    } catch (err) {
+      toast.error('Failed to communicate with server')
+    }
   }
 
   // Auto Reset All Completed / Expired Spots
-  const handleResetAllExpired = () => {
+  const handleResetAllExpired = async () => {
     let count = 0
-    setBookings(prev => prev.map(bk => {
-      if (bk.isExpired || bk.bookingStatus === 'Completed') {
+    for (const bk of bookings) {
+      if (bk.isExpired || bk.bookingStatus === 'Completed' || bk.status === 'confirmed') {
         count++
-        emitPlotStatusChange(bk.plotId, 'available')
-        return { ...bk, bookingStatus: 'Completed', isExpired: false }
+        const id = bk._id || bk.bookingId
+        await fetch(`/api/bookings/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'cancelled' })
+        }).catch(() => {})
       }
-      return bk
-    }))
-    toast.success(`Reset complete! ${count || 'All'} spots are now AVAILABLE on Spots & Map sections.`, {
-      icon: '✨'
-    })
+    }
+    if (socket) socket.emit('plots_update')
+    setBookings([])
+    toast.success(`Reset complete! ${count || 'All'} spots updated & moved to Booking History.`, { icon: '✨' })
   }
 
   const getStatusBadgeClass = (status) => {
@@ -504,6 +246,9 @@ export default function Bookings() {
           <button className="btn btn-gold btn-sm flex items-center gap-1" onClick={handleResetAllExpired}>
             <RotateCcw size={14} /> Reset Completed Spots
           </button>
+          <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={fetchBookings} disabled={loading}>
+            <RefreshCw size={14} className={loading ? 'spin' : ''} /> {loading ? 'Loading…' : 'Refresh'}
+          </button>
           <span className="badge badge-glass" style={{ padding: '6px 12px', fontSize: '12px' }}>
             Total: {bookings.length} Bookings
           </span>
@@ -512,11 +257,11 @@ export default function Bookings() {
 
       {/* Filters, Search, Items Per Page */}
       <div className="admin-table-filters" style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div className="input-with-icon" style={{ flex: 1, minWidth: '240px', maxWidth: '360px' }}>
+        <div className="input-with-icon" style={{ flex: 1, minWidth: '260px', maxWidth: '420px' }}>
           <Search size={16} />
           <input 
             type="text" 
-            placeholder="Search by Booking ID, customer name, or phone..." 
+            placeholder="Search by customer name, booking ID, or phone..." 
             className="input" 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
@@ -566,10 +311,17 @@ export default function Bookings() {
             </tr>
           </thead>
           <tbody>
-            {paginatedBookings.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                  No bookings found matching your search.
+                <td colSpan={8} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                  ⏳ Loading bookings from server…
+                </td>
+              </tr>
+            ) : paginatedBookings.length === 0 ? (
+              <tr>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>🎪</div>
+                  {bookings.length === 0 ? 'No bookings yet. Bookings will appear here in real time.' : 'No bookings match the current filter.'}
                 </td>
               </tr>
             ) : (
@@ -628,14 +380,29 @@ export default function Bookings() {
                   </td>
                   <td onClick={e => e.stopPropagation()}>
                     <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                      {/* View Bill Button */}
+                      {/* View / Print PDF Bill Button */}
                       <button 
                         className="btn btn-outline btn-sm flex items-center gap-1"
                         style={{ padding: '4px 8px' }}
-                        onClick={(e) => { e.stopPropagation(); setSelectedBillDrawer(bk); }}
-                        title="View Official Bill in Left Slide-in Panel"
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          const params = new URLSearchParams({
+                            bookingId: bk.bookingId || bk._id || 'PK-1001',
+                            name: bk.name || '',
+                            phone: bk.phone || '',
+                            aadhaar: bk.aadhaar || '',
+                            spot: bk.plotTitle || bk.spotTitle || 'Picnic Spot',
+                            date: bk.visitDate || '',
+                            duration: bk.duration || bk.durationDays || 1,
+                            guests: bk.guests || 1,
+                            total: bk.totalPrice || bk.totalAmount || 0,
+                            autoprint: 'true'
+                          })
+                          window.open(`/bill.html?${params.toString()}`, '_blank')
+                        }}
+                        title="Print / Save PDF Bill"
                       >
-                        <FileText size={13} /> View Bill
+                        <Printer size={13} /> Print Bill
                       </button>
 
                       {/* Reset Spot Button */}
@@ -900,7 +667,7 @@ export default function Bookings() {
               flexShrink: 0
             }}>
               <button className="btn btn-gold btn-sm flex items-center gap-1" onClick={() => window.print()}>
-                <Printer size={14} /> Print / Save PDF Bill
+                <Printer size={14} /> Print Bill
               </button>
               <button className="btn btn-outline btn-sm" onClick={() => setSelectedBillDrawer(null)}>
                 Close

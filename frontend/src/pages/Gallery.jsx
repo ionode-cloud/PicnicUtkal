@@ -53,7 +53,7 @@ export default function Gallery() {
         <meta name="description" content="View high-resolution images and drone footage of beautiful picnic spots, waterfalls, and adventure zones in Odisha." />
       </Helmet>
 
-      <div className="gallery-page container-fluid section" style={{ paddingTop: 'calc(var(--nav-height) + var(--space-8))' }}>
+      <div className="gallery-page container-fluid">
         <div style={{ textAlign: 'center', marginBottom: 'var(--space-10)' }}>
           <span className="section-eyebrow">Visual Moments</span>
           <h1 className="heading-2">Moments of Pure Joy</h1>

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { 
   LuSearch as Search, 
   LuCreditCard as CreditCard,
@@ -12,113 +12,69 @@ import {
   LuDownload as Download,
   LuArrowDownLeft as ArrowDownLeft,
   LuArrowUpRight as ArrowUpRight,
-  LuRefreshCw as RefreshCw
+  LuRefreshCw as RefreshCw,
+  LuTrash2 as Trash2
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
+import { useSocket } from '../../context/SocketContext'
 
-const INITIAL_PAYMENTS = [
-  {
-    txnId: 'TXN-88091',
-    bookingId: 'BK-928341',
-    customerName: 'Sunil Mohanty',
-    customerEmail: 'sunil.mohanty@gmail.com',
-    spotTitle: 'Pandal — Upper Block (Riverside View)',
-    amount: 499,
-    method: 'UPI (PhonePe)',
-    status: 'Paid',
-    type: 'Payment',
-    date: '2026-08-08 10:30 AM'
-  },
-  {
-    txnId: 'TXN-88092',
-    bookingId: 'BK-928342',
-    customerName: 'Anjali Das',
-    customerEmail: 'anjali.das@gmail.com',
-    spotTitle: 'Pandal — Road Block',
-    amount: 449,
-    method: 'Credit Card',
-    status: 'Paid',
-    type: 'Payment',
-    date: '2026-08-08 02:20 PM'
-  },
-  {
-    txnId: 'TXN-88093',
-    bookingId: 'BK-928343',
-    customerName: 'Rajesh Tripathy',
-    customerEmail: 'rajesh.t@yahoo.com',
-    spotTitle: 'Barapita Deluxe Cottage & AC Suite Rooms',
-    amount: 999,
-    method: 'Net Banking',
-    status: 'Pending',
-    type: 'Payment',
-    date: '2026-08-09 09:15 AM'
-  },
-  {
-    txnId: 'TXN-88094',
-    bookingId: 'BK-928344',
-    customerName: 'Smruti Ranjan',
-    customerEmail: 'smruti.r@gmail.com',
-    spotTitle: 'Pandal — Middle Lawn',
-    amount: 499,
-    method: 'UPI (GPay)',
-    status: 'Paid',
-    type: 'Payment',
-    date: '2026-08-05 04:00 PM'
-  },
-  {
-    txnId: 'TXN-88095',
-    bookingId: 'BK-928345',
-    customerName: 'Debashish Panda',
-    customerEmail: 'deba.panda@outlook.com',
-    spotTitle: 'Pandal — Garden Edge',
-    amount: 449,
-    method: 'UPI (Paytm)',
-    status: 'Refunded',
-    type: 'Refund',
-    date: '2026-08-06 11:45 AM'
-  },
-  {
-    txnId: 'TXN-88096',
-    bookingId: 'BK-928346',
-    customerName: 'Manoj Kumar Patnaik',
-    customerEmail: 'manoj.patnaik@gmail.com',
-    spotTitle: 'Pandal — Riverside Grove',
-    amount: 499,
-    method: 'UPI',
-    status: 'Paid',
-    type: 'Payment',
-    date: '2026-08-07 12:00 PM'
-  },
-  {
-    txnId: 'TXN-88097',
-    bookingId: 'BK-928347',
-    customerName: 'Biswajit Behera',
-    customerEmail: 'biswajit.b@gmail.com',
-    spotTitle: 'Pandal — Hillside View',
-    amount: 449,
-    method: 'Debit Card',
-    status: 'Paid',
-    type: 'Payment',
-    date: '2026-08-06 03:30 PM'
-  },
-  {
-    txnId: 'TXN-88098',
-    bookingId: 'BK-928348',
-    customerName: 'Priyabrata Mishra',
-    customerEmail: 'priyabrata.m@gmail.com',
-    spotTitle: 'Pandal — Upper Block',
-    amount: 499,
-    method: 'UPI (PhonePe)',
-    status: 'Paid',
-    type: 'Payment',
-    date: '2026-08-07 06:00 PM'
-  }
-]
+// Derive a payment row from a DB booking document
+const toPayment = (b, idx) => ({
+  txnId:         b.bookingId || `TXN-${idx + 1}`,
+  bookingId:     b.bookingId || b._id,
+  customerName:  b.name || 'Unknown',
+  customerEmail: b.email || '',
+  spotTitle:     b.plotTitle || 'Picnic Spot',
+  amount:        b.totalAmount || b.totalPrice || 0,
+  method:        (b.paymentMethod || 'UPI').toUpperCase(),
+  status:        b.paymentStatus === 'paid' ? 'Paid' : b.paymentStatus === 'failed' ? 'Failed' : 'Pending',
+  type:          'Payment',
+  date:          b.createdAt ? new Date(b.createdAt).toLocaleString('en-IN') : ''
+})
 
 export default function Payments() {
-  const [payments, setPayments] = useState(INITIAL_PAYMENTS)
+  const { socket } = useSocket()
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
+
+  const fetchPayments = () => {
+    setLoading(true)
+    fetch('/api/bookings')
+      .then(r => r.json())
+      .then(d => { if (d.success && Array.isArray(d.data)) setPayments(d.data.map(toPayment)) })
+      .catch(() => toast.error('Failed to load payments'))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(() => { fetchPayments() }, [])
+
+  // Socket listener for real-time changes
+  useEffect(() => {
+    if (!socket) return
+    const handleUpdate = () => fetchPayments()
+    socket.on('plots_update', handleUpdate)
+    return () => socket.off('plots_update', handleUpdate)
+  }, [socket])
+
+  const handleDeletePayment = async (bookingId) => {
+    const item = payments.find(p => p.bookingId === bookingId || p.txnId === bookingId)
+    if (window.confirm(`Are you sure you want to permanently delete payment & booking #${bookingId}? This will remove it from all records and free the spot.`)) {
+      try {
+        const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' })
+        const data = await res.json()
+        if (data.success) {
+          setPayments(prev => prev.filter(p => p.bookingId !== bookingId && p.txnId !== bookingId))
+          toast.success(`Payment & booking #${bookingId} deleted permanently!`)
+        } else {
+          toast.error(data.message || 'Failed to delete payment record')
+        }
+      } catch (err) {
+        toast.error('Error connecting to server to delete payment')
+      }
+    }
+  }
 
   // Calculated Stats Summary
   const totalRevenue = payments
@@ -229,7 +185,7 @@ export default function Payments() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '6px' }}>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           {['All', 'Paid', 'Pending', 'Refunded'].map(st => (
             <button
               key={st}
@@ -240,6 +196,9 @@ export default function Payments() {
               {st}
             </button>
           ))}
+          <button className="btn btn-outline btn-sm" onClick={fetchPayments} disabled={loading} style={{ marginLeft: '8px', gap: '6px', display: 'flex', alignItems: 'center' }}>
+            <RefreshCw size={14} /> {loading ? 'Loading…' : 'Refresh'}
+          </button>
         </div>
       </div>
 
@@ -260,10 +219,17 @@ export default function Payments() {
             </tr>
           </thead>
           <tbody>
-            {filteredPayments.length === 0 ? (
+            {loading ? (
               <tr>
-                <td colSpan={9} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                  No payment transactions found.
+                <td colSpan={9} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                  ⏳ Loading payment transactions…
+                </td>
+              </tr>
+            ) : filteredPayments.length === 0 ? (
+              <tr>
+                <td colSpan={9} style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '12px' }}>💳</div>
+                  {payments.length === 0 ? 'No payments yet. Transactions will appear here after a user books a spot.' : 'No transactions match the current filter.'}
                 </td>
               </tr>
             ) : (
@@ -322,11 +288,14 @@ export default function Payments() {
                         </button>
                       )}
 
-                      {p.status === 'Refunded' && (
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)', italic: true }}>
-                          Refund Settled
-                        </span>
-                      )}
+                      <button 
+                        className="btn btn-outline btn-sm"
+                        style={{ padding: '4px 8px', fontSize: '11px', color: '#FA5252', borderColor: 'rgba(250, 82, 82, 0.3)', gap: '4px', display: 'inline-flex', alignItems: 'center' }}
+                        onClick={() => handleDeletePayment(p.bookingId || p.txnId)}
+                        title="Delete payment & booking record"
+                      >
+                        <Trash2 size={12} /> Delete
+                      </button>
                     </div>
                   </td>
                 </tr>

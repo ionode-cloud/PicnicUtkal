@@ -19,232 +19,11 @@ import {
   LuRuler as Ruler
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
+import { useSocket } from '../../context/SocketContext'
 
-const INITIAL_SPOTS = [
-  {
-    id: '1',
-    name: 'Nandankanan Wildlife Sanctuary & Sanctuary Grove',
-    location: 'Bhubaneswar, Odisha',
-    price: 499,
-    rating: 4.9,
-    reviews: 348,
-    capacity: 500,
-    category: 'Wilderness & Sanctuary',
-    status: 'Active',
-    badge: 'Bestseller'
-  },
-  {
-    id: '2',
-    name: 'Chilika Lake Water Lagoon & Bird Reserve',
-    location: 'Puri, Odisha',
-    price: 699,
-    rating: 4.8,
-    reviews: 214,
-    capacity: 350,
-    category: 'Lakeside & Lagoon',
-    status: 'Active',
-    badge: 'Popular'
-  },
-  {
-    id: '3',
-    name: 'Simlipal Forest Canopy & Waterfall Valley',
-    location: 'Mayurbhanj, Odisha',
-    price: 599,
-    rating: 4.9,
-    reviews: 189,
-    capacity: 400,
-    category: 'Forest & Hills',
-    status: 'Active',
-    badge: 'Top Rated'
-  },
-  {
-    id: '4',
-    name: 'Dhauli Peace Pagoda Hillside Park',
-    location: 'Bhubaneswar, Odisha',
-    price: 399,
-    rating: 4.7,
-    reviews: 156,
-    capacity: 300,
-    category: 'Heritage & Hilltop',
-    status: 'Active',
-    badge: 'Heritage'
-  },
-  {
-    id: 'cottage-rooms',
-    name: 'Barapita Deluxe Cottage & AC Suite Rooms',
-    location: 'Barapita, Odisha',
-    price: 999,
-    rating: 4.95,
-    reviews: 128,
-    capacity: 4,
-    category: 'Cottages & Luxury',
-    status: 'Active',
-    badge: 'Luxury Cottage'
-  }
-]
+const INITIAL_SPOTS = []
 
-const DEFAULT_MAP_ZONES = [
-  {
-    id: 'biotech-1',
-    name: 'Biotech Park 1 (Master Plan Ground)',
-    location: 'Barapita Ground, Deras',
-    price: 799,
-    rating: 4.9,
-    reviews: 210,
-    capacity: 200,
-    category: 'Map Zone & Pandal',
-    status: 'Active',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'default-master-plan',
-    area: '6200 sq ft',
-    description: 'Premium open-air event space with manicured lawns and riverside ambience.',
-    facilities: 'Parking, Water, Electricity, Garden, Restrooms, Stage',
-    distanceFromGate: '100 m',
-    distanceFromCanal: '50 m',
-    color: '#52B788'
-  },
-  {
-    id: 'biotech-2',
-    name: 'Biotech Park 2 (Master Plan Ground)',
-    location: 'Barapita Ground, Deras',
-    price: 699,
-    rating: 4.8,
-    reviews: 185,
-    capacity: 180,
-    category: 'Map Zone & Pandal',
-    status: 'Active',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'default-master-plan',
-    area: '5800 sq ft',
-    description: 'Versatile event ground ideal for cultural programs and gatherings.',
-    facilities: 'Parking, Water, Electricity, Garden, Restrooms',
-    distanceFromGate: '120 m',
-    distanceFromCanal: '60 m',
-    color: '#52B788'
-  },
-  {
-    id: 'pandal-1',
-    name: 'Pandal — Upper Block',
-    location: 'Riverside Canal, Barapita',
-    price: 499,
-    rating: 4.8,
-    reviews: 142,
-    capacity: 120,
-    category: 'Map Zone & Pandal',
-    status: 'Active',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'default-master-plan',
-    area: '3500 sq ft',
-    description: 'Shaded pandal structure near the canal with cool breeze.',
-    facilities: 'Shade, Seating, Lighting, Riverside View',
-    distanceFromGate: '120 m',
-    distanceFromCanal: '20 m',
-    color: '#52B788'
-  },
-  {
-    id: 'pandal-2',
-    name: 'Pandal — Center Block',
-    location: 'Central Lawn, Barapita',
-    price: 499,
-    rating: 4.7,
-    reviews: 110,
-    capacity: 100,
-    category: 'Map Zone & Pandal',
-    status: 'Booked',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'default-master-plan',
-    area: '3200 sq ft',
-    description: 'Central pandal with easy access to restroom facilities.',
-    facilities: 'Shade, Seating, Lighting, DJ Point',
-    distanceFromGate: '85 m',
-    distanceFromCanal: '70 m',
-    color: '#52B788'
-  },
-  {
-    id: 'pandal-3',
-    name: 'Pandal — West Block',
-    location: 'Forest Side, Barapita',
-    price: 399,
-    rating: 4.9,
-    reviews: 98,
-    capacity: 90,
-    category: 'Map Zone & Pandal',
-    status: 'Active',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'default-master-plan',
-    area: '2800 sq ft',
-    description: 'Cozy west-side pandal nestled among trees.',
-    facilities: 'Shade, Seating, BBQ Area, Garden View',
-    distanceFromGate: '130 m',
-    distanceFromCanal: '30 m',
-    color: '#52B788'
-  },
-  {
-    id: 'pandal-4',
-    name: 'Pandal — East Block',
-    location: 'Parking Gate Side, Barapita',
-    price: 449,
-    rating: 4.8,
-    reviews: 115,
-    capacity: 95,
-    category: 'Map Zone & Pandal',
-    status: 'Active',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'default-master-plan',
-    area: '3000 sq ft',
-    description: 'East-side pandal with direct parking access.',
-    facilities: 'Shade, Seating, Parking Access, Electricity',
-    distanceFromGate: '55 m',
-    distanceFromCanal: '150 m',
-    color: '#52B788'
-  },
-  {
-    id: 'chilika-zone-1',
-    name: 'Nalaban Bird Island Viewpoint Pandal',
-    location: 'Chilika Sanctuary, Puri',
-    price: 899,
-    rating: 4.9,
-    reviews: 164,
-    capacity: 150,
-    category: 'Map Zone & Pandal',
-    status: 'Active',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'chilika-map-02',
-    area: '4000 sq ft',
-    description: 'Waterfront picnic gazebo overlooking migratory bird sanctuary.',
-    facilities: 'Binoculars, Boat Pier, Shade, Restrooms',
-    distanceFromGate: '40 m',
-    distanceFromCanal: '10 m',
-    color: '#C9A84C'
-  },
-  {
-    id: 'simlipal-zone-1',
-    name: 'Barehipani Waterfall Overlook Pandal',
-    location: 'Simlipal Forest, Mayurbhanj',
-    price: 1099,
-    rating: 4.95,
-    reviews: 204,
-    capacity: 120,
-    category: 'Map Zone & Pandal',
-    status: 'Active',
-    badge: 'Map Zone',
-    isMapZone: true,
-    mapId: 'simlipal-map-03',
-    area: '4500 sq ft',
-    description: 'Tiered waterfall view camping site surrounded by sal forest.',
-    facilities: 'Trekking Trail, Watchtower, Campfire, Security Guard',
-    distanceFromGate: '150 m',
-    distanceFromCanal: '200 m',
-    color: '#C9A84C'
-  }
-]
+const DEFAULT_MAP_ZONES = []
 
 const BLANK_SPOT_FORM = {
   title: '',
@@ -269,7 +48,7 @@ const BLANK_SPOT_FORM = {
 }
 
 export default function Spots() {
-  const [spots, setSpots] = useState(() => [...INITIAL_SPOTS, ...DEFAULT_MAP_ZONES])
+  const [spots, setSpots] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMapFilter, setSelectedMapFilter] = useState('All')
   
@@ -296,12 +75,14 @@ export default function Spots() {
     ]
   })
 
+  const { socket, emitPlotStatusChange } = useSocket()
+
   // Load Map Management plots into Spots list dynamically
-  useEffect(() => {
+  const loadPlotsFromApi = () => {
     fetch('/api/map/plots')
       .then(r => r.json())
       .then(d => {
-        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+        if (d.success && Array.isArray(d.data)) {
           const mapZones = d.data.map(p => ({
             id: p._id,
             name: p.title,
@@ -328,15 +109,27 @@ export default function Spots() {
             priority: p.priority || 0
           }))
 
-          setSpots(prev => {
-            const existingIds = new Set(prev.map(s => s.id))
-            const newMapZones = mapZones.filter(z => !existingIds.has(z.id))
-            return [...prev, ...newMapZones]
-          })
+          setSpots(mapZones)
         }
       })
       .catch(() => {})
+  }
+
+  useEffect(() => {
+    loadPlotsFromApi()
   }, [])
+
+  // Listen to Socket.io for live updates
+  useEffect(() => {
+    if (!socket) return
+    const handleUpdate = () => loadPlotsFromApi()
+    socket.on('plots_update', handleUpdate)
+    socket.on('plot_updated', handleUpdate)
+    return () => {
+      socket.off('plots_update', handleUpdate)
+      socket.off('plot_updated', handleUpdate)
+    }
+  }, [socket])
 
   // Filter spots by Search query and Selected Map
   const filteredSpots = spots.filter(spot => {
@@ -471,6 +264,7 @@ export default function Spots() {
         await fetch(`/api/map/plots/${id}`, { method: 'DELETE' })
       } catch (e) {}
       setSpots(prev => prev.filter(s => s.id !== id))
+      if (socket) socket.emit('plots_update', { plotId: id, action: 'deleted' })
       toast.success('Spot removed successfully!')
     }
   }
@@ -510,6 +304,7 @@ export default function Spots() {
           body: JSON.stringify(payload)
         })
         setSpots(prev => prev.map(s => s.id === editingSpot.id ? { ...s, ...payload, id: editingSpot.id } : s))
+        if (socket) socket.emit('plots_update', { plotId: editingSpot.id, action: 'updated' })
         toast.success('Plot / Zone updated!')
       } else {
         const newId = Date.now().toString()
@@ -520,6 +315,7 @@ export default function Spots() {
           body: JSON.stringify({ ...payload, _id: newId })
         })
         setSpots(prev => [newSpot, ...prev])
+        if (socket) socket.emit('plots_update', { plotId: newId, action: 'created' })
         toast.success('New Plot / Zone created!')
       }
     } catch {
