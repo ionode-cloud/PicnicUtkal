@@ -125,6 +125,12 @@ export function SocketProvider({ children }) {
     }
   }
 
+  const emitFooterConfigUpdate = (footerConfig) => {
+    if (socket && isConnected) {
+      socket.emit('footer_config_update', { config: footerConfig, timestamp: new Date() })
+    }
+  }
+
   const emitMapConfigUpdate = (mapsData) => {
     if (socket && isConnected) {
       socket.emit('map_config_update', { maps: mapsData, timestamp: new Date() })
@@ -146,6 +152,7 @@ export function SocketProvider({ children }) {
         emitAboutConfigUpdate,
         emitGalleryConfigUpdate,
         emitContactConfigUpdate,
+        emitFooterConfigUpdate,
         emitMapConfigUpdate
       }}
     >
@@ -171,6 +178,7 @@ export function useSocket() {
       emitAboutConfigUpdate: () => {},
       emitGalleryConfigUpdate: () => {},
       emitContactConfigUpdate: () => {},
+      emitFooterConfigUpdate: () => {},
       emitMapConfigUpdate: () => {}
     }
   }

@@ -132,6 +132,40 @@ const DEFAULT_CONFIG = {
     address: "Plot 42, Eco Park Road, Chandaka Forest Sanctuary, Bhubaneswar, Odisha 751024",
     hours: "Monday - Sunday: 7:00 AM - 9:00 PM IST",
     mapEmbedUrl: "https://maps.google.com/?q=Bhubaneswar+Odisha"
+  },
+  footer: {
+    tagline: "Odisha's Premier Picnic Destination. Discover breathtaking nature spots, book your perfect picnic zone, and create unforgettable memories.",
+    phone: "+91 98765 43210",
+    email: "hello@picnicutkal.com",
+    address: "Bhubaneswar, Odisha 751001",
+    instagram: "https://instagram.com",
+    facebook: "https://facebook.com",
+    youtube: "https://youtube.com",
+    twitter: "https://twitter.com",
+    copyright: `© ${new Date().getFullYear()} PicnicUtkal. All rights reserved. Made with 💚 in Odisha.`,
+    quickLinksTitle: "Quick Links",
+    quickLinks: [
+      { label: 'Home', href: '/' },
+      { label: 'Picnic Spots', href: '/spots' },
+      { label: 'Live Map', href: '/map' },
+      { label: 'Gallery', href: '/gallery' },
+      { label: 'About Us', href: '/about' }
+    ],
+    zonesTitle: "Activity Zones",
+    zonesLinks: [
+      { label: '🏊 Swimming Zone', href: '/spots?zone=swimming' },
+      { label: '🎵 Music Zone', href: '/spots?zone=music' },
+      { label: '🏕 Camping Zone', href: '/spots?zone=camping' },
+      { label: '🎯 Adventure Zone', href: '/spots?zone=adventure' },
+      { label: '👨‍👩‍👧 Family Zone', href: '/spots?zone=family' }
+    ],
+    supportTitle: "Support",
+    supportLinks: [
+      { label: 'How to Book', href: '/about' },
+      { label: 'Cancellation Policy', href: '/cancel-policy' },
+      { label: 'Refund Policy', href: '/refund-policy' },
+      { label: 'Contact Support', href: '/contact' }
+    ]
   }
 }
 
@@ -144,6 +178,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
     if (location.pathname.includes('/user-view/gallery')) return 'gallery'
     if (location.pathname.includes('/user-view/contact')) return 'contact'
     if (location.pathname.includes('/user-view/logo')) return 'logo'
+    if (location.pathname.includes('/user-view/footer')) return 'footer'
     return 'home'
   }
 
@@ -182,7 +217,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   }
 
   // Socket.io real-time
-  const { isConnected, emitHomeConfigUpdate, emitAboutConfigUpdate, emitGalleryConfigUpdate, emitContactConfigUpdate } = useSocket()
+  const { isConnected, emitHomeConfigUpdate, emitAboutConfigUpdate, emitGalleryConfigUpdate, emitContactConfigUpdate, emitFooterConfigUpdate } = useSocket()
 
   // Persistent config state stored in localStorage
   const [config, setConfig] = useState(() => {
@@ -237,6 +272,21 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
 
   // Contact Form state
   const [contactData, setContactData] = useState(config.contact || DEFAULT_CONFIG.contact)
+
+  // Footer Form state
+  const [footerData, setFooterData] = useState(config.footer || DEFAULT_CONFIG.footer)
+
+  const handleSaveFooter = (e) => {
+    e.preventDefault()
+    setConfig(prev => ({ ...prev, footer: footerData }))
+    try {
+      const saved = localStorage.getItem('picnicutkal_user_view_config')
+      const parsed = saved ? JSON.parse(saved) : {}
+      localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, footer: footerData }))
+    } catch (e) {}
+    emitFooterConfigUpdate(footerData)
+    toast.success('✅ Footer details saved & broadcasted live across website!')
+  }
 
   // Sync to localStorage
   useEffect(() => {
@@ -394,25 +444,6 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
 
   return (
     <div className="admin-dashboard-container animate-fade-in" style={{ padding: '0px 24px 48px' }}>
-      
-      {/* Header Banner */}
-      <div className="admin-header-flex glass-card" style={{ marginTop: '15px', padding: '16px 24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', borderRadius: 'var(--radius-xl)' }}>
-        <div>
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '4px 12px', borderRadius: '20px', background: 'rgba(74,222,128,0.15)', color: 'var(--light-green)', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
-            <Eye size={14} /> Website Content Management
-          </div>
-          <h1 className="heading-2" style={{ fontSize: '26px' }}>User View Tab Content Editor</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '2px' }}>
-            Customize website content for Home, About, Gallery, and Contact pages directly from the Admin Panel.
-          </p>
-        </div>
-        {/* Live Socket.io status badge */}
-        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '8px 16px', borderRadius: '20px', background: isConnected ? 'rgba(74,222,128,0.12)' : 'rgba(239,68,68,0.12)', border: `1px solid ${isConnected ? 'rgba(74,222,128,0.35)' : 'rgba(239,68,68,0.35)'}`, fontSize: '12px', fontWeight: 600, color: isConnected ? 'var(--light-green)' : 'var(--error)' }}>
-          {isConnected ? <Wifi size={14} /> : <WifiOff size={14} />}
-          {isConnected ? 'Live — Changes broadcast instantly' : 'Offline — Connect to enable live sync'}
-        </div>
-      </div>
-
       {/* Submenu Navigation Tabs */}
       <div style={{ display: 'flex', gap: '8px', marginTop: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', overflowX: 'auto' }}>
         <Link
@@ -449,6 +480,13 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
           style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: 'var(--radius-md)' }}
         >
           <Sparkles size={16} /> Logo Manage
+        </Link>
+        <Link
+          to="/admin/user-view/footer"
+          className={`btn ${activeTab === 'footer' ? 'btn-gold' : 'btn-ghost'}`}
+          style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: 'var(--radius-md)' }}
+        >
+          <Layers size={16} /> Footer Manage
         </Link>
       </div>
 
@@ -1460,6 +1498,335 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                 </div>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* 6. FOOTER TAB FORM */}
+        {activeTab === 'footer' && (
+          <div className="card glass-card" style={{ padding: '28px', width: '100%' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Layers size={20} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '18px', fontWeight: 700 }}>Footer Content Management</h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Modify tagline description, contact info, social links, and copyright text</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveFooter} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* Tagline */}
+              <div className="input-wrapper">
+                <label className="input-label">Footer Tagline Text (Right side of Logo)</label>
+                <textarea
+                  className="input"
+                  rows={2}
+                  value={footerData.tagline || ''}
+                  onChange={e => setFooterData(p => ({ ...p, tagline: e.target.value }))}
+                  placeholder="Odisha's Premier Picnic Destination..."
+                  required
+                />
+              </div>
+
+              {/* Contact Info */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '14px' }}>
+                <div className="input-wrapper">
+                  <label className="input-label">Phone Number</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={footerData.phone || ''}
+                    onChange={e => setFooterData(p => ({ ...p, phone: e.target.value }))}
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+                <div className="input-wrapper">
+                  <label className="input-label">Email Address</label>
+                  <input
+                    type="email"
+                    className="input"
+                    value={footerData.email || ''}
+                    onChange={e => setFooterData(p => ({ ...p, email: e.target.value }))}
+                    placeholder="hello@picnicutkal.com"
+                  />
+                </div>
+                <div className="input-wrapper">
+                  <label className="input-label">Office Address / Location</label>
+                  <input
+                    type="text"
+                    className="input"
+                    value={footerData.address || ''}
+                    onChange={e => setFooterData(p => ({ ...p, address: e.target.value }))}
+                    placeholder="Bhubaneswar, Odisha 751001"
+                  />
+                </div>
+              </div>
+
+              {/* Social Media Links */}
+              <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)', marginBottom: '12px', display: 'block' }}>
+                  🌐 Social Media Handles & Links:
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                  <div className="input-wrapper">
+                    <label className="input-label" style={{ fontSize: '11px' }}>Instagram URL</label>
+                    <input
+                      type="url"
+                      className="input"
+                      value={footerData.instagram || ''}
+                      onChange={e => setFooterData(p => ({ ...p, instagram: e.target.value }))}
+                      placeholder="https://instagram.com/picnicutkal"
+                    />
+                  </div>
+                  <div className="input-wrapper">
+                    <label className="input-label" style={{ fontSize: '11px' }}>Facebook URL</label>
+                    <input
+                      type="url"
+                      className="input"
+                      value={footerData.facebook || ''}
+                      onChange={e => setFooterData(p => ({ ...p, facebook: e.target.value }))}
+                      placeholder="https://facebook.com/picnicutkal"
+                    />
+                  </div>
+                  <div className="input-wrapper">
+                    <label className="input-label" style={{ fontSize: '11px' }}>YouTube URL</label>
+                    <input
+                      type="url"
+                      className="input"
+                      value={footerData.youtube || ''}
+                      onChange={e => setFooterData(p => ({ ...p, youtube: e.target.value }))}
+                      placeholder="https://youtube.com/@picnicutkal"
+                    />
+                  </div>
+                  <div className="input-wrapper">
+                    <label className="input-label" style={{ fontSize: '11px' }}>Twitter / X URL</label>
+                    <input
+                      type="url"
+                      className="input"
+                      value={footerData.twitter || ''}
+                      onChange={e => setFooterData(p => ({ ...p, twitter: e.target.value }))}
+                      placeholder="https://twitter.com/picnicutkal"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Navigation Columns Management */}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--gold)' }}>
+                  🔗 Footer Navigation Columns & Links Management
+                </h4>
+
+                {/* Column 1: Quick Links */}
+                <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                  <div className="input-wrapper" style={{ marginBottom: '14px' }}>
+                    <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)' }}>Column 1 Header Title</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={footerData.quickLinksTitle || 'Quick Links'}
+                      onChange={e => setFooterData(p => ({ ...p, quickLinksTitle: e.target.value }))}
+                    />
+                  </div>
+                  <label className="input-label" style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Column 1 Links List:</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    {(footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks).map((link, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="Link Text"
+                          value={link.label}
+                          onChange={e => {
+                            const updated = [...(footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks)]
+                            updated[idx] = { ...updated[idx], label: e.target.value }
+                            setFooterData(p => ({ ...p, quickLinks: updated }))
+                          }}
+                        />
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="URL / Path (e.g. /spots)"
+                          value={link.href}
+                          onChange={e => {
+                            const updated = [...(footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks)]
+                            updated[idx] = { ...updated[idx], href: e.target.value }
+                            setFooterData(p => ({ ...p, quickLinks: updated }))
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          style={{ color: 'var(--error)' }}
+                          onClick={() => {
+                            const updated = (footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks).filter((_, i) => i !== idx)
+                            setFooterData(p => ({ ...p, quickLinks: updated }))
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-xs"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    onClick={() => {
+                      const updated = [...(footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks), { label: '', href: '/' }]
+                      setFooterData(p => ({ ...p, quickLinks: updated }))
+                    }}
+                  >
+                    <Plus size={13} /> Add Quick Link Item
+                  </button>
+                </div>
+
+                {/* Column 2: Activity Zones */}
+                <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                  <div className="input-wrapper" style={{ marginBottom: '14px' }}>
+                    <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)' }}>Column 2 Header Title</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={footerData.zonesTitle || 'Activity Zones'}
+                      onChange={e => setFooterData(p => ({ ...p, zonesTitle: e.target.value }))}
+                    />
+                  </div>
+                  <label className="input-label" style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Column 2 Links List:</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    {(footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks).map((link, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="Link Text (e.g. 🏊 Swimming Zone)"
+                          value={link.label}
+                          onChange={e => {
+                            const updated = [...(footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks)]
+                            updated[idx] = { ...updated[idx], label: e.target.value }
+                            setFooterData(p => ({ ...p, zonesLinks: updated }))
+                          }}
+                        />
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="URL / Path (e.g. /spots?zone=swimming)"
+                          value={link.href}
+                          onChange={e => {
+                            const updated = [...(footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks)]
+                            updated[idx] = { ...updated[idx], href: e.target.value }
+                            setFooterData(p => ({ ...p, zonesLinks: updated }))
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          style={{ color: 'var(--error)' }}
+                          onClick={() => {
+                            const updated = (footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks).filter((_, i) => i !== idx)
+                            setFooterData(p => ({ ...p, zonesLinks: updated }))
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-xs"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    onClick={() => {
+                      const updated = [...(footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks), { label: '', href: '/spots' }]
+                      setFooterData(p => ({ ...p, zonesLinks: updated }))
+                    }}
+                  >
+                    <Plus size={13} /> Add Zone Link Item
+                  </button>
+                </div>
+
+                {/* Column 3: Support */}
+                <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
+                  <div className="input-wrapper" style={{ marginBottom: '14px' }}>
+                    <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)' }}>Column 3 Header Title</label>
+                    <input
+                      type="text"
+                      className="input"
+                      value={footerData.supportTitle || 'Support'}
+                      onChange={e => setFooterData(p => ({ ...p, supportTitle: e.target.value }))}
+                    />
+                  </div>
+                  <label className="input-label" style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '8px', display: 'block' }}>Column 3 Links List:</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    {(footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks).map((link, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '8px', alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="Link Text"
+                          value={link.label}
+                          onChange={e => {
+                            const updated = [...(footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks)]
+                            updated[idx] = { ...updated[idx], label: e.target.value }
+                            setFooterData(p => ({ ...p, supportLinks: updated }))
+                          }}
+                        />
+                        <input
+                          type="text"
+                          className="input"
+                          placeholder="URL / Path (e.g. /contact)"
+                          value={link.href}
+                          onChange={e => {
+                            const updated = [...(footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks)]
+                            updated[idx] = { ...updated[idx], href: e.target.value }
+                            setFooterData(p => ({ ...p, supportLinks: updated }))
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-xs"
+                          style={{ color: 'var(--error)' }}
+                          onClick={() => {
+                            const updated = (footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks).filter((_, i) => i !== idx)
+                            setFooterData(p => ({ ...p, supportLinks: updated }))
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-xs"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    onClick={() => {
+                      const updated = [...(footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks), { label: '', href: '/contact' }]
+                      setFooterData(p => ({ ...p, supportLinks: updated }))
+                    }}
+                  >
+                    <Plus size={13} /> Add Support Link Item
+                  </button>
+                </div>
+              </div>
+
+              {/* Copyright Text */}
+              <div className="input-wrapper">
+                <label className="input-label">Copyright Text (Bottom Bar)</label>
+                <input
+                  type="text"
+                  className="input"
+                  value={footerData.copyright || ''}
+                  onChange={e => setFooterData(p => ({ ...p, copyright: e.target.value }))}
+                  placeholder="© 2026 PicnicUtkal. All rights reserved. Made with 💚 in Odisha."
+                />
+              </div>
+
+              {/* Save Button */}
+              <button type="submit" className="btn btn-gold btn-lg w-full" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
+                <Save size={20} /> Save All Footer Content
+              </button>
+            </form>
           </div>
         )}
 

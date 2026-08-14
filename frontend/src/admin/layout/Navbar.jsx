@@ -57,12 +57,6 @@ export default function Navbar({ toggleSidebar }) {
           <button onClick={toggleTheme} className="admin-navbar-icon-btn" title="Toggle Theme">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
-
-          {/* Notifications bell */}
-          <button className="admin-navbar-icon-btn relative" title="Notifications">
-            <Bell size={18} />
-            <span className="admin-navbar-notification-badge">5</span>
-          </button>
         </div>
 
         {/* User Identity Info */}

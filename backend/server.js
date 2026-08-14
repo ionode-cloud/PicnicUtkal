@@ -81,6 +81,11 @@ io.on('connection', (socket) => {
     io.emit('logo_config_update', data)
   })
 
+  socket.on('footer_config_update', (data) => {
+    console.log(`[Socket.io] Footer config updated`)
+    io.emit('footer_config_update', data)
+  })
+
   // Broadcast real-time booking created
   socket.on('new_booking', (bookingData) => {
     console.log(`[Socket.io] New booking created:`, bookingData.pandalName)
