@@ -119,15 +119,15 @@ const mapRoutes     = require('./src/routes/map')
 const bookingRoutes = require('./src/routes/bookings')
 const contactRoutes = require('./src/routes/contact')
 
-// Mount routes
-app.use('/api/auth',     authRoutes)
-app.use('/api/spots',    spotRoutes)
-app.use('/api/map',      mapRoutes)
-app.use('/api/bookings', bookingRoutes)
-app.use('/api/contact',  contactRoutes)
+// Mount routes (both /api and root paths supported for production domain routing)
+app.use(['/api/auth', '/auth'], authRoutes)
+app.use(['/api/spots', '/spots'], spotRoutes)
+app.use(['/api/map', '/map'], mapRoutes)
+app.use(['/api/bookings', '/bookings'], bookingRoutes)
+app.use(['/api/contact', '/contact'], contactRoutes)
 
 // Health Check
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({ 
     status: 'healthy', 
     timestamp: new Date(),
