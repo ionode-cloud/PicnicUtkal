@@ -35,12 +35,10 @@ export function SocketProvider({ children }) {
 
     socketIo.on('connect', () => {
       setIsConnected(true)
-      console.log('⚡ [Socket.io] Connected to real-time server:', socketIo.id)
     })
 
     socketIo.on('disconnect', () => {
       setIsConnected(false)
-      console.log('⚡ [Socket.io] Disconnected from real-time server')
     })
 
     // Listen to live visitors counter
