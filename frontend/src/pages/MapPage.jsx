@@ -10,6 +10,7 @@ import {
 } from 'react-icons/lu'
 import masterPlanImg from '../assets/master-plan.png'
 import { useSocket } from '../context/SocketContext'
+import { buildApiUrl } from '../services/api'
 
 
 
@@ -58,12 +59,12 @@ export default function MapPage() {
   const { socket } = useSocket()
 
   const fetchMapPlots = () => {
-    fetch('/api/map/maps')
+    fetch(buildApiUrl('/api/map/maps'))
       .then(r => r.json())
       .then(d => { if (d.success && Array.isArray(d.data) && d.data.length > 0) setMaps(d.data) })
       .catch(() => {})
 
-    fetch('/api/map/plots')
+    fetch(buildApiUrl('/api/map/plots'))
       .then(r => r.json())
       .then(d => { if (d.success && Array.isArray(d.data)) setPlots(d.data) })
       .catch(() => {})

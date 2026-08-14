@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast'
 import masterPlanImg from '../../assets/master-plan.png'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 const DEFAULT_MAPS = [
   {
@@ -341,7 +342,7 @@ export default function AdminMapManagement() {
 
   const fetchPlots = async () => {
     try {
-      const res = await fetch('/api/map/plots')
+      const res = await fetch(buildApiUrl('/api/map/plots'))
       const data = await res.json()
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         setPlots(data.data)
@@ -392,7 +393,7 @@ export default function AdminMapManagement() {
           ? form.facilities.split(',').map(f => f.trim()).filter(Boolean)
           : form.facilities
       }
-      const url    = editing ? `/api/map/plots/${editing}` : '/api/map/plots'
+      const url    = editing ? buildApiUrl(`/api/map/plots/${editing}`) : buildApiUrl('/api/map/plots')
       const method = editing ? 'PUT' : 'POST'
       const res    = await fetch(url, {
         method,
@@ -431,7 +432,7 @@ export default function AdminMapManagement() {
 
   const handleDeletePlot = async (id) => {
     try {
-      const res = await fetch(`/api/map/plots/${id}`, { method: 'DELETE' })
+      const res = await fetch(buildApiUrl(`/api/map/plots/${id}`), { method: 'DELETE' })
       const data = await res.json()
       if (data.success) {
         toast.success('Plot deleted')

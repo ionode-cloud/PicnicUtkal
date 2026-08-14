@@ -4,6 +4,7 @@ import { useSocket } from '../context/SocketContext'
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useAuthStore } from '../store'
+import { buildApiUrl } from '../services/api'
 import {
   LuMapPin as MapPin, LuStar as Star, LuShare2 as Share2, LuCalendar as CalendarIcon,
   LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
@@ -301,7 +302,7 @@ export default function PlotDetail() {
       }
     }, 2000)
 
-    fetch(`/api/map/plots/${id}`)
+    fetch(buildApiUrl(`/api/map/plots/${id}`))
       .then(r => r.json())
       .then(d => {
         if (!isMounted) return

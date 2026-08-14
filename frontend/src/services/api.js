@@ -1,8 +1,26 @@
 import axios from 'axios'
 import { useAuthStore } from '../store'
 
+export const getApiBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL
+  if (envUrl) {
+    return envUrl.replace(/\/$/, '')
+  }
+  return '/api'
+}
+
+export const API_BASE_URL = getApiBaseUrl()
+
+export const buildApiUrl = (path) => {
+  if (!path) return API_BASE_URL
+  if (path.startsWith('http://') || path.startsWith('https://')) return path
+  const cleanPath = path.startsWith('/api') ? path.substring(4) : path
+  const formattedPath = cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`
+  return `${API_BASE_URL}${formattedPath}`
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
 })

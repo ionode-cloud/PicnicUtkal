@@ -20,6 +20,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 const INITIAL_SPOTS = []
 
@@ -79,7 +80,7 @@ export default function Spots() {
 
   // Load Map Management plots into Spots list dynamically
   const loadPlotsFromApi = () => {
-    fetch('/api/map/plots')
+    fetch(buildApiUrl('/api/map/plots'))
       .then(r => r.json())
       .then(d => {
         if (d.success && Array.isArray(d.data)) {
@@ -261,7 +262,7 @@ export default function Spots() {
   const handleDelete = async (id) => {
     if (window.confirm('Are you sure you want to remove this picnic spot?')) {
       try {
-        await fetch(`/api/map/plots/${id}`, { method: 'DELETE' })
+        await fetch(buildApiUrl(`/api/map/plots/${id}`), { method: 'DELETE' })
       } catch (e) {}
       setSpots(prev => prev.filter(s => s.id !== id))
       if (socket) socket.emit('plots_update', { plotId: id, action: 'deleted' })
@@ -298,7 +299,7 @@ export default function Spots() {
 
     try {
       if (editingSpot) {
-        await fetch(`/api/map/plots/${editingSpot.id}`, {
+        await fetch(buildApiUrl(`/api/map/plots/${editingSpot.id}`), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
@@ -309,7 +310,7 @@ export default function Spots() {
       } else {
         const newId = Date.now().toString()
         const newSpot = { id: newId, ...payload, rating: 5.0, reviews: 1 }
-        await fetch('/api/map/plots', {
+        await fetch(buildApiUrl('/api/map/plots'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...payload, _id: newId })

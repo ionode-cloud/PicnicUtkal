@@ -17,6 +17,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 // Derive a payment row from a DB booking document
 const toPayment = (b, idx) => ({
@@ -41,7 +42,7 @@ export default function Payments() {
 
   const fetchPayments = () => {
     setLoading(true)
-    fetch('/api/bookings')
+    fetch(buildApiUrl('/api/bookings'))
       .then(r => r.json())
       .then(d => { if (d.success && Array.isArray(d.data)) setPayments(d.data.map(toPayment)) })
       .catch(() => toast.error('Failed to load payments'))
@@ -62,7 +63,7 @@ export default function Payments() {
     const item = payments.find(p => p.bookingId === bookingId || p.txnId === bookingId)
     if (window.confirm(`Are you sure you want to permanently delete payment & booking #${bookingId}? This will remove it from all records and free the spot.`)) {
       try {
-        const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' })
+        const res = await fetch(buildApiUrl(`/api/bookings/${bookingId}`), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
           setPayments(prev => prev.filter(p => p.bookingId !== bookingId && p.txnId !== bookingId))

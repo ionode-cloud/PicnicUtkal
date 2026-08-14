@@ -29,6 +29,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 // Normalise a raw DB booking doc into the shape the component expects
 const normalise = (b) => ({
@@ -62,7 +63,7 @@ export default function Bookings() {
 
   const fetchBookings = () => {
     setLoading(true)
-    fetch('/api/bookings')
+    fetch(buildApiUrl('/api/bookings'))
       .then(r => r.json())
       .then(d => { if (d.success && Array.isArray(d.data)) setBookings(d.data.map(normalise)) })
       .catch(() => toast.error('Failed to load bookings'))
@@ -137,7 +138,7 @@ export default function Bookings() {
     const id = bk?._id || bookingId
     const apiStatus = newStatus.toLowerCase()
     try {
-      await fetch(`/api/bookings/${id}`, {
+      await fetch(buildApiUrl(`/api/bookings/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: apiStatus })
@@ -161,7 +162,7 @@ export default function Bookings() {
     const bk = bookings.find(b => b.bookingId === bookingId || b._id === bookingId)
     if (window.confirm(`Are you sure you want to permanently delete booking #${bookingId} for ${bk?.name || 'guest'}? This will remove it from All Bookings and free the spot date.`)) {
       try {
-        const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' })
+        const res = await fetch(buildApiUrl(`/api/bookings/${bookingId}`), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
           setBookings(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
@@ -180,7 +181,7 @@ export default function Bookings() {
   const handleResetSpot = async (booking) => {
     const id = booking._id || booking.bookingId
     try {
-      const res = await fetch(`/api/bookings/${id}`, {
+      const res = await fetch(buildApiUrl(`/api/bookings/${id}`), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'cancelled' })
@@ -208,7 +209,7 @@ export default function Bookings() {
       if (bk.isExpired || bk.bookingStatus === 'Completed' || bk.status === 'confirmed') {
         count++
         const id = bk._id || bk.bookingId
-        await fetch(`/api/bookings/${id}`, {
+        await fetch(buildApiUrl(`/api/bookings/${id}`), {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'cancelled' })

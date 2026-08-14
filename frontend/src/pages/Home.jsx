@@ -13,6 +13,7 @@ import 'swiper/css'
 import 'swiper/css/pagination'
 import 'swiper/css/effect-fade'
 import { useSocket } from '../context/SocketContext'
+import { buildApiUrl } from '../services/api'
 
 const HERO_IMAGES = [
   'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=85',
@@ -229,7 +230,7 @@ export default function Home() {
   // Load featured spots from backend (same source as admin Spots panel)
   const [featuredSpots, setFeaturedSpots] = useState([])
   const fetchFeatured = () => {
-    fetch('/api/map/plots')
+    fetch(buildApiUrl('/api/map/plots'))
       .then(r => r.json())
       .then(d => {
         if (d.success && Array.isArray(d.data) && d.data.length > 0) {
@@ -369,19 +370,6 @@ export default function Home() {
                   value={searchData.date}
                   min={new Date().toISOString().split('T')[0]}
                   onChange={e => setSearchData(d => ({ ...d, date: e.target.value }))}
-                />
-              </div>
-              <div className="hero__search-divider" />
-              <div className="hero__search-field">
-                <label htmlFor="search-people"><Users size={16} className="hero__search-icon" />Guests</label>
-                <input
-                  id="search-people"
-                  type="number"
-                  placeholder="How many people?"
-                  min={1}
-                  max={500}
-                  value={searchData.people}
-                  onChange={e => setSearchData(d => ({ ...d, people: e.target.value }))}
                 />
               </div>
               <button type="submit" className="btn btn-gold btn-lg hero__search-btn" id="hero-search-btn">

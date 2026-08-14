@@ -17,7 +17,7 @@ import {
 import toast from 'react-hot-toast'
 
 import { useSocket } from '../../context/SocketContext'
-import { useEffect } from 'react'
+import { buildApiUrl } from '../../services/api'
 
 export default function Users() {
   const [usersList, setUsersList] = useState(() => {
@@ -33,7 +33,7 @@ export default function Users() {
   const [searchQuery, setSearchQuery] = useState('')
 
   const fetchUsers = () => {
-    fetch('/api/auth/users')
+    fetch(buildApiUrl('/api/auth/users'))
       .then(r => r.json())
       .then(d => {
         if (d.success && Array.isArray(d.data)) {

@@ -3,6 +3,7 @@ import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
 import { useLocation, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useAuthStore } from '../store'
+import { buildApiUrl } from '../services/api'
 import { motion } from 'framer-motion'
 import {
   LuUser as User, LuMail as Mail, LuPhone as Phone, LuCalendar as Calendar, LuUsers as Users, LuFileText as FileText,
@@ -144,7 +145,7 @@ export default function BookingPage() {
 
       if (plotId) {
         setFetching(true)
-        fetch(`/api/map/plots/${plotId}`)
+        fetch(buildApiUrl(`/api/map/plots/${plotId}`))
           .then(r => r.json())
           .then(d => {
             if (d.success) setPlot(d.data)
@@ -154,7 +155,7 @@ export default function BookingPage() {
           .finally(() => setFetching(false))
       } else if (spotId) {
         setFetching(true)
-        fetch(`/api/spots/${spotId}`)
+        fetch(buildApiUrl(`/api/spots/${spotId}`))
           .then(r => r.json())
           .then(d => {
             if (d.success) setSpot(d.data)
@@ -184,7 +185,7 @@ export default function BookingPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/bookings', {
+      const res = await fetch(buildApiUrl('/api/bookings'), {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

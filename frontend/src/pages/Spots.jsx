@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async'
 import { Link, useSearchParams } from 'react-router-dom'
 import { LuSearch as Search, LuLayoutGrid as Grid, LuList as List, LuMapPin as MapPin, LuStar as Star, LuSlidersHorizontal as SlidersHorizontal, LuX as X, LuChevronDown as ChevronDown, LuLoader as Loader } from 'react-icons/lu'
 import { useSocket } from '../context/SocketContext'
+import { buildApiUrl } from '../services/api'
 
 // Helper: normalize a plot from admin API into public spot shape
 function normalizePlot(p) {
@@ -51,7 +52,7 @@ export default function Spots() {
 
   // Load spots from backend API (same source as admin Spots panel)
   const fetchSpots = () => {
-    fetch('/api/map/plots')
+    fetch(buildApiUrl('/api/map/plots'))
       .then(r => r.json())
       .then(d => {
         if (d.success && Array.isArray(d.data) && d.data.length > 0) {

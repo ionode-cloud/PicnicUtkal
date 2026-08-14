@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { buildApiUrl } from '../../services/api'
 import { useParams, Link } from 'react-router-dom'
 import { 
   LuPrinter as Printer, 
@@ -67,7 +68,7 @@ export default function InvoicePage() {
 
   useEffect(() => {
     if (!id) return
-    fetch(`/api/bookings/${id}`)
+    fetch(buildApiUrl(`/api/bookings/${id}`))
       .then(r => r.json())
       .then(d => { if (d.success && d.data) setRealBooking(d.data) })
       .catch(() => {})

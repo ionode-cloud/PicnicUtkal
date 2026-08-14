@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { LuChevronLeft as ChevronLeft, LuChevronRight as ChevronRight, LuCalendar as Calendar, LuCircleCheck as CheckCircle, LuRefreshCw as RefreshCw } from 'react-icons/lu'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 import toast from 'react-hot-toast'
 
 export default function SpotAvailabilityCalendar({
@@ -55,7 +56,7 @@ export default function SpotAvailabilityCalendar({
   const fetchAvailability = () => {
     if (!spotId) return
     setLoading(true)
-    fetch(`/api/spots/${spotId}/availability`)
+    fetch(buildApiUrl(`/api/spots/${spotId}/availability`))
       .then(r => r.json())
       .then(d => {
         if (d.success && Array.isArray(d.bookedDates)) {

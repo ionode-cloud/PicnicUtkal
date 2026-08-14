@@ -4,8 +4,19 @@ import toast from 'react-hot-toast'
 
 const SocketContext = createContext(null)
 
-// Socket URL - fallback to current host port 5300 or environment
-const SOCKET_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5300'
+const getSocketUrl = () => {
+  if (import.meta.env.VITE_SOCKET_URL) return import.meta.env.VITE_SOCKET_URL
+  if (import.meta.env.VITE_BACKEND_URL) return import.meta.env.VITE_BACKEND_URL
+  if (import.meta.env.VITE_API_URL) {
+    try {
+      const u = new URL(import.meta.env.VITE_API_URL)
+      return u.origin
+    } catch (e) {}
+  }
+  return 'http://localhost:5300'
+}
+
+const SOCKET_URL = getSocketUrl()
 
 export function SocketProvider({ children }) {
   const [socket, setSocket] = useState(null)

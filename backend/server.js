@@ -18,7 +18,7 @@ const server = http.createServer(app)
 
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',').map(url => url.trim())
-  : ['http://localhost:5173', 'http://localhost:3000']
+  : ['https://picnicutkal.com', 'https://www.picnicutkal.com', 'http://localhost:5173', 'http://localhost:3000']
 
 // Initialize Socket.io with CORS
 const io = new Server(server, {

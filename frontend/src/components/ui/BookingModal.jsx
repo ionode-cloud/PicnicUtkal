@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react'
+import { useSocket } from '../../hooks/useSocket'
+import { buildApiUrl } from '../../services/api'
 import SpotAvailabilityCalendar from './SpotAvailabilityCalendar'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -129,7 +131,7 @@ export default function BookingModal({ plot, onClose }) {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/bookings', {
+      const res = await fetch(buildApiUrl('/api/bookings'), {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

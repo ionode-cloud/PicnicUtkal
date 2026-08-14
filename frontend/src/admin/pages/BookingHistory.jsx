@@ -20,6 +20,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 // Normalise a DB booking for this page
 const normalise = (b) => ({
@@ -51,7 +52,7 @@ export default function BookingHistory() {
 
   const fetchHistory = () => {
     setLoading(true)
-    fetch('/api/bookings')
+    fetch(buildApiUrl('/api/bookings'))
       .then(r => r.json())
       .then(d => { if (d.success && Array.isArray(d.data)) setHistory(d.data.map(normalise)) })
       .catch(() => toast.error('Failed to load booking history'))
@@ -72,7 +73,7 @@ export default function BookingHistory() {
     const bk = history.find(b => b.bookingId === bookingId || b._id === bookingId)
     if (window.confirm(`Are you sure you want to permanently delete booking #${bookingId} for ${bk?.name || 'guest'}? This will remove it from all records and free the spot.`)) {
       try {
-        const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' })
+        const res = await fetch(buildApiUrl(`/api/bookings/${bookingId}`), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
           setHistory(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))

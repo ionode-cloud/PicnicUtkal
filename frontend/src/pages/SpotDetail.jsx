@@ -3,6 +3,7 @@ import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { useAuthStore } from '../store'
+import { buildApiUrl } from '../services/api'
 import {
   LuMapPin as MapPin, LuStar as Star, LuShare2 as Share2, LuCalendar as CalendarIcon,
   LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
@@ -211,9 +212,31 @@ export default function SpotDetail() {
         }, 300)
       }
     }
-  }, [id, spot])
+  }, [id])
 
-  const spot = SPOTS_DB[id] || SPOTS_DB['1']
+  const [dynamicSpot, setDynamicSpot] = useState(null)
+
+  useEffect(() => {
+    if (!id) return
+    fetch(buildApiUrl(`/api/map/plots/${id}`))
+      .then(r => r.json())
+      .then(d => {
+        if (d.success && d.data) {
+          setDynamicSpot({
+            id: d.data._id || d.data.id,
+            name: d.data.title || d.data.name,
+            location: d.data.mapId === 'chilika-map-02' ? 'Chilika Lake, Puri' : (d.data.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Ground, Deras'),
+            basePrice: d.data.price || 499,
+            description: d.data.description || 'Exclusive picnic spot surrounded by lush greenery.',
+            images: Array.isArray(d.data.images) && d.data.images.length > 0 ? d.data.images : [d.data.image || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80'],
+            zones: []
+          })
+        }
+      })
+      .catch(() => {})
+  }, [id])
+
+  const spot = dynamicSpot || SPOTS_DB[id] || SPOTS_DB['1']
 
   const handleZoneToggle = (zoneId) => {
     setSelectedZones(prev =>

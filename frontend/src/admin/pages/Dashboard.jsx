@@ -11,6 +11,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 import toast from 'react-hot-toast'
 
 const COLORS = ['#1B4332', '#C9A84C', '#52B788', '#2D6A4F', '#38BDF8', '#F59E0B']
@@ -29,9 +30,9 @@ export default function Dashboard() {
     setLoading(true)
     try {
       const [bookingsRes, plotsRes, usersRes] = await Promise.allSettled([
-        fetch('/api/bookings').then(r => r.json()),
-        fetch('/api/map/plots').then(r => r.json()),
-        fetch('/api/auth/users').then(r => r.json())
+        fetch(buildApiUrl('/api/bookings')).then(r => r.json()),
+        fetch(buildApiUrl('/api/map/plots')).then(r => r.json()),
+        fetch(buildApiUrl('/api/auth/users')).then(r => r.json())
       ])
 
       if (bookingsRes.status === 'fulfilled' && bookingsRes.value?.success && Array.isArray(bookingsRes.value.data)) {

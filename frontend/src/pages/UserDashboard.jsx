@@ -11,6 +11,7 @@ import {
 } from 'react-icons/lu'
 import { useAuthStore } from '../store'
 import { useSocket } from '../context/SocketContext'
+import { buildApiUrl } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function UserDashboard() {
@@ -137,7 +138,7 @@ export default function UserDashboard() {
     const bk = bookings.find(b => b.bookingId === bookingId || b._id === bookingId)
     if (window.confirm(`Are you sure you want to cancel & delete booking #${bookingId}? This will remove it from your bookings, payment records, and free the spot.`)) {
       try {
-        const res = await fetch(`/api/bookings/${bookingId}`, { method: 'DELETE' })
+        const res = await fetch(buildApiUrl(`/api/bookings/${bookingId}`), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
           setBookings(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
