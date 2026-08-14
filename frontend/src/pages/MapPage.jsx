@@ -61,7 +61,15 @@ export default function MapPage() {
   const fetchMapPlots = () => {
     fetch(buildApiUrl('/api/map/maps'))
       .then(r => r.json())
-      .then(d => { if (d.success && Array.isArray(d.data) && d.data.length > 0) setMaps(d.data) })
+      .then(d => {
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          setMaps(d.data)
+          setSelectedMapId(prev => (prev && d.data.some(m => m._id === prev)) ? prev : d.data[0]._id)
+          try {
+            localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(d.data))
+          } catch (e) {}
+        }
+      })
       .catch(() => {})
 
     fetch(buildApiUrl('/api/map/plots'))
@@ -73,13 +81,14 @@ export default function MapPage() {
   /* Real-time Socket.io listener for maps and plot updates */
   useEffect(() => {
     fetchMapPlots()
-  }, [selectedMapId])
+  }, [])
 
   useEffect(() => {
     if (!socket) return
     const handler = (data) => {
-      if (data && Array.isArray(data.maps)) {
+      if (data && Array.isArray(data.maps) && data.maps.length > 0) {
         setMaps(data.maps)
+        setSelectedMapId(prev => (prev && data.maps.some(m => m._id === prev)) ? prev : data.maps[0]._id)
         try {
           localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(data.maps))
         } catch (e) {}
@@ -94,10 +103,13 @@ export default function MapPage() {
     socket.on('map_config_update', handler)
     socket.on('plot_updated', handlePlotUpdate)
     socket.on('plots_update', fetchMapPlots)
+    socket.on('home_config_update', fetchMapPlots)
+
     return () => {
       socket.off('map_config_update', handler)
       socket.off('plot_updated', handlePlotUpdate)
       socket.off('plots_update', fetchMapPlots)
+      socket.off('home_config_update', fetchMapPlots)
     }
   }, [socket])
 
@@ -141,13 +153,28 @@ export default function MapPage() {
       .catch(() => {})
   }
 
-  const isDefaultMapSelected = selectedMapId === 'default-master-plan' || selectedMapId === 'default-map'
+  const isPrimaryMapSelected = 
+    selectedMapId === 'default-master-plan' || 
+    selectedMapId === 'default-map' || 
+    selectedMapId === maps[0]?._id || 
+    currentMap?.isDefault ||
+    !selectedMapId
 
   const visiblePlots = plots.filter(p => {
-    const pMapId = p.mapId || 'default-master-plan'
-    const matchMap = isDefaultMapSelected
-      ? (pMapId === 'default-master-plan' || pMapId === 'default-map' || !p.mapId)
-      : (pMapId === selectedMapId)
+    let matchMap = false
+    if (!p.mapId) {
+      matchMap = isPrimaryMapSelected
+    } else if (isPrimaryMapSelected) {
+      matchMap = (
+        p.mapId === 'default-master-plan' || 
+        p.mapId === 'default-map' || 
+        p.mapId === selectedMapId || 
+        p.mapId === currentMap?._id || 
+        p.mapId === maps[0]?._id
+      )
+    } else {
+      matchMap = (p.mapId === selectedMapId || p.mapId === currentMap?._id)
+    }
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase())
     return matchMap && matchSearch
   })

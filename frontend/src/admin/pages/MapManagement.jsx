@@ -359,14 +359,25 @@ export default function AdminMapManagement() {
   useEffect(() => { fetchPlots() }, [])
 
   // Filter plots for current selected map
-  const isDefaultMapSelected = selectedMapId === 'default-master-plan' || selectedMapId === 'default-map'
+  const isPrimaryMapSelected = 
+    selectedMapId === 'default-master-plan' || 
+    selectedMapId === 'default-map' || 
+    selectedMapId === maps[0]?._id || 
+    currentMap?.isDefault ||
+    !selectedMapId
 
   const activePlots = plots.filter(p => {
-    const pMapId = p.mapId || 'default-master-plan'
-    if (isDefaultMapSelected) {
-      return pMapId === 'default-master-plan' || pMapId === 'default-map' || !p.mapId
+    if (!p.mapId) return isPrimaryMapSelected
+    if (isPrimaryMapSelected) {
+      return (
+        p.mapId === 'default-master-plan' || 
+        p.mapId === 'default-map' || 
+        p.mapId === selectedMapId || 
+        p.mapId === currentMap?._id || 
+        p.mapId === maps[0]?._id
+      )
     }
-    return pMapId === selectedMapId
+    return p.mapId === selectedMapId || p.mapId === currentMap?._id
   })
 
   // Save Plot / Zone
