@@ -123,7 +123,7 @@ export default function Navbar() {
                     >
                       {(user?.role === 'admin' || user?.role === 'superadmin' || user?.role === 'staff') ? (
                         <>
-                          <Link to="/admin" className="navbar__dropdown-item navbar__dropdown-item--admin" onClick={() => setUserMenuOpen(false)}>
+                          <Link to="/admin/dashboard" className="navbar__dropdown-item navbar__dropdown-item--admin" onClick={() => setUserMenuOpen(false)}>
                             <ShieldCheck size={15} /> Admin Console
                           </Link>
                           <Link to="/admin/spots" className="navbar__dropdown-item" onClick={() => setUserMenuOpen(false)}>

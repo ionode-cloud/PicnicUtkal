@@ -255,7 +255,7 @@ export default function UserDashboard() {
 
             {user?.role === 'admin' && (
               <Link
-                to="/admin"
+                to="/admin/dashboard"
                 className="udash-nav-btn"
                 style={{ color: 'var(--gold)', borderColor: 'rgba(212, 175, 55, 0.3)', marginTop: '8px' }}
               >

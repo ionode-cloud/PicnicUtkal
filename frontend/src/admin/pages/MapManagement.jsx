@@ -8,7 +8,24 @@ import {
 import toast from 'react-hot-toast'
 import masterPlanImg from '../../assets/master-plan.png'
 import { useSocket } from '../../context/SocketContext'
-import { buildApiUrl } from '../../services/api'
+function resolveMapImage(imgSrc) {
+  if (!imgSrc) return masterPlanImg
+  if (typeof imgSrc === 'string') {
+    const s = imgSrc.trim()
+    if (!s) return masterPlanImg
+    if (s.startsWith('/uploads')) {
+      const backendOrigin = import.meta.env.VITE_API_URL 
+        ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+        : 'http://localhost:5300'
+      return `${backendOrigin}${s}`
+    }
+    if (s.includes('master-plan') || s.startsWith('/src/') || s.startsWith('/assets/')) {
+      return masterPlanImg
+    }
+    return s
+  }
+  return masterPlanImg
+}
 
 const DEFAULT_MAPS = [
   {
@@ -638,7 +655,15 @@ export default function AdminMapManagement() {
 
           {/* Map Image Canvas */}
           <div className="admin-map-canvas" ref={mapRef} onClick={handleMapClick}>
-            <img src={currentMap?.image || masterPlanImg} alt={currentMap?.title || 'Master Plan'} className="admin-map-preview-img" />
+            <img 
+              src={resolveMapImage(currentMap?.image)} 
+              alt={currentMap?.title || 'Master Plan'} 
+              className="admin-map-preview-img" 
+              onError={(e) => {
+                e.target.onerror = null
+                e.target.src = masterPlanImg
+              }}
+            />
             
             {/* Hotspots for Active Map */}
             {activePlots.map(plot => {

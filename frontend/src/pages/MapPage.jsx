@@ -28,6 +28,25 @@ function buildPathD(points, svgW, svgH) {
   return 'M ' + pts.join(' L ')
 }
 
+function resolveMapImage(imgSrc) {
+  if (!imgSrc) return masterPlanImg
+  if (typeof imgSrc === 'string') {
+    const s = imgSrc.trim()
+    if (!s) return masterPlanImg
+    if (s.startsWith('/uploads')) {
+      const backendOrigin = import.meta.env.VITE_API_URL 
+        ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+        : 'http://localhost:5300'
+      return `${backendOrigin}${s}`
+    }
+    if (s.includes('master-plan') || s.startsWith('/src/') || s.startsWith('/assets/')) {
+      return masterPlanImg
+    }
+    return s
+  }
+  return masterPlanImg
+}
+
 export default function MapPage() {
   const navigate = useNavigate()
   const [mapVisitDate, setMapVisitDate] = useState('')
@@ -297,10 +316,15 @@ export default function MapPage() {
               {/* Landscape Master Plan Image */}
               <img
                 ref={imgRef}
-                src={currentMap?.image || masterPlanImg}
+                src={resolveMapImage(currentMap?.image)}
                 alt={currentMap?.title || 'Master Plan'}
                 className="mp-map-image"
                 onLoad={() => setImgLoaded(true)}
+                onError={(e) => {
+                  e.target.onerror = null
+                  e.target.src = masterPlanImg
+                  setImgLoaded(true)
+                }}
                 draggable={false}
               />
 
