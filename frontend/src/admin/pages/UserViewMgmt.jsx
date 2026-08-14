@@ -5,10 +5,12 @@ import {
   LuSave as Save, LuPlus as Plus, LuTrash2 as Trash2, LuSquarePen as Edit3, LuCheck as Check,
   LuSparkles as Sparkles, LuPhone as Phone, LuMapPin as MapPin, LuClock as Clock, LuGlobe as Globe,
   LuRefreshCw as RefreshCw, LuHeart as Heart, LuStar as Star, LuShieldCheck as ShieldCheck,
-  LuLayers as Layers, LuWifi as Wifi, LuWifiOff as WifiOff, LuUpload as Upload, LuLink as LinkIcon
+  LuLayers as Layers, LuWifi as Wifi, LuWifiOff as WifiOff, LuUpload as Upload, LuLink as LinkIcon,
+  LuLeaf as Leaf
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { useLogo } from '../../context/LogoContext'
 
 const DEFAULT_CONFIG = {
   home: {
@@ -141,10 +143,43 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
     if (location.pathname.includes('/user-view/about')) return 'about'
     if (location.pathname.includes('/user-view/gallery')) return 'gallery'
     if (location.pathname.includes('/user-view/contact')) return 'contact'
+    if (location.pathname.includes('/user-view/logo')) return 'logo'
     return 'home'
   }
 
   const activeTab = getActiveSubTab()
+
+  // Logo management state
+  const { logoConfig, updateLogo } = useLogo()
+  const [logoForm, setLogoForm] = useState(logoConfig)
+
+  useEffect(() => {
+    setLogoForm(logoConfig)
+  }, [logoConfig])
+
+  const handleSaveLogo = (e) => {
+    e?.preventDefault()
+    updateLogo(logoForm)
+    toast.success('✅ Site Logo updated & broadcasted live across the website!')
+  }
+
+  const handleLogoFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size exceeds 5MB limit')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (evt) => {
+      const dataUrl = evt.target.result
+      const updated = { ...logoForm, type: 'image', url: dataUrl }
+      setLogoForm(updated)
+      updateLogo(updated)
+      toast.success('✅ Local logo uploaded & applied live!')
+    }
+    reader.readAsDataURL(file)
+  }
 
   // Socket.io real-time
   const { isConnected, emitHomeConfigUpdate, emitAboutConfigUpdate, emitGalleryConfigUpdate, emitContactConfigUpdate } = useSocket()
@@ -175,6 +210,23 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   // About Form state
   const [aboutData, setAboutData] = useState(config.about || DEFAULT_CONFIG.about)
   const [newFeatureText, setNewFeatureText] = useState('')
+  const [aboutImgInputMode, setAboutImgInputMode] = useState('file') // 'file' | 'url'
+
+  const handleAboutHeroFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size should be under 5MB!')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setAboutData(p => ({ ...p, heroImage: reader.result }))
+        toast.success('Local image selected for About Page!')
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   // Gallery Form state
   const [galleryItems, setGalleryItems] = useState(config.gallery || DEFAULT_CONFIG.gallery)
@@ -391,6 +443,13 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
         >
           <Mail size={16} /> Contact Tab
         </Link>
+        <Link
+          to="/admin/user-view/logo"
+          className={`btn ${activeTab === 'logo' ? 'btn-gold' : 'btn-ghost'}`}
+          style={{ padding: '8px 16px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px', borderRadius: 'var(--radius-md)' }}
+        >
+          <Sparkles size={16} /> Logo Manage
+        </Link>
       </div>
 
       {/* TAB CONTENT PANELS */}
@@ -569,19 +628,19 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
               </div>
             </div>
 
-            {/* SECTION 2: WHY PICNICUTKAL SECTION CONTROLS */}
+            {/* SECTION 2: WHY PICNICUTKAL SECTION (TEXT, IMAGES & CARDS) */}
             <div className="card glass-card" style={{ padding: '28px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(74,222,128,0.15)', color: 'var(--light-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <ShieldCheck size={20} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700 }}>2. "Why PicnicUtkal?" Section Content</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Modify section title, subtitle, and feature cards</p>
+                  <h3 style={{ fontSize: '18px', fontWeight: 700 }}>2. "Why PicnicUtkal?" Section Content, Images & Feature Cards</h3>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Modify titles, description, feature cards, stacked photos, and review badge</p>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Section Eyebrow */}
                 <div className="input-wrapper">
                   <label className="input-label">Section Eyebrow</label>
@@ -617,251 +676,80 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                   </div>
                 </div>
 
-                {/* Section Subtitle */}
+                {/* Section Subtitle / Description */}
                 <div className="input-wrapper">
                   <label className="input-label">Section Description / Subtitle</label>
                   <textarea
                     className="input"
                     rows={2}
-                    value={homeData.whySubtitle || ''}
+                    value={homeData.whySubtitle || 'We handle everything — from booking your zone to arranging food, decorations, and parking. Just show up and enjoy.'}
                     onChange={e => setHomeData(p => ({ ...p, whySubtitle: e.target.value }))}
                   />
                 </div>
 
-                {/* Why Feature Cards Grid */}
+                {/* 4 Feature Cards (Why Choose Us) */}
                 <div className="input-wrapper">
-                  <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)' }}>Feature Cards (Why Choose Us):</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                  <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)', marginBottom: '12px', display: 'block' }}>
+                    Feature Cards (4 Key Benefits):
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '14px' }}>
                     {(homeData.whyFeatures || DEFAULT_CONFIG.home.whyFeatures).map((feat, idx) => (
                       <div key={idx} style={{ padding: '14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-                        <label className="input-label" style={{ fontSize: '11px' }}>Card #{idx+1} Title</label>
+                        <label className="input-label" style={{ fontSize: '11px', color: 'var(--gold)', fontWeight: 700 }}>Feature #{idx + 1} Title</label>
                         <input
                           type="text"
                           className="input"
                           style={{ marginBottom: '8px' }}
                           value={feat.label}
-                          onChange={e => handleUpdateWhyFeature(idx, 'label', e.target.value)}
+                          onChange={e => {
+                            const updated = [...(homeData.whyFeatures || DEFAULT_CONFIG.home.whyFeatures)]
+                            updated[idx] = { ...updated[idx], label: e.target.value }
+                            setHomeData(p => ({ ...p, whyFeatures: updated }))
+                          }}
                         />
-                        <label className="input-label" style={{ fontSize: '11px' }}>Card #{idx+1} Description</label>
+                        <label className="input-label" style={{ fontSize: '11px' }}>Feature #{idx + 1} Description</label>
                         <input
                           type="text"
                           className="input"
                           value={feat.desc}
-                          onChange={e => handleUpdateWhyFeature(idx, 'desc', e.target.value)}
+                          onChange={e => {
+                            const updated = [...(homeData.whyFeatures || DEFAULT_CONFIG.home.whyFeatures)]
+                            updated[idx] = { ...updated[idx], desc: e.target.value }
+                            setHomeData(p => ({ ...p, whyFeatures: updated }))
+                          }}
                         />
                       </div>
                     ))}
                   </div>
                 </div>
-              </div>
-            </div>
 
-            {/* SECTION 3: SECTION HEADLINES & SUBTITLES */}
-            <div className="card glass-card" style={{ padding: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Layers size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700 }}>3. Page Section Headlines & Subtitles</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Customize all section titles & subtitles on the Home page</p>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {[
-                  { key: 'spots', label: 'Featured Spots Section', color: 'var(--gold)' },
-                  { key: 'zones', label: 'Activity Zones Section', color: 'var(--light-green)' },
-                  { key: 'reviews', label: 'Guest Reviews / Testimonials Section', color: 'var(--gold)' },
-                  { key: 'galleryPreview', label: 'Gallery Preview Section', color: 'var(--light-green)' },
-                ].map(({ key, label, color }) => (
-                  <div key={key} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-                    <h4 style={{ fontSize: '14px', fontWeight: 700, color, marginBottom: '10px' }}>{label}</h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                      <div className="input-wrapper">
-                        <label className="input-label">Eyebrow</label>
-                        <input type="text" className="input" value={homeData[`${key}Eyebrow`] || ''} onChange={e => setHomeData(p => ({ ...p, [`${key}Eyebrow`]: e.target.value }))} />
+                {/* Section Images & Review Badge */}
+                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
+                  <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)', marginBottom: '12px', display: 'block' }}>
+                    Section Photos & Overlay Badge:
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '14px' }}>
+                    <div>
+                      <div className="input-wrapper" style={{ marginBottom: '10px' }}>
+                        <label className="input-label">Main Image URL (large left photo)</label>
+                        <input type="url" className="input" value={homeData.whyImgMain || ''} onChange={e => setHomeData(p => ({ ...p, whyImgMain: e.target.value }))} placeholder="https://images.unsplash.com/..." />
                       </div>
-                      <div className="input-wrapper">
-                        <label className="input-label">Title</label>
-                        <input type="text" className="input" value={homeData[`${key}Title`] || ''} onChange={e => setHomeData(p => ({ ...p, [`${key}Title`]: e.target.value }))} />
+                      {homeData.whyImgMain && <img src={homeData.whyImgMain} alt="Why main" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />}
+                    </div>
+                    <div>
+                      <div className="input-wrapper" style={{ marginBottom: '10px' }}>
+                        <label className="input-label">Secondary Image URL (small right photo)</label>
+                        <input type="url" className="input" value={homeData.whyImgSecondary || ''} onChange={e => setHomeData(p => ({ ...p, whyImgSecondary: e.target.value }))} placeholder="https://images.unsplash.com/..." />
                       </div>
-                      <div className="input-wrapper">
-                        <label className="input-label">Subtitle</label>
-                        <input type="text" className="input" value={homeData[`${key}Subtitle`] || ''} onChange={e => setHomeData(p => ({ ...p, [`${key}Subtitle`]: e.target.value }))} />
-                      </div>
+                      {homeData.whyImgSecondary && <img src={homeData.whyImgSecondary} alt="Why secondary" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />}
                     </div>
                   </div>
-                ))}
-                {/* Gallery Preview CTA Button Text */}
-                <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: 700, color: 'var(--gold)', marginBottom: '10px' }}>Gallery Preview Button Text</h4>
                   <div className="input-wrapper">
-                    <label className="input-label">"View Full Gallery" button text</label>
-                    <input type="text" className="input" value={homeData.galleryPreviewBtnText || 'View Full Gallery'} onChange={e => setHomeData(p => ({ ...p, galleryPreviewBtnText: e.target.value }))} />
+                    <label className="input-label">Review Badge Text (overlay on photos, e.g. "4.9 · 15,000+ Reviews")</label>
+                    <input type="text" className="input" value={homeData.whyBadgeText || ''} onChange={e => setHomeData(p => ({ ...p, whyBadgeText: e.target.value }))} />
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* SECTION 4: WHY SECTION IMAGES */}
-            <div className="card glass-card" style={{ padding: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Image size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700 }}>4. "Why PicnicUtkal?" Section Images & Badge</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Replace the two stacked photos and review badge in the Why section</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
-                  <div>
-                    <div className="input-wrapper" style={{ marginBottom: '10px' }}>
-                      <label className="input-label">Main Image URL (large left photo)</label>
-                      <input type="url" className="input" value={homeData.whyImgMain || ''} onChange={e => setHomeData(p => ({ ...p, whyImgMain: e.target.value }))} placeholder="https://images.unsplash.com/..." />
-                    </div>
-                    {homeData.whyImgMain && <img src={homeData.whyImgMain} alt="Why main" style={{ width: '100%', height: '130px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />}
-                  </div>
-                  <div>
-                    <div className="input-wrapper" style={{ marginBottom: '10px' }}>
-                      <label className="input-label">Secondary Image URL (small right photo)</label>
-                      <input type="url" className="input" value={homeData.whyImgSecondary || ''} onChange={e => setHomeData(p => ({ ...p, whyImgSecondary: e.target.value }))} placeholder="https://images.unsplash.com/..." />
-                    </div>
-                    {homeData.whyImgSecondary && <img src={homeData.whyImgSecondary} alt="Why secondary" style={{ width: '100%', height: '130px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />}
-                  </div>
-                </div>
-                <div className="input-wrapper">
-                  <label className="input-label">Review Badge Text (overlay on photos, e.g. "4.9 · 15,000+ Reviews")</label>
-                  <input type="text" className="input" value={homeData.whyBadgeText || ''} onChange={e => setHomeData(p => ({ ...p, whyBadgeText: e.target.value }))} />
-                </div>
-              </div>
-            </div>
-
-            {/* SECTION 5: TESTIMONIALS EDITOR */}
-            <div className="card glass-card" style={{ padding: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(74,222,128,0.15)', color: 'var(--light-green)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Star size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700 }}>5. Guest Testimonials / Reviews Cards</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Edit customer review cards shown on the Home page</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                {(homeData.testimonials || DEFAULT_CONFIG.home.testimonials).map((t, idx) => (
-                  <div key={idx} style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <h4 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--gold)' }}>Review Card #{idx + 1}</h4>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        {[1,2,3,4,5].map(s => (
-                          <Star key={s} size={14} fill={s <= (t.rating||5) ? 'var(--gold)' : 'none'} color="var(--gold)" style={{ cursor: 'pointer' }}
-                            onClick={() => {
-                              const updated = [...(homeData.testimonials || DEFAULT_CONFIG.home.testimonials)]
-                              updated[idx] = { ...updated[idx], rating: s }
-                              setHomeData(p => ({ ...p, testimonials: updated }))
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
-                      <div className="input-wrapper">
-                        <label className="input-label">Reviewer Name</label>
-                        <input type="text" className="input" value={t.name} onChange={e => {
-                          const updated = [...(homeData.testimonials || DEFAULT_CONFIG.home.testimonials)]
-                          updated[idx] = { ...updated[idx], name: e.target.value }
-                          setHomeData(p => ({ ...p, testimonials: updated }))
-                        }} />
-                      </div>
-                      <div className="input-wrapper">
-                        <label className="input-label">City / Location</label>
-                        <input type="text" className="input" value={t.location} onChange={e => {
-                          const updated = [...(homeData.testimonials || DEFAULT_CONFIG.home.testimonials)]
-                          updated[idx] = { ...updated[idx], location: e.target.value }
-                          setHomeData(p => ({ ...p, testimonials: updated }))
-                        }} />
-                      </div>
-                      <div className="input-wrapper">
-                        <label className="input-label">Spot / Venue Name</label>
-                        <input type="text" className="input" value={t.spot} onChange={e => {
-                          const updated = [...(homeData.testimonials || DEFAULT_CONFIG.home.testimonials)]
-                          updated[idx] = { ...updated[idx], spot: e.target.value }
-                          setHomeData(p => ({ ...p, testimonials: updated }))
-                        }} />
-                      </div>
-                    </div>
-                    <div className="input-wrapper" style={{ marginTop: '10px' }}>
-                      <label className="input-label">Review Comment</label>
-                      <textarea rows={2} className="input" value={t.comment} onChange={e => {
-                        const updated = [...(homeData.testimonials || DEFAULT_CONFIG.home.testimonials)]
-                        updated[idx] = { ...updated[idx], comment: e.target.value }
-                        setHomeData(p => ({ ...p, testimonials: updated }))
-                      }} />
-                    </div>
-                    <div className="input-wrapper" style={{ marginTop: '8px' }}>
-                      <label className="input-label">Avatar Image URL (optional)</label>
-                      <input type="url" className="input" value={t.avatar || ''} onChange={e => {
-                        const updated = [...(homeData.testimonials || DEFAULT_CONFIG.home.testimonials)]
-                        updated[idx] = { ...updated[idx], avatar: e.target.value }
-                        setHomeData(p => ({ ...p, testimonials: updated }))
-                      }} placeholder="https://api.dicebear.com/... (leave blank for auto-generated)" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* SECTION 6: GALLERY PREVIEW IMAGES */}
-            <div className="card glass-card" style={{ padding: '28px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Image size={20} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 700 }}>6. Gallery Preview Images (Home Page)</h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Manage the 6 preview images shown in the Gallery grid on the Home page</p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '14px' }}>
-                {(homeData.galleryPreviewImages || DEFAULT_CONFIG.home.galleryPreviewImages).map((url, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)' }}>
-                    <img src={url} alt={`Preview ${idx+1}`} style={{ width: '56px', height: '36px', objectFit: 'cover', borderRadius: '4px', flexShrink: 0 }} />
-                    <input
-                      type="url"
-                      className="input"
-                      style={{ flex: 1, fontSize: '12px' }}
-                      value={url}
-                      onChange={e => {
-                        const imgs = [...(homeData.galleryPreviewImages || DEFAULT_CONFIG.home.galleryPreviewImages)]
-                        imgs[idx] = e.target.value
-                        setHomeData(p => ({ ...p, galleryPreviewImages: imgs }))
-                      }}
-                    />
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', minWidth: '36px', textAlign: 'center' }}>
-                      {idx === 0 || idx === 5 ? '(wide)' : ''}
-                    </span>
-                    <button type="button" className="btn btn-ghost btn-xs" style={{ color: 'var(--error)', flexShrink: 0 }}
-                      onClick={() => {
-                        const imgs = (homeData.galleryPreviewImages || DEFAULT_CONFIG.home.galleryPreviewImages).filter((_, i) => i !== idx)
-                        setHomeData(p => ({ ...p, galleryPreviewImages: imgs }))
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <button type="button" className="btn btn-outline btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                onClick={() => {
-                  const imgs = [...(homeData.galleryPreviewImages || DEFAULT_CONFIG.home.galleryPreviewImages), '']
-                  setHomeData(p => ({ ...p, galleryPreviewImages: imgs }))
-                }}
-              >
-                <Plus size={16} /> Add Gallery Preview Image Slot
-              </button>
             </div>
 
             {/* SAVE BUTTON */}
@@ -894,6 +782,72 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                   onChange={e => setAboutData(p => ({ ...p, title: e.target.value }))}
                   required
                 />
+              </div>
+
+              {/* About Page Hero / Story Image */}
+              <div style={{ padding: '18px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Image size={16} /> About Page Story Image
+                  </label>
+                  {/* Mode Toggle: Local File vs URL */}
+                  <div style={{ display: 'flex', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAboutImgInputMode('file')}
+                      className={`btn ${aboutImgInputMode === 'file' ? 'btn-gold' : 'btn-ghost'}`}
+                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                    >
+                      <Upload size={13} style={{ marginRight: '4px' }} /> Local File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAboutImgInputMode('url')}
+                      className={`btn ${aboutImgInputMode === 'url' ? 'btn-gold' : 'btn-ghost'}`}
+                      style={{ padding: '4px 12px', fontSize: '12px' }}
+                    >
+                      <LinkIcon size={13} style={{ marginRight: '4px' }} /> Image URL
+                    </button>
+                  </div>
+                </div>
+
+                {aboutImgInputMode === 'file' ? (
+                  <div>
+                    <label className="input-label" style={{ fontSize: '12px', marginBottom: '6px' }}>Upload Image from Computer:</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAboutHeroFileUpload}
+                      className="input"
+                      style={{ width: '100%', padding: '8px 12px' }}
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="input-label" style={{ fontSize: '12px', marginBottom: '6px' }}>Image Web URL:</label>
+                    <input
+                      type="url"
+                      className="input"
+                      placeholder="https://images.unsplash.com/..."
+                      value={aboutData.heroImage || ''}
+                      onChange={e => setAboutData(p => ({ ...p, heroImage: e.target.value }))}
+                      style={{ width: '100%', padding: '10px 14px' }}
+                    />
+                  </div>
+                )}
+
+                {/* Preview Thumbnail */}
+                {aboutData.heroImage && (
+                  <div style={{ marginTop: '4px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Image Preview:</span>
+                    <img
+                      src={aboutData.heroImage}
+                      alt="About hero preview"
+                      style={{ width: '100%', maxHeight: '180px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                      onError={e => { e.target.style.display = 'none' }}
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="input-wrapper">
@@ -1307,6 +1261,205 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                 <Save size={18} /> Save Contact Details
               </button>
             </form>
+          </div>
+        )}
+
+        {/* 5. LOGO MANAGEMENT TAB */}
+        {activeTab === 'logo' && (
+          <div className="card glass-card" style={{ padding: '28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(201,168,76,0.18)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Sparkles size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>Website Logo Management</h3>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>Upload a custom local logo file or enter an image URL to replace the site logo</p>
+                </div>
+              </div>
+              <button 
+                type="button" 
+                onClick={handleSaveLogo} 
+                className="btn btn-gold flex items-center gap-2"
+                style={{ padding: '10px 22px', borderRadius: 'var(--radius-md)', fontWeight: 600 }}
+              >
+                <Save size={18} /> Save & Broadcast Logo
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
+              {/* Form Controls */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                  <label className="input-label" style={{ fontWeight: 600, display: 'block', marginBottom: '10px' }}>
+                    Select Logo Mode:
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <button
+                      type="button"
+                      className={`btn ${logoForm?.type === 'icon' ? 'btn-gold' : 'btn-ghost'}`}
+                      onClick={() => {
+                        const updated = { ...logoForm, type: 'icon' }
+                        setLogoForm(updated)
+                        updateLogo(updated)
+                      }}
+                      style={{ padding: '12px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      <Leaf size={16} /> Default Leaf Icon
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn ${logoForm?.type === 'image' ? 'btn-gold' : 'btn-ghost'}`}
+                      onClick={() => {
+                        const updated = { ...logoForm, type: 'image' }
+                        setLogoForm(updated)
+                        updateLogo(updated)
+                      }}
+                      style={{ padding: '12px', fontSize: '13px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                    >
+                      <Image size={16} /> Custom Image Logo
+                    </button>
+                  </div>
+                </div>
+
+                {logoForm?.type === 'image' && (
+                  <div style={{ padding: '18px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                      <label className="input-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <Upload size={16} /> Upload Local Logo File:
+                      </label>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleLogoFileUpload}
+                        className="input" 
+                        style={{ width: '100%', padding: '8px 12px' }}
+                      />
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', marginTop: '6px' }}>
+                        Select logo file from your computer (PNG, JPG, SVG, WebP). Recommended height: 40px–60px.
+                      </span>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                      <label className="input-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                        <LinkIcon size={16} /> Or Enter Logo Image URL:
+                      </label>
+                      <input
+                        type="url"
+                        className="input"
+                        placeholder="https://domain.com/logo.png"
+                        value={logoForm?.url || ''}
+                        onChange={(e) => {
+                          const updated = { ...logoForm, url: e.target.value }
+                          setLogoForm(updated)
+                          updateLogo(updated)
+                        }}
+                        style={{ width: '100%', padding: '10px 14px' }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Logo Height / Size Control */}
+                <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                    <label className="input-label" style={{ fontWeight: 600, margin: 0 }}>
+                      📏 Logo Display Height (Size):
+                    </label>
+                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--gold)', background: 'rgba(201,168,76,0.15)', padding: '2px 10px', borderRadius: '12px' }}>
+                      {logoForm?.height || 50}px
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="30"
+                    max="140"
+                    step="2"
+                    value={logoForm?.height || 65}
+                    onChange={(e) => {
+                      const updated = { ...logoForm, height: Number(e.target.value) }
+                      setLogoForm(updated)
+                      updateLogo(updated)
+                    }}
+                    style={{ width: '100%', accentColor: 'var(--gold)', cursor: 'pointer' }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
+                    {[
+                      { label: 'Medium (55px)', val: 55 },
+                      { label: 'Large (75px)', val: 75 },
+                      { label: 'XL (95px)', val: 95 },
+                      { label: 'Jumbo (120px)', val: 120 }
+                    ].map(preset => (
+                      <button
+                        key={preset.val}
+                        type="button"
+                        className="btn btn-ghost"
+                        onClick={() => {
+                          const updated = { ...logoForm, height: preset.val }
+                          setLogoForm(updated)
+                          updateLogo(updated)
+                        }}
+                        style={{ flex: 1, padding: '4px 8px', fontSize: '11px', borderRadius: '4px' }}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Live Preview Box */}
+              <div style={{ background: 'var(--bg-primary)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                <span style={{ fontSize: '13px', fontWeight: '700', color: 'var(--gold)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Eye size={16} /> Live Real-time Preview
+                </span>
+
+                {/* Navbar Dark Preview */}
+                <div style={{ padding: '18px', background: '#0a160f', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: '10px' }}>Header / Navbar Display:</span>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {logoForm?.type === 'image' && logoForm?.url ? (
+                      <img 
+                        src={logoForm.url} 
+                        alt="Logo Preview" 
+                        style={{ height: `${logoForm?.height || 65}px`, maxWidth: '280px', objectFit: 'contain', borderRadius: '6px' }} 
+                        onError={(e) => {
+                          e.target.onerror = null
+                          e.target.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <div className="navbar__logo-icon" style={{ width: '54px', height: '54px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Leaf size={32} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Footer Preview */}
+                <div style={{ padding: '18px', background: '#12251a', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.12)' }}>
+                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.5)', display: 'block', marginBottom: '10px' }}>Footer Display:</span>
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    {logoForm?.type === 'image' && logoForm?.url ? (
+                      <img 
+                        src={logoForm.url} 
+                        alt="Logo Preview" 
+                        style={{ height: `${logoForm?.height || 65}px`, maxWidth: '320px', objectFit: 'contain', borderRadius: '6px' }} 
+                        onError={(e) => {
+                          e.target.onerror = null
+                          e.target.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <div className="footer__logo-icon" style={{ width: '68px', height: '68px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Leaf size={36} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 

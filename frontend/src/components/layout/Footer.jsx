@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { LuLeaf as Leaf, LuPhone as Phone, LuMail as Mail, LuMapPin as MapPin } from 'react-icons/lu'
 import { FaInstagram, FaFacebookF, FaYoutube, FaXTwitter } from 'react-icons/fa6'
+import { useLogo } from '../../context/LogoContext'
 
 const QUICK_LINKS = [
   { label: 'Home', href: '/' },
@@ -26,6 +27,7 @@ const SUPPORT = [
 ]
 
 export default function Footer() {
+  const { logoConfig } = useLogo()
   return (
     <footer className="footer">
       {/* Top Wave */}
@@ -40,15 +42,34 @@ export default function Footer() {
           <div className="footer__grid">
             {/* Brand */}
             <div className="footer__brand">
-              <Link to="/" className="footer__logo">
-                <div className="footer__logo-icon">
-                  <Leaf size={20} />
-                </div>
-                <span>Picnic<span className="text-gradient">Utkal</span></span>
-              </Link>
-              <p className="footer__tagline">
-                Odisha's Premier Picnic Destination. Discover breathtaking nature spots, book your perfect picnic zone, and create unforgettable memories.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+                <Link to="/" className="footer__logo" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  {logoConfig?.type === 'image' && logoConfig?.url ? (
+                    <img 
+                      src={logoConfig.url} 
+                      alt="Logo" 
+                      style={{ 
+                        height: `${logoConfig?.height ? Math.max(logoConfig.height, 65) : 110}px`, 
+                        width: 'auto', 
+                        maxWidth: '280px', 
+                        objectFit: 'contain', 
+                        borderRadius: '12px' 
+                      }}
+                      onError={(e) => {
+                        e.target.onerror = null
+                        e.target.style.display = 'none'
+                      }}
+                    />
+                  ) : (
+                    <div className="footer__logo-icon" style={{ width: '68px', height: '68px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Leaf size={36} />
+                    </div>
+                  )}
+                </Link>
+                <p className="footer__tagline" style={{ margin: 0, flex: 1, minWidth: '220px', fontSize: '0.95rem', lineHeight: '1.6', color: 'rgba(255, 255, 255, 0.75)' }}>
+                  Odisha's Premier Picnic Destination. Discover breathtaking nature spots, book your perfect picnic zone, and create unforgettable memories.
+                </p>
+              </div>
               <div className="footer__contact">
                 <a href="tel:+919876543210" className="footer__contact-item">
                   <Phone size={15} /> +91 98765 43210

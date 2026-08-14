@@ -81,7 +81,12 @@ export default function About() {
             </p>
           </div>
           <div>
-            <img src="https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80" alt="Beautiful forest scenery" style={{ borderRadius: 'var(--radius-xl)', width: '100%', height: '400px', objectFit: 'cover', boxShadow: 'var(--shadow-lg)' }} />
+            <img 
+              src={about.heroImage || "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80"} 
+              alt="About PicnicUtkal" 
+              style={{ borderRadius: 'var(--radius-xl)', width: '100%', height: '400px', objectFit: 'cover', boxShadow: 'var(--shadow-lg)' }} 
+              onError={e => { e.target.src = "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80" }}
+            />
           </div>
         </div>
 

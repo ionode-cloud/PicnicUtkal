@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
-  LuUsers as Users, LuTrees as Trees, LuCalendar as Calendar, LuShoppingBag as ShoppingBag, LuLandmark as Landmark, LuTimer as Timer, LuLayers as Layers, LuStar as Star,
-  LuTrendingUp as TrendingUp, LuUsers as UsersIcon, LuCalendar as CalendarIcon, LuArrowUpRight as ArrowUpRight,
-  LuRadio as Radio, LuSend as Send, LuRefreshCw as RefreshCw
+  LuUsers as Users, LuTrees as Trees, LuCalendar as Calendar, LuShoppingBag as ShoppingBag, LuLandmark as Landmark, LuTimer as Timer, LuLayers as Layers,
+  LuTrendingUp as TrendingUp, LuUsers as UsersIcon, LuArrowUpRight as ArrowUpRight,
+  LuRadio as Radio, LuRefreshCw as RefreshCw
 } from 'react-icons/lu'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -56,17 +56,27 @@ export default function Dashboard() {
     fetchDashboardData()
   }, [])
 
-  // Real-time Socket Listener: auto-refresh stats whenever a booking is created or plot status changes
+  // Real-time Socket Listener: auto-refresh stats live on any booking/plot/user event
   useEffect(() => {
     if (!socket) return
     const handleUpdate = () => fetchDashboardData()
+
     socket.on('plots_update', handleUpdate)
     socket.on('plot_updated', handleUpdate)
     socket.on('new_booking', handleUpdate)
+    socket.on('booking_created', handleUpdate)
+    socket.on('booking_updated', handleUpdate)
+    socket.on('payment_success', handleUpdate)
+    socket.on('user_registered', handleUpdate)
+
     return () => {
       socket.off('plots_update', handleUpdate)
       socket.off('plot_updated', handleUpdate)
       socket.off('new_booking', handleUpdate)
+      socket.off('booking_created', handleUpdate)
+      socket.off('booking_updated', handleUpdate)
+      socket.off('payment_success', handleUpdate)
+      socket.off('user_registered', handleUpdate)
     }
   }, [socket])
 
@@ -81,9 +91,9 @@ export default function Dashboard() {
     setBroadcastMsg('')
   }
 
-  // Calculate live stats from MongoDB
+  // Calculate 100% real live stats from MongoDB
   const activeBookings = bookings.filter(b => b.status !== 'cancelled')
-  const totalRevenue = activeBookings.reduce((sum, b) => sum + (b.totalAmount || b.totalPrice || b.plotPrice || 0), 0)
+  const totalRevenue = activeBookings.reduce((sum, b) => sum + (Number(b.totalAmount || b.totalPrice || b.plotPrice) || 0), 0)
   
   const todayStr = new Date().toISOString().split('T')[0]
   const todayBookingsCount = bookings.filter(b => {
@@ -96,16 +106,16 @@ export default function Dashboard() {
 
   const kpis = [
     { label: 'Real-time Visitors', val: `${liveVisitors} Online`, change: isConnected ? 'Socket Live' : 'Offline', trend: 'success', icon: Radio, color: '#4ADE80' },
-    { label: 'Total Users', val: users.length > 0 ? users.length.toLocaleString() : (activeBookings.length ? activeBookings.length.toLocaleString() : '1'), change: 'MongoDB Live', trend: 'success', icon: Users, color: 'var(--info)' },
-    { label: 'Total Spots', val: plots.length > 0 ? plots.length.toString() : '12', change: 'MongoDB Live', trend: 'success', icon: Trees, color: 'var(--forest)' },
+    { label: 'Total Users', val: users.length.toLocaleString(), change: 'MongoDB Live', trend: 'success', icon: Users, color: 'var(--info)' },
+    { label: 'Total Spots', val: plots.length.toString(), change: 'MongoDB Live', trend: 'success', icon: Trees, color: 'var(--forest)' },
     { label: 'Total Bookings', val: activeBookings.length.toLocaleString(), change: 'MongoDB Live', trend: 'success', icon: Calendar, color: 'var(--gold)' },
     { label: 'Today\'s Bookings', val: todayBookingsCount.toString(), change: 'Live Today', trend: 'success', icon: ShoppingBag, color: '#e8590c' },
     { label: 'Total Revenue', val: `₹${totalRevenue.toLocaleString()}`, change: 'Real Revenue', trend: 'success', icon: Landmark, color: 'var(--success)' },
     { label: 'Pending Payments', val: pendingPaymentsCount.toString(), change: 'Live Pending', trend: 'warning', icon: Timer, color: '#fcc419' },
-    { label: 'Active Zones', val: activeSpotsCount > 0 ? activeSpotsCount.toString() : '12', change: 'Operational', trend: 'neutral', icon: Layers, color: '#748ffc' }
+    { label: 'Active Zones', val: activeSpotsCount.toString(), change: 'Operational', trend: 'neutral', icon: Layers, color: '#748ffc' }
   ]
 
-  // Dynamic Chart Calculations
+  // Dynamic Real Data Chart Calculations
   // 1. Revenue Performance (Monthly)
   const revenueChartData = (() => {
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -113,15 +123,19 @@ export default function Dashboard() {
     months.forEach(m => { revMap[m] = 0 })
 
     activeBookings.forEach(b => {
-      const d = b.createdAt ? new Date(b.createdAt) : (b.visitDate ? new Date(b.visitDate) : null)
-      if (d && !isNaN(d.getTime())) {
-        const monthName = months[d.getMonth()]
-        revMap[monthName] += (b.totalAmount || b.totalPrice || b.plotPrice || 0)
+      const dateVal = b.createdAt || b.visitDate || b.bookingDate
+      if (dateVal) {
+        const d = new Date(dateVal)
+        if (!isNaN(d.getTime())) {
+          const monthName = months[d.getMonth()]
+          revMap[monthName] += (Number(b.totalAmount || b.totalPrice || b.plotPrice) || 0)
+        }
       }
     })
 
-    const currMonth = new Date().getMonth()
-    return months.slice(0, Math.max(6, currMonth + 1)).map(m => ({
+    const currMonthIdx = new Date().getMonth()
+    const startIdx = Math.max(0, currMonthIdx - 5)
+    return months.slice(startIdx, currMonthIdx + 1).map(m => ({
       name: m,
       revenue: revMap[m]
     }))
@@ -130,13 +144,16 @@ export default function Dashboard() {
   // 2. Weekly Booking Trends
   const weeklyBookingsData = (() => {
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    const counts = { Sun: 0, Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0 }
+    const counts = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 }
 
     activeBookings.forEach(b => {
-      const d = b.visitDate ? new Date(b.visitDate) : (b.createdAt ? new Date(b.createdAt) : null)
-      if (d && !isNaN(d.getTime())) {
-        const dayName = days[d.getDay()]
-        counts[dayName]++
+      const dateVal = b.visitDate || b.createdAt || b.bookingDate
+      if (dateVal) {
+        const d = new Date(dateVal)
+        if (!isNaN(d.getTime())) {
+          const dayName = days[d.getDay()]
+          counts[dayName] = (counts[dayName] || 0) + 1
+        }
       }
     })
 
@@ -148,37 +165,57 @@ export default function Dashboard() {
 
   // 3. User Account Growth
   const userGrowthData = (() => {
-    const totalCount = Math.max(users.length, activeBookings.length, 1)
-    return [
-      { name: 'Week 1', users: Math.max(1, Math.floor(totalCount * 0.3)) },
-      { name: 'Week 2', users: Math.max(1, Math.floor(totalCount * 0.55)) },
-      { name: 'Week 3', users: Math.max(1, Math.floor(totalCount * 0.8)) },
-      { name: 'Week 4', users: totalCount }
-    ]
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const userMap = {}
+    months.forEach(m => { userMap[m] = 0 })
+
+    users.forEach(u => {
+      const dateVal = u.joinedDate || u.createdAt
+      if (dateVal) {
+        const d = new Date(dateVal)
+        if (!isNaN(d.getTime())) {
+          const monthName = months[d.getMonth()]
+          userMap[monthName] += 1
+        }
+      }
+    })
+
+    const currMonthIdx = new Date().getMonth()
+    const startIdx = Math.max(0, currMonthIdx - 5)
+    let cumulative = 0
+    return months.slice(startIdx, currMonthIdx + 1).map(m => {
+      cumulative += userMap[m]
+      return {
+        name: m,
+        users: cumulative
+      }
+    })
   })()
 
   // 4. Popular Picnic Spots Pie Chart
   const popularSpotsData = (() => {
     const spotMap = {}
-    let totalValid = 0
+    let totalBookingsCount = 0
 
     activeBookings.forEach(b => {
-      const title = b.plotTitle || 'Picnic Spot'
+      const title = b.plotTitle || b.spotName || b.spotTitle || 'Picnic Spot'
       spotMap[title] = (spotMap[title] || 0) + 1
-      totalValid++
+      totalBookingsCount++
     })
 
-    if (totalValid === 0) {
-      return [
-        { name: 'Pandal Upper', value: 40 },
-        { name: 'Pandal Center', value: 35 },
-        { name: 'Pandal West', value: 25 }
-      ]
+    if (totalBookingsCount === 0) {
+      if (plots.length > 0) {
+        return plots.slice(0, 5).map(p => ({
+          name: p.title?.length > 18 ? p.title.slice(0, 16) + '...' : (p.title || 'Spot'),
+          value: 0
+        }))
+      }
+      return [{ name: 'No Bookings Yet', value: 100 }]
     }
 
     return Object.keys(spotMap).map(title => ({
       name: title.length > 18 ? title.slice(0, 16) + '...' : title,
-      value: Math.round((spotMap[title] / totalValid) * 100) || 1
+      value: Math.round((spotMap[title] / totalBookingsCount) * 100)
     }))
   })()
 
@@ -204,18 +241,6 @@ export default function Dashboard() {
 
   return (
     <div className="admin-dashboard-container">
-      {/* Header bar with Live indicator & Refresh */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-        <div>
-          <h2 className="heading-3" style={{ margin: 0, color: 'var(--text-primary)' }}>Real-time Admin Analytics</h2>
-          <p className="text-muted text-sm" style={{ margin: '4px 0 0' }}>Live MongoDB database synchronization &amp; real-time socket tracking.</p>
-        </div>
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={fetchDashboardData} disabled={loading}>
-            <RefreshCw size={14} className={loading ? 'spin' : ''} /> {loading ? 'Updating…' : 'Sync Live DB'}
-          </button>
-        </div>
-      </div>
 
       {/* KPI Cards Grid */}
       <motion.div
@@ -286,56 +311,6 @@ export default function Dashboard() {
                 <Bar dataKey="bookings" fill="var(--gold)" radius={[4, 4, 0, 0]} maxBarSize={30} />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* User Growth Line Chart */}
-        <div className="card glass-card admin-chart-box">
-          <div className="chart-header">
-            <h4>User Account Growth</h4>
-            <span className="badge badge-info"><UsersIcon size={12} /> Active accounts</span>
-          </div>
-          <div className="chart-wrapper">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={userGrowthData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
-                <XAxis dataKey="name" stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-                <YAxis stroke="var(--text-muted)" fontSize={11} tickLine={false} />
-                <Tooltip formatter={(value) => [value, 'Users']} />
-                <Line type="monotone" dataKey="users" stroke="var(--success)" strokeWidth={3} dot={{ r: 4, strokeWidth: 2 }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Popular Picnic Spots Pie Chart */}
-        <div className="card glass-card admin-chart-box">
-          <div className="chart-header">
-            <h4>Popular Picnic Spots</h4>
-            <span className="badge badge-glass">Booking share %</span>
-          </div>
-          <div className="chart-wrapper flex items-center justify-center">
-            <div style={{ width: '100%', height: '80%' }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={popularSpotsData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {popularSpotsData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => [`${value}%`, 'Share']} />
-                  <Legend verticalAlign="bottom" height={36} iconSize={10} iconType="circle" wrapperStyle={{ fontSize: '11px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
           </div>
         </div>
       </div>

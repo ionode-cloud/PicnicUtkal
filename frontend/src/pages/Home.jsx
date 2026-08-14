@@ -169,14 +169,36 @@ export default function Home() {
 
   const [homeConfig, setHomeConfig] = useState(getStoredHomeConfig)
 
-  // Socket.io: live-reload when admin saves Home page content
+  const getStoredGalleryImages = () => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_user_view_config')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.gallery && Array.isArray(parsed.gallery) && parsed.gallery.length > 0) {
+          return parsed.gallery.map(item => typeof item === 'string' ? item : (item.src || item.url)).filter(Boolean)
+        }
+      }
+    } catch (e) {}
+    return [
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80',
+      'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80',
+      'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=800&q=80',
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
+      'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80',
+    ]
+  }
+
+  const [galleryImages, setGalleryImages] = useState(getStoredGalleryImages)
+  const [galleryOffset, setGalleryOffset] = useState(0)
+
+  // Socket.io: live-reload when admin saves Home page content or Gallery content
   const { socket } = useSocket()
   useEffect(() => {
     if (!socket) return
     const handler = (data) => {
       if (data && data.config) {
         setHomeConfig(data.config)
-        // Also persist to localStorage so refreshes keep changes
         try {
           const saved = localStorage.getItem('picnicutkal_user_view_config')
           const parsed = saved ? JSON.parse(saved) : {}
@@ -184,9 +206,27 @@ export default function Home() {
         } catch (e) {}
       }
     }
+    const galleryHandler = (data) => {
+      if (data && Array.isArray(data.config)) {
+        const urls = data.config.map(item => typeof item === 'string' ? item : (item.src || item.url)).filter(Boolean)
+        if (urls.length > 0) setGalleryImages(urls)
+      }
+    }
     socket.on('home_config_update', handler)
-    return () => socket.off('home_config_update', handler)
+    socket.on('gallery_config_update', galleryHandler)
+    return () => {
+      socket.off('home_config_update', handler)
+      socket.off('gallery_config_update', galleryHandler)
+    }
   }, [socket])
+
+  // Rotate gallery images every 5 minutes (300,000ms)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setGalleryOffset(prev => prev + 1)
+    }, 5 * 60 * 1000)
+    return () => clearInterval(timer)
+  }, [])
 
   const [maps, setMaps] = useState(() => {
     try {
@@ -509,9 +549,7 @@ export default function Home() {
                   )
                 })}
               </div>
-              <Link to="/about" className="btn btn-primary btn-lg" id="learn-more-btn">
-                Learn More <ArrowRight size={18} />
-              </Link>
+            
             </div>
             <div className="why-visual">
               <div className="why-img-stack">
@@ -545,30 +583,29 @@ export default function Home() {
             <h2 className="section-title">{homeConfig.galleryPreviewTitle || "Moments of Pure Joy"}</h2>
           </div>
           <div className="gallery-preview-grid">
-            {(homeConfig.galleryPreviewImages && homeConfig.galleryPreviewImages.length > 0
-              ? homeConfig.galleryPreviewImages
-              : [
-                  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=400&q=80',
-                  'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=400&q=80',
-                  'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=400&q=80',
-                  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&q=80',
-                  'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80',
-                  'https://images.unsplash.com/photo-1448375240586-882707db888b?w=400&q=80',
-                ]
-            ).map((src, i) => (
-              <motion.div
-                key={i}
-                className={`gallery-preview-item ${i === 0 || i === 5 ? 'gallery-preview-item--wide' : ''}`}
-                whileHover={{ scale: 1.03 }}
-                initial={{ opacity: 0, scale: 0.95 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.08 }}
-              >
-                <img src={src} alt={`Gallery ${i+1}`} loading="lazy" />
-                <div className="gallery-preview-overlay" />
-              </motion.div>
-            ))}
+            {(() => {
+              const pool = (galleryImages && galleryImages.length > 0) ? galleryImages : getStoredGalleryImages()
+              const total = pool.length
+              const displayCount = Math.min(6, total)
+              const items = Array.from({ length: displayCount }).map((_, i) => {
+                const idx = (galleryOffset + i) % total
+                return pool[idx]
+              })
+
+              return items.map((src, i) => (
+                <motion.div
+                  key={`${galleryOffset}-${i}-${src}`}
+                  className={`gallery-preview-item ${i === 0 || i === 5 ? 'gallery-preview-item--wide' : ''}`}
+                  whileHover={{ scale: 1.03 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.5, delay: i * 0.05 }}
+                >
+                  <img src={src} alt={`Gallery ${i + 1}`} loading="lazy" />
+                  <div className="gallery-preview-overlay" />
+                </motion.div>
+              ))
+            })()}
           </div>
           <div style={{ textAlign: 'center', marginTop: 'var(--space-8)' }}>
             <Link to="/gallery" className="btn btn-outline btn-lg" id="view-gallery-btn">

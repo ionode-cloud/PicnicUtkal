@@ -70,6 +70,17 @@ io.on('connection', (socket) => {
     io.emit('map_config_update', data)
   })
 
+  // Broadcast real-time home config & logo update across public site
+  socket.on('home_config_update', (data) => {
+    console.log(`[Socket.io] Home config updated`)
+    io.emit('home_config_update', data)
+  })
+
+  socket.on('logo_config_update', (data) => {
+    console.log(`[Socket.io] Logo config updated`)
+    io.emit('logo_config_update', data)
+  })
+
   // Broadcast real-time booking created
   socket.on('new_booking', (bookingData) => {
     console.log(`[Socket.io] New booking created:`, bookingData.pandalName)

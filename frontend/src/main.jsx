@@ -8,6 +8,7 @@ import App from './App'
 import './App.css'
 
 import { SocketProvider } from './context/SocketContext'
+import { LogoProvider } from './context/LogoContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,7 +25,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
           <SocketProvider>
-            <App />
+            <LogoProvider>
+              <App />
+            </LogoProvider>
           </SocketProvider>
           <Toaster
             position="top-right"

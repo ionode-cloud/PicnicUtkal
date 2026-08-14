@@ -108,6 +108,7 @@ export default function App() {
               <Route path="user-view/about" element={<UserViewMgmt />} />
               <Route path="user-view/gallery" element={<UserViewMgmt />} />
               <Route path="user-view/contact" element={<UserViewMgmt />} />
+              <Route path="user-view/logo" element={<UserViewMgmt />} />
             </Route>
 
             <Route path="*"                   element={<NotFound />} />

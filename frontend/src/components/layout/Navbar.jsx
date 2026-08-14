@@ -8,6 +8,8 @@ import {
 } from 'react-icons/lu'
 import { useTheme } from '../../context/ThemeContext'
 import { useAuthStore, useUIStore } from '../../store'
+import { useLogo } from '../../context/LogoContext'
+
 const NAV_LINKS = [
   { label: 'Home',     href: '/' },
   { label: 'About',    href: '/about' },
@@ -21,6 +23,7 @@ export default function Navbar() {
   const { theme, toggleTheme } = useTheme()
   const { isAuthenticated, user, logout } = useAuthStore()
   const { isMobileMenuOpen, setMobileMenu } = useUIStore()
+  const { logoConfig } = useLogo()
   const [scrolled, setScrolled] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const navigate = useNavigate()
@@ -47,13 +50,28 @@ export default function Navbar() {
       >
         <div className="navbar__inner container-fluid">
           {/* Logo */}
-          <Link to="/" className="navbar__logo">
-            <div className="navbar__logo-icon">
-              <Leaf size={20} />
-            </div>
-            <span className="navbar__logo-text">
-              Picnic<span className="text-gradient">Utkal</span>
-            </span>
+          <Link to="/" className="navbar__logo" style={{ display: 'flex', alignItems: 'center' }}>
+            {logoConfig?.type === 'image' && logoConfig?.url ? (
+              <img 
+                src={logoConfig.url} 
+                alt="Logo" 
+                style={{ 
+                  height: `${Math.min(logoConfig?.height || 150, 150)}px`, 
+                  width: 'auto', 
+                  maxWidth: '320px', 
+                  objectFit: 'contain', 
+                  borderRadius: '10px' 
+                }}
+                onError={(e) => {
+                  e.target.onerror = null
+                  e.target.style.display = 'none'
+                }}
+              />
+            ) : (
+              <div className="navbar__logo-icon" style={{ width: '110px', height: '110px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Leaf size={32} />
+              </div>
+            )}
           </Link>
 
           {/* Desktop Nav */}
