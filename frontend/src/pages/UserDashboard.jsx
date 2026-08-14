@@ -54,19 +54,25 @@ export default function UserDashboard() {
     const userEmail = user?.email ? user.email.toLowerCase() : ''
     const endpoint = userEmail ? `/api/bookings?email=${encodeURIComponent(userEmail)}` : '/api/bookings'
 
-    fetch(endpoint)
+    fetch(buildApiUrl(endpoint))
       .then(r => r.json())
       .then(d => {
-        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-          setBookings(d.data)
-        } else {
-          try {
-            const saved = localStorage.getItem('picnicutkal_my_bookings')
-            if (saved) {
-              const parsed = JSON.parse(saved)
-              if (Array.isArray(parsed) && parsed.length > 0) setBookings(parsed)
-            }
-          } catch (e) {}
+        if (d.success && Array.isArray(d.data)) {
+          if (d.data.length > 0) {
+            setBookings(d.data)
+          } else {
+            try {
+              const saved = localStorage.getItem('picnicutkal_my_bookings')
+              if (saved) {
+                const parsed = JSON.parse(saved)
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setBookings(parsed)
+                  return
+                }
+              }
+            } catch (e) {}
+            setBookings([])
+          }
         }
       })
       .catch(() => {
@@ -74,7 +80,7 @@ export default function UserDashboard() {
           const saved = localStorage.getItem('picnicutkal_my_bookings')
           if (saved) {
             const parsed = JSON.parse(saved)
-            if (Array.isArray(parsed) && parsed.length > 0) setBookings(parsed)
+            if (Array.isArray(parsed)) setBookings(parsed)
           }
         } catch (e) {}
       })

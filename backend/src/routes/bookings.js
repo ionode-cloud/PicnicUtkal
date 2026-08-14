@@ -90,7 +90,7 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { email } = req.query
-    const filter = email ? { email: email.toLowerCase() } : {}
+    const filter = email ? { email: new RegExp(`^${email.trim()}$`, 'i') } : {}
     const bookings = await Booking.find(filter).sort({ createdAt: -1 })
     
     // Auto-correct any existing legacy bookings where totalAmount was multiplied by persons
