@@ -7,7 +7,8 @@ import {
   LuChevronDown as ChevronDown, LuChevronRight as ChevronRight, LuLeaf as Leaf, LuEye as Eye, LuCirclePlus as PlusCircle, LuFolderHeart as FolderHeart,
   LuDroplets as Droplets, LuFlame as Flame, LuMusic as Music, LuTent as Tent, LuCompass as Compass, LuSparkles as Sparkles, LuSmile as Smile,
   LuHourglass as Hourglass, LuCircleCheck as CheckCircle2, LuCircleX as XCircle, LuFileSpreadsheet as FileSpreadsheet, LuListTodo as ListTodo, LuTriangleAlert as AlertTriangle, LuDollarSign as DollarSign,
-  LuMap as Map, LuDownload as Download, LuKey as Key, LuMail as Mail, LuHeadphones as Headphones, LuFileText as FileText
+  LuMap as Map, LuDownload as Download, LuKey as Key, LuMail as Mail, LuHeadphones as Headphones, LuFileText as FileText,
+  LuQrCode as QrCode
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 
@@ -170,17 +171,35 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
               </Link>
             )}
 
-            {/* Payments Link */}
+            {/* Payments Submenu */}
             {isTabAllowed('payments') && (
-              <Link
-                to="/admin/payments"
-                onClick={() => isOpen && toggleSidebar()}
-                className={`admin-nav-menu-item ${isActive('/admin/payments') ? 'active' : ''}`}
-              >
-                <div className="flex items-center gap-4">
-                  <CreditCard size={18} /> <span>Payments</span>
+              <div className="admin-nav-submenu-wrap">
+                <button
+                  onClick={() => toggleSubmenu('payments')}
+                  className={`admin-nav-menu-item admin-nav-submenu-header ${openMenus.payments || currentPath.startsWith('/admin/payments') ? 'expanded' : ''}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <CreditCard size={18} /> <span>Payments</span>
+                  </div>
+                  {openMenus.payments || currentPath.startsWith('/admin/payments') ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </button>
+                <div className={`admin-nav-submenu-list ${openMenus.payments || currentPath.startsWith('/admin/payments') ? 'open' : ''}`}>
+                  <Link 
+                    to="/admin/payments" 
+                    onClick={() => isOpen && toggleSidebar()}
+                    className={`admin-submenu-item ${isActive('/admin/payments') && !location.search.includes('tab=qr') ? 'active' : ''}`}
+                  >
+                    <FileSpreadsheet size={14} /> <span>Transactions &amp; Ledger</span>
+                  </Link>
+                  <Link 
+                    to="/admin/payments?tab=qr" 
+                    onClick={() => isOpen && toggleSidebar()}
+                    className={`admin-submenu-item ${isActive('/admin/payments') && location.search.includes('tab=qr') ? 'active' : ''}`}
+                  >
+                    <QrCode size={14} /> <span>Pay via UPI QR Code</span>
+                  </Link>
                 </div>
-              </Link>
+              </div>
             )}
 
             {/* Admin Credentials Link */}

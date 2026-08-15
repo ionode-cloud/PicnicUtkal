@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   LuCirclePlus as PlusCircle, 
@@ -13,6 +13,8 @@ import {
   LuSave as Save
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
+import { buildApiUrl } from '../../services/api'
+import { useSocket } from '../../context/SocketContext'
 
 const INITIAL_ADDONS = [
   {
@@ -94,10 +96,46 @@ const INITIAL_ADDONS = [
 ]
 
 export default function EventAddons() {
-  const [addons, setAddons] = useState(INITIAL_ADDONS)
+  const { socket } = useSocket()
+  const [addons, setAddons] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_event_addons')
+      return saved ? JSON.parse(saved) : INITIAL_ADDONS
+    } catch (e) { return INITIAL_ADDONS }
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [showDrawer, setShowDrawer] = useState(false)
   const [editingAddon, setEditingAddon] = useState(null)
+
+  // Load latest addons from database on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/addons_config'), { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.value && Array.isArray(d.value) && d.value.length > 0) {
+          setAddons(d.value)
+          try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(d.value)) } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const saveAndSyncAddons = (updatedList) => {
+    setAddons(updatedList)
+    try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(updatedList)) } catch (e) {}
+    
+    // Save to MongoDB SiteConfig
+    fetch(buildApiUrl('/api/site-config/addons_config'), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key: 'addons_config', value: updatedList })
+    }).catch(() => {})
+
+    // Socket.io Real-time Broadcast
+    if (socket) {
+      socket.emit('addons_config_update', { addons: updatedList })
+    }
+  }
 
   const [formData, setFormData] = useState({
     name: '',
@@ -129,8 +167,8 @@ export default function EventAddons() {
     setFormData({
       name: addon.name,
       desc: addon.desc,
-      priceAddon: addon.priceAddon,
-      status: addon.status,
+      priceAddon: addon.priceAddon || addon.price || 150,
+      status: addon.status || 'Active',
       itemsText: addon.items ? addon.items.join('\n') : ''
     })
     setShowDrawer(true)
@@ -138,20 +176,22 @@ export default function EventAddons() {
 
   const handleDelete = (id) => {
     if (window.confirm('Are you sure you want to remove this Custom Event Add-on?')) {
-      setAddons(prev => prev.filter(a => a.id !== id))
+      const updated = addons.filter(a => a.id !== id)
+      saveAndSyncAddons(updated)
       toast.success('Event add-on deleted!')
     }
   }
 
   const handleToggleStatus = (id) => {
-    setAddons(prev => prev.map(a => {
+    const updated = addons.map(a => {
       if (a.id === id) {
         const nextStatus = a.status === 'Active' ? 'Disabled' : 'Active'
         toast.success(`Add-on status changed to ${nextStatus}`)
         return { ...a, status: nextStatus }
       }
       return a
-    }))
+    })
+    saveAndSyncAddons(updated)
   }
 
   const handleSubmit = (e) => {
@@ -165,15 +205,16 @@ export default function EventAddons() {
       ? formData.itemsText.split('\n').map(i => i.trim()).filter(Boolean)
       : ['Included with booking package']
 
+    let updated
     if (editingAddon) {
-      setAddons(prev => prev.map(a => a.id === editingAddon.id ? {
+      updated = addons.map(a => a.id === editingAddon.id ? {
         ...a,
         name: formData.name,
         desc: formData.desc,
         priceAddon: Number(formData.priceAddon),
         status: formData.status,
         items: itemsArray
-      } : a))
+      } : a)
       toast.success('Event Add-on updated!')
     } else {
       const newAddon = {
@@ -184,9 +225,10 @@ export default function EventAddons() {
         status: formData.status,
         items: itemsArray
       }
-      setAddons(prev => [newAddon, ...prev])
+      updated = [newAddon, ...addons]
       toast.success('New Custom Event Add-on created!')
     }
+    saveAndSyncAddons(updated)
     setShowDrawer(false)
   }
 

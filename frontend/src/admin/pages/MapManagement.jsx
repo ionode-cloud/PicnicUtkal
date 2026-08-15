@@ -3,11 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   LuMap as Map, LuPlus as Plus, LuTrash2 as Trash2, LuPencilLine as Edit3, LuSave as Save, LuX as X, LuEye as Eye,
   LuMapPin as MapPin, LuMove as Move, LuCircleCheck as CheckCircle, LuClock as Clock,
-  LuImage as Image, LuLink as LinkIcon, LuUpload as Upload, LuRefreshCw as RefreshCw, LuFolderHeart as FolderHeart
+  LuImage as Image, LuLink as LinkIcon, LuUpload as Upload, LuRefreshCw as RefreshCw, LuFolderHeart as FolderHeart,
+  LuTrees as Trees, LuInfo as Info, LuSparkles as Sparkles
 } from 'react-icons/lu'
+import { FaHouse as HouseIcon } from 'react-icons/fa6'
 import toast from 'react-hot-toast'
 import masterPlanImg from '../../assets/master-plan.png'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
+
 function resolveMapImage(imgSrc) {
   if (!imgSrc) return masterPlanImg
   if (typeof imgSrc === 'string') {
@@ -37,26 +41,6 @@ const DEFAULT_MAPS = [
     linkedSpot: 'Barapita Ground, Deras',
     googleMapUrl: 'https://maps.google.com/?q=20.311450,85.690644',
     isDefault: true
-  },
-  {
-    _id: 'chilika-map-02',
-    title: 'Chilika Lake Sanctuary Map',
-    image: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80',
-    description: 'Waterfront camping pandals, boating docks, and island picnic spots.',
-    spotId: '2',
-    linkedSpot: 'Chilika Lake Sanctuary, Puri',
-    googleMapUrl: 'https://maps.google.com/?q=19.7042,85.3218',
-    isDefault: false
-  },
-  {
-    _id: 'simlipal-map-03',
-    title: 'Simlipal Forest & Waterfall Map',
-    image: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1200&q=80',
-    description: 'Deep forest camping zones, safari trails, and canopy watchtowers.',
-    spotId: '3',
-    linkedSpot: 'Simlipal Forest Reserve, Mayurbhanj',
-    googleMapUrl: 'https://maps.google.com/?q=21.9333,86.3333',
-    isDefault: false
   }
 ]
 
@@ -80,167 +64,91 @@ const BLANK_PLOT = {
   priority: 0,
   distanceFromGate: '',
   distanceFromCanal: '',
+  isCottage: false,
+  isFree: false,
+  isLandmark: false,
   image: '',
+  images: [],
   mapId: ''
 }
 
-const DEFAULT_PLOTS = [
-  {
-    _id: 'main-gate',
-    mapId: 'default-master-plan',
-    title: 'Main Gate',
-    price: 0,
-    area: '200 sq ft',
-    capacity: 500,
-    description: 'Grand entrance to Barapita Picnic Utkal. Security cabin, welcome arch and directional signage.',
-    facilities: ['Security', 'CCTV', 'Signage', 'Entry Pass'],
-    status: 'available',
-    coordinates: { x: 54, y: 74, width: 9, height: 7 },
-    color: '#C9A84C',
-    distanceFromGate: '0 m',
-    distanceFromCanal: '180 m'
-  },
-  {
-    _id: 'parking',
-    mapId: 'default-master-plan',
-    title: 'Parking Zone',
-    price: 0,
-    area: '3200 sq ft',
-    capacity: 80,
-    description: 'Spacious secure parking with CCTV surveillance. Accommodates cars, buses and two-wheelers.',
-    facilities: ['CCTV', 'Security Guard', 'Lighting', '24x7 Open', 'Free'],
-    status: 'available',
-    coordinates: { x: 62, y: 61, width: 32, height: 18 },
-    color: '#6B7280',
-    distanceFromGate: '40 m',
-    distanceFromCanal: '160 m'
-  },
-  {
-    _id: 'pandal-1',
-    mapId: 'default-master-plan',
-    title: 'Pandal — Upper Block',
-    price: 499,
-    area: '3500 sq ft',
-    capacity: 120,
-    description: 'Shaded pandal structure near the canal with cool breeze and scenic water views.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'Riverside View'],
-    status: 'available',
-    coordinates: { x: 46, y: 29, width: 18, height: 9 },
-    color: '#52B788',
-    distanceFromGate: '120 m',
-    distanceFromCanal: '20 m'
-  },
-  {
-    _id: 'pandal-2',
-    mapId: 'default-master-plan',
-    title: 'Pandal — Center Block',
-    price: 499,
-    area: '3200 sq ft',
-    capacity: 100,
-    description: 'Central pandal with easy access to restroom facilities.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'DJ Point'],
-    status: 'booked',
-    coordinates: { x: 37, y: 48, width: 6, height: 10 },
-    color: '#52B788',
-    distanceFromGate: '85 m',
-    distanceFromCanal: '70 m'
-  },
-  {
-    _id: 'pandal-3',
-    mapId: 'default-master-plan',
-    title: 'Pandal — West Block',
-    price: 399,
-    area: '2800 sq ft',
-    capacity: 90,
-    description: 'Cozy west-side pandal nestled among trees, perfect for intimate family picnics.',
-    facilities: ['Shade', 'Seating', 'BBQ Area', 'Garden View'],
-    status: 'available',
-    coordinates: { x: 30, y: 62, width: 9, height: 10 },
-    color: '#52B788',
-    distanceFromGate: '130 m',
-    distanceFromCanal: '30 m'
-  },
-  {
-    _id: 'pandal-4',
-    mapId: 'default-master-plan',
-    title: 'Pandal — East Block',
-    price: 449,
-    area: '3000 sq ft',
-    capacity: 95,
-    description: 'East-side pandal with direct parking access, ideal for large group events.',
-    facilities: ['Shade', 'Seating', 'Parking Access', 'Electricity'],
-    status: 'available',
-    coordinates: { x: 68, y: 50, width: 13, height: 10 },
-    color: '#52B788',
-    distanceFromGate: '55 m',
-    distanceFromCanal: '150 m'
-  },
-  {
-    _id: 'biotech-1',
-    mapId: 'default-master-plan',
-    title: 'Biotech Park 1',
-    price: 799,
-    area: '6200 sq ft',
-    capacity: 200,
-    description: 'Premium open-air event space with manicured lawns, elegant lighting, and riverside ambience.',
-    facilities: ['Parking', 'Water', 'Electricity', 'Garden', 'Restrooms', 'Stage'],
-    status: 'available',
-    coordinates: { x: 45, y: 28, width: 20, height: 15 },
-    color: '#2D6A4F',
-    distanceFromGate: '90 m',
-    distanceFromCanal: '60 m'
-  },
-  {
-    _id: 'biotech-2',
-    mapId: 'default-master-plan',
-    title: 'Biotech Park 2',
-    price: 699,
-    area: '5800 sq ft',
-    capacity: 180,
-    description: 'Versatile event ground ideal for cultural programs, corporate outings, and family gatherings.',
-    facilities: ['Parking', 'Water', 'Electricity', 'Garden', 'Restrooms'],
-    status: 'available',
-    coordinates: { x: 27, y: 47, width: 25, height: 27 },
-    color: '#1B4332',
-    distanceFromGate: '110 m',
-    distanceFromCanal: '40 m'
-  },
-  {
-    _id: 'chilika-zone-1',
-    mapId: 'chilika-map-02',
-    title: 'Nalaban Bird Island Viewpoint Pandal',
-    price: 899,
-    area: '4000 sq ft',
-    capacity: 150,
-    description: 'Waterfront picnic gazebo overlooking the migratory bird sanctuary.',
-    facilities: ['Binoculars', 'Boat Pier', 'Shade', 'Restrooms'],
-    status: 'available',
-    coordinates: { x: 25, y: 35, width: 20, height: 18 },
-    color: '#228BE6',
-    distanceFromGate: '20 m',
-    distanceFromCanal: '0 m'
-  },
-  {
-    _id: 'simlipal-zone-1',
-    mapId: 'simlipal-map-03',
-    title: 'Barehipani Waterfall Overlook Pandal',
-    price: 1099,
-    area: '4500 sq ft',
-    capacity: 120,
-    description: 'Tiered waterfall view camping site surrounded by sal forest.',
-    facilities: ['Trekking Trail', 'Watchtower', 'Campfire', 'Security Guard'],
-    status: 'available',
-    coordinates: { x: 35, y: 40, width: 22, height: 20 },
-    color: '#2D6A4F',
-    distanceFromGate: '100 m',
-    distanceFromCanal: '15 m'
-  }
-]
+const BLANK_COTTAGE = {
+  title: 'Cottage Rooms & Suite',
+  price: 999,
+  area: '4800 sq ft',
+  capacity: 36,
+  description: 'Comfortable cottage accommodation block with 3 room types — Standard (Cottage 1 ₹999/night), Deluxe (Cottage 2 ₹1499/night), and Premium Suite (Cottage 3 ₹1999/night). All rooms include AC, attached bath and scenic views.',
+  facilities: 'AC Rooms, Attached Bath, Garden View, Canal View, Riverside View, TV, Kitchenette',
+  status: 'available',
+  coordinates: { x: 36, y: 5, width: 16, height: 18 },
+  color: '#A07830',
+  priority: 1,
+  distanceFromGate: '140 m',
+  distanceFromCanal: '15 m',
+  isCottage: true,
+  image: '',
+  images: [
+    'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80',
+    'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80',
+    'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=800&q=80'
+  ],
+  mapId: ''
+}
+
+const BLANK_LANDMARK = {
+  title: 'Main Gate & Parking',
+  price: 0,
+  area: '1000 sq ft',
+  capacity: 100,
+  description: 'Key landmark / instruction point (Main Gate, River Shore, Parking Stand, Restrooms, Drinking Water, etc.).',
+  facilities: 'Signage, Security, Free Access, Information Desk',
+  status: 'available',
+  coordinates: { x: 50, y: 70, width: 12, height: 8 },
+  color: '#4A90E2',
+  priority: 0,
+  distanceFromGate: '0 m',
+  distanceFromCanal: '50 m',
+  isFree: true,
+  isLandmark: true,
+  isCottage: false,
+  image: '',
+  images: [],
+  mapId: ''
+}
 
 const STATUS_CONFIG = {
   available:   { label: 'Available',   color: '#40C057' },
   booked:      { label: 'Booked',      color: '#FA5252' },
   maintenance: { label: 'Maintenance', color: '#FAB005' }
+}
+
+const compressImage = (dataUrl, maxDimension = 1400, quality = 0.82) => {
+  return new Promise((resolve) => {
+    if (!dataUrl || typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image')) {
+      return resolve(dataUrl)
+    }
+    const img = new window.Image()
+    img.onload = () => {
+      const canvas = document.createElement('canvas')
+      let { width, height } = img
+      if (width > maxDimension || height > maxDimension) {
+        if (width > height) {
+          height = Math.round((height * maxDimension) / width)
+          width = maxDimension
+        } else {
+          width = Math.round((width * maxDimension) / height)
+          height = maxDimension
+        }
+      }
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      ctx.drawImage(img, 0, 0, width, height)
+      resolve(canvas.toDataURL('image/jpeg', quality))
+    }
+    img.onerror = () => resolve(dataUrl)
+    img.src = dataUrl
+  })
 }
 
 export default function AdminMapManagement() {
@@ -255,8 +163,32 @@ export default function AdminMapManagement() {
     return DEFAULT_MAPS
   })
 
-  const [selectedMapId, setSelectedMapId] = useState(() => maps[0]?._id || 'default-master-plan')
-  const [plots, setPlots] = useState(DEFAULT_PLOTS)
+  const [selectedMapId, setSelectedMapId] = useState(() => {
+    try {
+      const savedSel = localStorage.getItem('picnicutkal_admin_selected_map')
+      if (savedSel) return savedSel
+    } catch (e) {}
+    return maps[0]?._id || 'default-master-plan'
+  })
+
+  useEffect(() => {
+    if (selectedMapId) {
+      try {
+        localStorage.setItem('picnicutkal_admin_selected_map', selectedMapId)
+      } catch (e) {}
+    }
+  }, [selectedMapId])
+
+  const [plots, setPlots] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_admin_plots')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (e) {}
+    return []
+  })
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -288,13 +220,18 @@ export default function AdminMapManagement() {
     const newBase64s = []
 
     filesToUpload.forEach(file => {
-      if (file.size > 8 * 1024 * 1024) {
-        toast.error(`File "${file.name}" exceeds 8MB limit`)
+      if (file.size > 15 * 1024 * 1024) {
+        toast.error(`File "${file.name}" exceeds 15MB limit`)
         return
       }
       const reader = new FileReader()
-      reader.onloadend = () => {
-        newBase64s.push(reader.result)
+      reader.onloadend = async () => {
+        try {
+          const compressed = await compressImage(reader.result, 1200, 0.8)
+          newBase64s.push(compressed)
+        } catch {
+          newBase64s.push(reader.result)
+        }
         processed++
         if (processed === filesToUpload.length) {
           setForm(f => {
@@ -344,7 +281,7 @@ export default function AdminMapManagement() {
   }
 
   const mapRef = useRef(null)
-  const { emitMapConfigUpdate } = useSocket()
+  const { emitMapConfigUpdate, socket } = useSocket()
 
   // Save maps to localStorage & emit via Socket.io
   useEffect(() => {
@@ -357,87 +294,183 @@ export default function AdminMapManagement() {
   // Current active map object
   const currentMap = maps.find(m => m._id === selectedMapId) || maps[0] || DEFAULT_MAPS[0]
 
-  const fetchPlots = async () => {
+  const saveAndSyncPlots = (updatedPlots) => {
+    setPlots(updatedPlots)
     try {
-      const res = await fetch(buildApiUrl('/api/map/plots'))
+      localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(updatedPlots))
+    } catch (e) {}
+  }
+
+  const fetchMaps = async () => {
+    try {
+      const res = await fetch(buildApiUrl('/api/map/maps'))
+      if (!res.ok) return
       const data = await res.json()
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        setPlots(data.data)
-      } else {
-        setPlots(DEFAULT_PLOTS)
+        setMaps(data.data)
+        try {
+          localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(data.data))
+        } catch (e) {}
+        // Ensure selectedMapId is valid
+        const savedSel = localStorage.getItem('picnicutkal_admin_selected_map')
+        if (savedSel && data.data.some(m => m._id === savedSel)) {
+          setSelectedMapId(savedSel)
+        } else if (!data.data.some(m => m._id === selectedMapId)) {
+          setSelectedMapId(data.data[0]._id)
+        }
+      }
+    } catch (e) {
+      console.warn('fetchMaps error:', e)
+    }
+  }
+
+  const fetchPlots = async () => {
+    try {
+      // 1. Check SiteConfig first
+      try {
+        const scRes = await fetch(buildApiUrl('/api/site-config/map_plots_config'))
+        if (scRes.ok) {
+          const scData = await scRes.json()
+          const val = scData?.value || scData?.data
+          if (Array.isArray(val) && val.length > 0) {
+            setPlots(prev => {
+              const serverIds = new Set(val.map(p => p._id || p.id))
+              const localAdditions = prev.filter(p => !serverIds.has(p._id) && !serverIds.has(p.id))
+              const merged = [...val, ...localAdditions]
+              try {
+                localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(merged))
+              } catch (e) {}
+              return merged
+            })
+            setLoading(false)
+            return
+          }
+        }
+      } catch (e) {}
+
+      // 2. Check /api/map/plots
+      const res = await fetch(buildApiUrl('/api/map/plots'))
+      if (!res.ok) return
+      const data = await res.json()
+      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
+        setPlots(prev => {
+          const serverIds = new Set(data.data.map(p => p._id || p.id))
+          const localAdditions = prev.filter(p => !serverIds.has(p._id) && !serverIds.has(p.id))
+          const merged = [...data.data, ...localAdditions]
+          try {
+            localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(merged))
+          } catch (e) {}
+          return merged
+        })
       }
     } catch {
-      setPlots(DEFAULT_PLOTS)
+      // Keep current state/localStorage seamlessly
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => { fetchPlots() }, [])
+  useEffect(() => {
+    fetchMaps()
+    fetchPlots()
+  }, [])
 
-  // Filter plots for current selected map
-  const isPrimaryMapSelected = 
-    selectedMapId === 'default-master-plan' || 
-    selectedMapId === 'default-map' || 
-    selectedMapId === maps[0]?._id || 
-    currentMap?.isDefault ||
-    !selectedMapId
-
+  // Filter plots strictly for current selected map (New maps start empty with 0 zones)
   const activePlots = plots.filter(p => {
-    if (!p.mapId) return isPrimaryMapSelected
-    if (isPrimaryMapSelected) {
-      return (
-        p.mapId === 'default-master-plan' || 
-        p.mapId === 'default-map' || 
-        p.mapId === selectedMapId || 
-        p.mapId === currentMap?._id || 
-        p.mapId === maps[0]?._id
-      )
+    const isDefaultMasterPlan = !selectedMapId || 
+      selectedMapId === 'default-master-plan' || 
+      selectedMapId === 'default-map' || 
+      Boolean(currentMap?.isDefault)
+
+    if (isDefaultMasterPlan) {
+      return !p.mapId || p.mapId === 'default-master-plan' || p.mapId === 'default-map' || (currentMap && p.mapId === currentMap._id)
     }
-    return p.mapId === selectedMapId || p.mapId === currentMap?._id
+    return p.mapId === selectedMapId
   })
 
-  // Save Plot / Zone
+  // Save Plot / Zone (Optimistic local save + background backend sync)
   const handleSavePlot = async () => {
-    if (!form.title || !form.price) {
-      toast.error('Title and Price are required')
+    if (!form.title) {
+      toast.error('Title is required')
+      return
+    }
+    const isFreeFacility = Boolean(form.isFree || form.isLandmark || form.price === 0 || form.price === '0')
+    if (!isFreeFacility && !form.price && form.price !== 0) {
+      toast.error('Price is required (or click "No Price" for landmarks like Main Gate, Pool, Trees)')
       return
     }
     setSaving(true)
-    try {
-      const currentImages = Array.isArray(form.images) && form.images.length > 0
-        ? form.images.slice(0, 10)
-        : (form.image ? [form.image] : [])
 
-      const payload = {
-        ...form,
-        mapId: form.mapId || selectedMapId,
-        price: Number(form.price),
-        capacity: Number(form.capacity) || 0,
-        priority: Number(form.priority) || 0,
-        images: currentImages,
-        image: currentImages[0] || form.image || '',
-        facilities: typeof form.facilities === 'string'
-          ? form.facilities.split(',').map(f => f.trim()).filter(Boolean)
-          : form.facilities
-      }
+    const currentImages = Array.isArray(form.images) && form.images.length > 0
+      ? form.images.slice(0, 10)
+      : (form.image ? [form.image] : [])
+
+    const targetMapId = form.mapId || selectedMapId || 'default-master-plan'
+    const newPlotId = editing || `plot-${Date.now()}`
+
+    const payload = {
+      ...form,
+      _id: newPlotId,
+      id: newPlotId,
+      customId: newPlotId,
+      mapId: targetMapId,
+      price: isFreeFacility ? 0 : (Number(form.price) || 0),
+      isFree: isFreeFacility,
+      isLandmark: isFreeFacility,
+      capacity: Number(form.capacity) || 0,
+      priority: Number(form.priority) || 0,
+      images: currentImages,
+      image: currentImages[0] || form.image || '',
+      facilities: typeof form.facilities === 'string'
+        ? form.facilities.split(',').map(f => f.trim()).filter(Boolean)
+        : form.facilities
+    }
+
+    // 1. Immediately update local state & localStorage
+    let updatedPlots
+    if (editing) {
+      updatedPlots = plots.map(p => p._id === editing || p.id === editing ? { ...p, ...payload } : p)
+    } else {
+      updatedPlots = [...plots, payload]
+    }
+    saveAndSyncPlots(updatedPlots)
+    handleCloseForm()
+    toast.success(editing ? 'Plot details updated!' : 'New Plot / Cottage created!')
+
+    // 2. Broadcast via Socket.io
+    if (socket) {
+      socket.emit('plots_update', { plot: payload, action: editing ? 'updated' : 'created' })
+    }
+
+    // 3. Persist to MongoDB backend and adopt real database _id
+    try {
       const url    = editing ? buildApiUrl(`/api/map/plots/${editing}`) : buildApiUrl('/api/map/plots')
       const method = editing ? 'PUT' : 'POST'
-      const res    = await fetch(url, {
+      const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       })
-      const data = await res.json()
-      if (data.success) {
-        toast.success(editing ? 'Plot updated!' : 'Plot created!')
-        await fetchPlots()
-        handleCloseForm()
-      } else {
-        toast.error(data.message || 'Save failed')
+      if (res.ok) {
+        const json = await res.json()
+        if (json.data && json.data._id) {
+          const persistedId = json.data._id
+          const syncedPlots = updatedPlots.map(p => 
+            (p._id === newPlotId || p.id === newPlotId || p._id === editing)
+              ? { ...p, ...json.data, _id: persistedId, id: persistedId }
+              : p
+          )
+          saveAndSyncPlots(syncedPlots)
+        }
       }
-    } catch {
-      toast.error('Network error saving plot')
+
+      fetch(buildApiUrl('/api/site-config/map_plots_config'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'map_plots_config', value: updatedPlots })
+      }).catch(() => {})
+    } catch (e) {
+      console.warn('Backend sync deferred:', e)
     } finally {
       setSaving(false)
     }
@@ -459,19 +492,27 @@ export default function AdminMapManagement() {
   }
 
   const handleDeletePlot = async (id) => {
+    // 1. Immediately update local state & localStorage
+    const updatedPlots = plots.filter(x => x._id !== id && x.id !== id)
+    saveAndSyncPlots(updatedPlots)
+    toast.success('Plot removed successfully')
+    setDeleteConfirm(null)
+
+    // 2. Broadcast via Socket.io
+    if (socket) {
+      socket.emit('plots_update', { plotId: id, action: 'deleted' })
+    }
+
+    // 3. Delete from backend in background
     try {
-      const res = await fetch(buildApiUrl(`/api/map/plots/${id}`), { method: 'DELETE' })
-      const data = await res.json()
-      if (data.success) {
-        toast.success('Plot deleted')
-        setPlots(p => p.filter(x => x._id !== id))
-      } else {
-        toast.error(data.message || 'Delete failed')
-      }
-    } catch {
-      toast.error('Network error')
-    } finally {
-      setDeleteConfirm(null)
+      fetch(buildApiUrl(`/api/map/plots/${id}`), { method: 'DELETE' }).catch(() => {})
+      fetch(buildApiUrl('/api/site-config/map_plots_config'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'map_plots_config', value: updatedPlots })
+      }).catch(() => {})
+    } catch (e) {
+      console.warn('Backend delete deferred:', e)
     }
   }
 
@@ -508,6 +549,28 @@ export default function AdminMapManagement() {
     setShowMapModal(true)
   }
 
+  const handleOpenAddCottage = () => {
+    setShowForm(true)
+    setEditing(null)
+    setForm({
+      ...BLANK_COTTAGE,
+      mapId: selectedMapId || 'default-master-plan'
+    })
+    setTempImgUrl('')
+    toast.success('🏡 Cottage template loaded. Configure and save!')
+  }
+
+  const handleOpenAddLandmark = () => {
+    setShowForm(true)
+    setEditing(null)
+    setForm({
+      ...BLANK_LANDMARK,
+      mapId: selectedMapId || 'default-master-plan'
+    })
+    setTempImgUrl('')
+    toast.success('📍 Instruction / Landmark template loaded. Set location and save!')
+  }
+
   const handleOpenEditMap = (mapObj) => {
     setEditingMapId(mapObj._id)
     setMapForm({
@@ -524,56 +587,120 @@ export default function AdminMapManagement() {
   const handleMapFileUpload = (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        toast.error('File size must be under 8MB')
+      if (file.size > 20 * 1024 * 1024) {
+        toast.error('File size must be under 20MB')
         return
       }
       const reader = new FileReader()
-      reader.onloadend = () => {
-        setMapForm(m => ({ ...m, image: reader.result }))
-        toast.success('Map image selected!')
+      reader.onloadend = async () => {
+        try {
+          const optimized = await compressImage(reader.result, 1600, 0.85)
+          setMapForm(m => ({ ...m, image: optimized }))
+          toast.success('Map image uploaded & optimized!')
+        } catch {
+          setMapForm(m => ({ ...m, image: reader.result }))
+          toast.success('Map image selected!')
+        }
       }
       reader.readAsDataURL(file)
     }
   }
 
-  const handleSaveMap = (e) => {
+  const handleSaveMap = async (e) => {
     e.preventDefault()
     if (!mapForm.title.trim() || !mapForm.image) {
       toast.error('Map Title and Map Image are required!')
       return
     }
 
-    if (editingMapId) {
-      setMaps(prev => prev.map(m => m._id === editingMapId ? { ...m, ...mapForm, title: mapForm.title.trim() } : m))
-      toast.success('✅ Map updated & broadcast live!')
-    } else {
-      const newMap = {
-        _id: `map-${Date.now()}`,
-        title: mapForm.title.trim(),
-        image: mapForm.image,
-        description: mapForm.description.trim(),
-        linkedSpot: mapForm.linkedSpot.trim(),
-        googleMapUrl: mapForm.googleMapUrl.trim(),
-        isDefault: false
-      }
-      setMaps(prev => [newMap, ...prev])
-      setSelectedMapId(newMap._id)
-      toast.success('✅ New Map created & broadcast live!')
+    const payload = {
+      title: mapForm.title.trim(),
+      image: mapForm.image,
+      description: mapForm.description.trim(),
+      linkedSpot: mapForm.linkedSpot.trim(),
+      googleMapUrl: mapForm.googleMapUrl.trim(),
+      isDefault: false
     }
-    setShowMapModal(false)
+
+    try {
+      if (editingMapId) {
+        const res = await fetch(buildApiUrl(`/api/map/maps/${editingMapId}`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        const result = await res.json()
+        if (result.success && result.data) {
+          const updatedDoc = result.data
+          setMaps(prev => {
+            const next = prev.map(m => m._id === editingMapId ? updatedDoc : m)
+            try { localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(next)) } catch (e) {}
+            return next
+          })
+          toast.success('✅ Map updated successfully!')
+        } else {
+          toast.error(result.message || 'Failed to update map')
+          return
+        }
+      } else {
+        const res = await fetch(buildApiUrl('/api/map/maps'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+        const result = await res.json()
+        if (result.success && result.data) {
+          const savedDoc = result.data
+          setMaps(prev => {
+            const next = [...prev, savedDoc]
+            try { localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(next)) } catch (e) {}
+            return next
+          })
+          setSelectedMapId(savedDoc._id)
+          try {
+            localStorage.setItem('picnicutkal_admin_selected_map', savedDoc._id)
+          } catch (e) {}
+          toast.success('✅ New Map created & saved to database!')
+        } else {
+          toast.error(result.message || 'Failed to save map')
+          return
+        }
+      }
+      setShowMapModal(false)
+    } catch (e) {
+      toast.error('Error saving map: ' + e.message)
+    }
   }
 
-  const handleDeleteMap = (mapId, title) => {
+  const handleDeleteMap = async (mapId, title) => {
     if (maps.length <= 1) {
       toast.error('At least one Map must remain in system!')
       return
     }
     if (window.confirm(`Delete Map "${title}"?`)) {
-      setMaps(prev => prev.filter(m => m._id !== mapId))
-      const remaining = maps.filter(m => m._id !== mapId)
-      setSelectedMapId(remaining[0]._id)
-      toast.success('Map removed')
+      try {
+        const res = await fetch(buildApiUrl(`/api/map/maps/${mapId}`), { method: 'DELETE' })
+        const result = await res.json()
+        if (result.success) {
+          const remaining = maps.filter(m => m._id !== mapId)
+          setMaps(remaining)
+          const newActive = remaining[0]?._id
+          if (newActive) {
+            setSelectedMapId(newActive)
+            try {
+              localStorage.setItem('picnicutkal_admin_selected_map', newActive)
+              localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(remaining))
+            } catch (e) {}
+          }
+          const remainingPlots = plots.filter(p => p.mapId !== mapId)
+          saveAndSyncPlots(remainingPlots)
+          toast.success('Map removed from database')
+        } else {
+          toast.error(result.message || 'Failed to delete map')
+        }
+      } catch (e) {
+        toast.error('Error deleting map: ' + e.message)
+      }
     }
   }
 
@@ -588,7 +715,7 @@ export default function AdminMapManagement() {
           <p className="admin-map-sub">Manage interactive resort maps, plots, and zones for all picnic spots</p>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
           <button
             onClick={handleOpenAddMap}
             className="btn btn-outline"
@@ -597,9 +724,25 @@ export default function AdminMapManagement() {
             <Plus size={16} /> Add New Map
           </button>
           <button
+            id="admin-map-add-landmark-btn"
+            className="btn btn-outline"
+            onClick={handleOpenAddLandmark}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', borderColor: 'var(--gold)', color: 'var(--gold)', fontWeight: 600 }}
+          >
+            <MapPin size={16} /> Add Instruction / Landmark
+          </button>
+          <button
+            id="admin-map-add-cottage-btn"
+            className="btn btn-gold"
+            onClick={handleOpenAddCottage}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #d4af37 0%, #aa7c11 100%)', color: '#000', fontWeight: 700 }}
+          >
+            <HouseIcon size={16} /> Add New Cottage
+          </button>
+          <button
             id="admin-map-add-btn"
             className="btn btn-primary"
-            onClick={() => { setShowForm(true); setEditing(null); setForm(BLANK_PLOT) }}
+            onClick={() => { setShowForm(true); setEditing(null); setForm({ ...BLANK_PLOT, mapId: selectedMapId || 'default-master-plan' }) }}
           >
             <Plus size={16} /> Add Plot / Zone
           </button>
@@ -611,17 +754,22 @@ export default function AdminMapManagement() {
 
         {/* ── Interactive Map Preview ── */}
         <div className="admin-map-canvas-wrap">
-          {/* Header Bar with Map Selector Dropdown */}
+          {/* Header Bar with Map Selector Dropdown & Live Indicators */}
           <div className="admin-map-canvas-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Map size={16} style={{ color: 'var(--gold)' }} />
-              <span style={{ fontWeight: 700 }}>Master Plan Preview</span>
+              <span style={{ fontWeight: 700 }}>Map Preview:</span>
+              <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{currentMap?.title}</span>
+              <span style={{ fontSize: '11px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', padding: '2px 8px', borderRadius: '10px' }}>
+                {activePlots.length} zone(s)
+              </span>
             </div>
 
-            {/* Map Selection Dropdown */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Select Map:</label>
+            {/* Map Selection Controls */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Switch Map:</label>
               <select
+                id="admin-map-select-dropdown"
                 value={selectedMapId}
                 onChange={e => setSelectedMapId(e.target.value)}
                 className="input"
@@ -634,10 +782,11 @@ export default function AdminMapManagement() {
               <button
                 type="button"
                 onClick={() => handleOpenEditMap(currentMap)}
-                className="btn btn-ghost btn-xs"
-                title="Edit current map"
+                className="btn btn-outline btn-xs"
+                title="Edit current map details"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
               >
-                <Edit3 size={14} />
+                <Edit3 size={13} /> Edit Map
               </button>
               {maps.length > 1 && (
                 <button
@@ -736,9 +885,13 @@ export default function AdminMapManagement() {
                     <div className="admin-map-plot-info">
                       <span className="admin-map-plot-name">{plot.title}</span>
                       <div className="admin-map-plot-meta">
-                        <span>₹{plot.price?.toLocaleString()} / Pindi</span>
+                        <span>
+                          {plot.isFree || plot.isLandmark || !plot.price || plot.price === 0 || plot.isGate || plot.isParking
+                            ? 'Free / Landmark'
+                            : `₹${plot.price?.toLocaleString()} / day`}
+                        </span>
                         <span>·</span>
-                        <span>{plot.area}</span>
+                        <span>{plot.area || '—'}</span>
                         <span>·</span>
                         <span style={{ color: sc.color }}>{sc.label}</span>
                       </div>
@@ -924,7 +1077,7 @@ export default function AdminMapManagement() {
               transition={{ type: 'spring', damping: 28, stiffness: 260 }}
             >
               <div className="admin-map-form-header">
-                <h3>{editing ? 'Edit Plot / Zone' : 'Add New Plot / Zone'}</h3>
+                <h3>{editing ? 'Edit Spot / Cottage' : 'Add New Spot / Cottage'}</h3>
                 <button className="admin-map-form-close" onClick={handleCloseForm}><X size={18} /></button>
               </div>
 
@@ -946,12 +1099,96 @@ export default function AdminMapManagement() {
                     </select>
                   </div>
 
+                  {/* Instruction / Landmark Quick Presets */}
+                  <div style={{ background: 'rgba(201,168,76,0.08)', padding: '12px 14px', borderRadius: '8px', border: '1px dashed rgba(201,168,76,0.35)', marginBottom: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--gold)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                        <MapPin size={14} /> Landmark & Instruction Presets:
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Non-bookable map reference point</span>
+                    </div>
+
+                    {/* Dedicated Input Field */}
+                    <div style={{ marginBottom: '10px' }}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                        Landmark / Instruction Name (e.g. Main Gate, River, Parking):
+                      </label>
+                      <input
+                        id="admin-map-landmark-input"
+                        type="text"
+                        className="admin-map-input"
+                        list="landmark-preset-options"
+                        placeholder="Type or select instruction (e.g. Main Gate, River Shore, Parking Stand...)"
+                        value={form.title ?? ''}
+                        onChange={e => {
+                          const val = e.target.value
+                          setForm(f => ({
+                            ...f,
+                            title: val,
+                            isFree: true,
+                            isLandmark: true
+                          }))
+                        }}
+                        style={{ width: '100%', fontSize: '13px', background: 'var(--bg-primary)' }}
+                      />
+                      <datalist id="landmark-preset-options">
+                        <option value="Main Gate & Welcome Arch" />
+                        <option value="River Shore / Waterfront" />
+                        <option value="Visitor Parking Zone" />
+                        <option value="Public Washrooms & RO Water" />
+                        <option value="Swimming Pool Area" />
+                        <option value="Security Cabin" />
+                        <option value="Dining Hall / Cafeteria" />
+                        <option value="Children Play Ground" />
+                        <option value="Garden Walkway" />
+                      </datalist>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div>
+                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '5px', fontWeight: 600 }}>
+                        Or Click Quick Preset:
+                      </span>
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {[
+                          { label: '🚪 Main Gate', title: 'Main Gate & Entry Arch', desc: 'Main security check-in entrance and welcome gate.', color: '#4A90E2', fac: 'Security, CCTV, Entry Signboard' },
+                          { label: '🌊 River Waterfront', title: 'River Waterfront', desc: 'Scenic riverside promenade and boating deck.', color: '#00A896', fac: 'River View, Seating Deck, Safety Railing' },
+                          { label: '🚗 Parking Area', title: 'Visitor Parking Zone', desc: 'Designated 2-wheeler and 4-wheeler vehicle parking area.', color: '#F39C12', fac: 'Spacious Parking, Guard on Duty, Shade' },
+                          { label: '🚻 Restrooms', title: 'Restroom & Drinking Water', desc: 'Hygienic public washrooms and filtered drinking water station.', color: '#3498DB', fac: 'Washrooms, Filtered RO Water, Handwash' },
+                          { label: '🏊 Swimming Pool', title: 'Resort Swimming Pool', desc: 'Freshwater swimming pool with sunbeds and shower area.', color: '#16A085', fac: 'Filtered Pool, Sunbeds, Showers, Lifeguard' }
+                        ].map((item, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            className="btn btn-ghost btn-xs"
+                            style={{ fontSize: '11px', background: 'rgba(255,255,255,0.06)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--border)', cursor: 'pointer' }}
+                            onClick={() => {
+                              setForm(f => ({
+                                ...f,
+                                title: item.title,
+                                description: item.desc,
+                                facilities: item.fac,
+                                color: item.color,
+                                price: 0,
+                                isFree: true,
+                                isLandmark: true
+                              }))
+                              toast.success(`Applied preset: ${item.label}`)
+                            }}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="admin-map-form-row">
                     <label>Title *</label>
                     <input
                       id="admin-map-form-title"
                       className="admin-map-input"
-                      placeholder="e.g. Biotech Park 1"
+                      placeholder="e.g. Main Gate, River Point, Parking Stand, Biotech Park 1"
                       value={form.title ?? ''}
                       onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                     />
@@ -1048,7 +1285,7 @@ export default function AdminMapManagement() {
                   </div>
                   <div className="admin-map-form-2col">
                     <div className="admin-map-form-row">
-                      <label>Price (₹/Pindi)</label>
+                      <label>Price (₹/day)</label>
                       <input
                         id="admin-map-form-price"
                         type="number"
@@ -1216,6 +1453,207 @@ export default function AdminMapManagement() {
                   Yes, Delete
                 </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Add / Edit Interactive Map Modal ── */}
+      <AnimatePresence>
+        {showMapModal && (
+          <div className="admin-modal-overlay" style={{ zIndex: 1100 }}>
+            <motion.div
+              className="admin-confirm-modal card glass-card"
+              style={{ maxWidth: '600px', width: '94%', maxHeight: '90vh', overflowY: 'auto', textAlign: 'left', padding: '24px' }}
+              initial={{ scale: 0.92, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.92, opacity: 0, y: 20 }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid var(--border)', paddingBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Map size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700 }}>
+                      {editingMapId ? 'Edit Interactive Map' : 'Add New Interactive Map'}
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>
+                      Configure layout, image, and navigation details for this picnic ground
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-xs"
+                  onClick={() => setShowMapModal(false)}
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <form onSubmit={handleSaveMap} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                {/* Map Title */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                    Map Title <span style={{ color: 'var(--error)' }}>*</span>
+                  </label>
+                  <input
+                    id="admin-map-modal-title"
+                    type="text"
+                    className="input"
+                    placeholder="e.g. Simlipal Forest Map, Deras Ground Block B"
+                    value={mapForm.title || ''}
+                    onChange={e => setMapForm(f => ({ ...f, title: e.target.value }))}
+                    required
+                    style={{ width: '100%', fontSize: '13px' }}
+                  />
+                </div>
+
+                {/* Linked Spot Location */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                    Linked Spot Name / Location <span style={{ color: 'var(--error)' }}>*</span>
+                  </label>
+                  <input
+                    id="admin-map-modal-spot"
+                    type="text"
+                    className="input"
+                    placeholder="e.g. Barapita Ground, Deras or Simlipal Reserve"
+                    value={mapForm.linkedSpot || ''}
+                    onChange={e => setMapForm(f => ({ ...f, linkedSpot: e.target.value }))}
+                    required
+                    style={{ width: '100%', fontSize: '13px' }}
+                  />
+                </div>
+
+                {/* Google Maps URL */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                    Google Maps Navigation URL
+                  </label>
+                  <input
+                    id="admin-map-modal-gmap"
+                    type="url"
+                    className="input"
+                    placeholder="https://maps.google.com/?q=20.311450,85.690644"
+                    value={mapForm.googleMapUrl || ''}
+                    onChange={e => setMapForm(f => ({ ...f, googleMapUrl: e.target.value }))}
+                    style={{ width: '100%', fontSize: '13px' }}
+                  />
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                    Map Description
+                  </label>
+                  <textarea
+                    id="admin-map-modal-desc"
+                    className="input"
+                    rows={2}
+                    placeholder="Brief description of the resort grounds, key landmarks, or activity sectors..."
+                    value={mapForm.description || ''}
+                    onChange={e => setMapForm(f => ({ ...f, description: e.target.value }))}
+                    style={{ width: '100%', fontSize: '13px', resize: 'vertical' }}
+                  />
+                </div>
+
+                {/* Map Layout Image */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                    Map Layout Image (Landscape / Blueprint) <span style={{ color: 'var(--error)' }}>*</span>
+                  </label>
+
+                  {/* Input Type Toggle */}
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <button
+                      type="button"
+                      className={`btn btn-xs ${mapImgInputType === 'file' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setMapImgInputType('file')}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <Upload size={12} /> Upload Image File
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-xs ${mapImgInputType === 'url' ? 'btn-primary' : 'btn-outline'}`}
+                      onClick={() => setMapImgInputType('url')}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                    >
+                      <LinkIcon size={12} /> Image Web URL
+                    </button>
+                  </div>
+
+                  {mapImgInputType === 'file' ? (
+                    <div>
+                      <input
+                        id="admin-map-modal-file"
+                        type="file"
+                        accept="image/*"
+                        onChange={handleMapFileUpload}
+                        className="input"
+                        style={{ width: '100%', fontSize: '12px', padding: '6px' }}
+                      />
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+                        Supports JPG, PNG, WebP up to 20MB. Automatically optimized for fast loading.
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        id="admin-map-modal-url"
+                        type="url"
+                        className="input"
+                        placeholder="https://example.com/resort-map.jpg"
+                        value={mapForm.image || ''}
+                        onChange={e => setMapForm(f => ({ ...f, image: e.target.value }))}
+                        style={{ width: '100%', fontSize: '13px' }}
+                      />
+                    </div>
+                  )}
+
+                  {/* Image Preview Box */}
+                  {mapForm.image && (
+                    <div style={{ marginTop: '10px', position: 'relative', borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border)', maxHeight: '180px', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <img
+                        src={resolveMapImage(mapForm.image)}
+                        alt="Map Preview"
+                        style={{ maxWidth: '100%', maxHeight: '180px', objectFit: 'contain' }}
+                        onError={e => { e.target.onerror = null; e.target.src = masterPlanImg }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setMapForm(f => ({ ...f, image: '' }))}
+                        style={{ position: 'absolute', top: '6px', right: '6px', background: 'rgba(239,68,68,0.85)', color: '#fff', border: 'none', borderRadius: '50%', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                        title="Remove Image"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Actions */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px', borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setShowMapModal(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    id="admin-map-save-map-btn"
+                    type="submit"
+                    className="btn btn-primary"
+                    style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Save size={15} /> {editingMapId ? 'Update Map' : 'Create & Save Map'}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </div>
         )}

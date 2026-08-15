@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { useSocket } from './SocketContext'
+import { buildApiUrl } from '../services/api'
 
 const DEFAULT_LOGO_CONFIG = {
   type: 'icon', // 'icon' | 'image'
@@ -24,6 +25,21 @@ export function LogoProvider({ children }) {
   })
 
   const { socket } = useSocket()
+
+  // Fetch logo config from MongoDB database on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/logo_config'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && d.data) {
+          setLogoConfig(prev => ({ ...prev, ...d.data }))
+          try {
+            localStorage.setItem('picnicutkal_site_logo', JSON.stringify(d.data))
+          } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!socket) return
@@ -54,6 +70,13 @@ export function LogoProvider({ children }) {
     setLogoConfig(updated)
     try {
       localStorage.setItem('picnicutkal_site_logo', JSON.stringify(updated))
+    } catch (e) {}
+    try {
+      fetch(buildApiUrl('/api/site-config/logo_config'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: updated })
+      })
     } catch (e) {}
     if (socket) {
       socket.emit('logo_config_update', updated)

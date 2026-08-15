@@ -86,6 +86,11 @@ io.on('connection', (socket) => {
     io.emit('footer_config_update', data)
   })
 
+  socket.on('zones_config_update', (data) => {
+    console.log(`[Socket.io] Zones config updated`)
+    io.emit('zones_config_update', data)
+  })
+
   // Broadcast real-time booking created
   socket.on('new_booking', (bookingData) => {
     console.log(`[Socket.io] New booking created:`, bookingData.pandalName)
@@ -122,6 +127,18 @@ app.use(morgan('dev'))
 app.use(express.json({ limit: '50mb' }))
 app.use(express.urlencoded({ limit: '50mb', extended: true }))
 
+// Disable ETag on dynamic API responses to always return HTTP 200 OK (no 304 Not Modified)
+app.set('etag', false)
+
+// Dynamic API Headers: Prevent stale browser caching on dynamic plot, spot, and booking routes
+app.use(['/api', '/spots', '/map', '/bookings', '/site-config', '/contact', '/auth'], (req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+  res.set('Pragma', 'no-cache')
+  res.set('Expires', '0')
+  res.removeHeader('ETag')
+  next()
+})
+
 // Make socket instance available in express req
 app.use((req, res, next) => {
   req.io = io
@@ -134,6 +151,7 @@ const spotRoutes    = require('./src/routes/spots')
 const mapRoutes     = require('./src/routes/map')
 const bookingRoutes = require('./src/routes/bookings')
 const contactRoutes = require('./src/routes/contact')
+const configRoutes  = require('./src/routes/config')
 
 // Mount routes (both /api and root paths supported for production domain routing)
 app.use(['/api/auth', '/auth'], authRoutes)
@@ -141,6 +159,7 @@ app.use(['/api/spots', '/spots'], spotRoutes)
 app.use(['/api/map', '/map'], mapRoutes)
 app.use(['/api/bookings', '/bookings'], bookingRoutes)
 app.use(['/api/contact', '/contact'], contactRoutes)
+app.use(['/api/site-config', '/site-config'], configRoutes)
 
 // Health Check
 app.get(['/api/health', '/health'], (req, res) => {

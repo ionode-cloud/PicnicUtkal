@@ -48,8 +48,63 @@ const BLANK_SPOT_FORM = {
   priority: 0
 }
 
+// Helper: normalize plot from Map Management to spot model
+const normalizePlotToSpot = (p) => ({
+  id: p._id || p.id,
+  name: p.title || p.name || 'Unnamed Spot',
+  title: p.title || p.name || 'Unnamed Spot',
+  location: p.location || (p.mapId === 'chilika-map-02' ? 'Chilika Lake, Puri' : (p.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Ground, Deras')),
+  price: Number(p.price) || 0,
+  area: p.area || '3500 sq ft',
+  rating: p.rating || 4.8,
+  reviews: p.reviews || 120,
+  capacity: Number(p.capacity) || 100,
+  category: p.isLandmark || p.isFree ? 'Landmark & Facility' : (p.isCottage ? 'Cottage Accommodation' : 'Map Zone & Pandal'),
+  status: p.status === 'booked' ? 'Booked' : (p.status === 'maintenance' ? 'Maintenance' : 'available'),
+  badge: p.isLandmark || p.isFree ? 'Free Landmark' : (p.isCottage ? 'Cottage' : 'Map Zone'),
+  isMapZone: true,
+  isFree: Boolean(p.isFree || p.isLandmark || p.price === 0),
+  isLandmark: Boolean(p.isLandmark || p.isFree),
+  isCottage: Boolean(p.isCottage),
+  mapId: p.mapId || 'default-master-plan',
+  description: p.description || '',
+  facilities: Array.isArray(p.facilities) ? p.facilities.join(', ') : (p.facilities || ''),
+  images: p.images || (p.image ? [p.image] : []),
+  image: p.image || (Array.isArray(p.images) ? p.images[0] : ''),
+  coordinates: p.coordinates || { x: 30, y: 30, width: 15, height: 10 },
+  distanceFromGate: p.distanceFromGate || '80 m',
+  distanceFromCanal: p.distanceFromCanal || '20 m',
+  color: p.color || '#C9A84C',
+  priority: p.priority || 0
+})
+
 export default function Spots() {
-  const [spots, setSpots] = useState([])
+  const isNonBookableLandmark = (p) => Boolean(
+    p.isLandmark ||
+    p.isFree ||
+    Number(p.price) === 0 ||
+    p.price === 0 ||
+    p._id === 'main-gate' ||
+    p._id === 'parking' ||
+    p.id === 'main-gate' ||
+    p.id === 'parking'
+  )
+
+  const [spots, setSpots] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_admin_plots')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+          return cleaned.map(normalizePlotToSpot)
+        }
+      }
+    } catch (e) {}
+    return []
+  })
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedMapFilter, setSelectedMapFilter] = useState('All')
   
@@ -66,54 +121,54 @@ export default function Spots() {
       const saved = localStorage.getItem('picnicutkal_admin_maps')
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter(m => m._id !== 'chilika-map-02' && m._id !== 'simlipal-map-03')
+          if (cleaned.length > 0) return cleaned
+        }
       }
     } catch (e) {}
     return [
-      { _id: 'default-master-plan', title: 'Barapita Master Plan (Main Ground)' },
-      { _id: 'chilika-map-02', title: 'Chilika Lake Sanctuary Map' },
-      { _id: 'simlipal-map-03', title: 'Simlipal Forest & Waterfall Map' }
+      { _id: 'default-master-plan', title: 'Barapita Master Plan (Main Ground)' }
     ]
   })
 
   const { socket, emitPlotStatusChange } = useSocket()
 
   // Load Map Management plots into Spots list dynamically
-  const loadPlotsFromApi = () => {
-    fetch(buildApiUrl('/api/map/plots'))
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && Array.isArray(d.data)) {
-          const mapZones = d.data.map(p => ({
-            id: p._id,
-            name: p.title,
-            title: p.title,
-            location: p.mapId === 'chilika-map-02' ? 'Chilika Lake, Puri' : (p.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Ground, Deras'),
-            price: p.price || 499,
-            area: p.area || '3500 sq ft',
-            rating: 4.8,
-            reviews: 120,
-            capacity: p.capacity || 100,
-            category: 'Map Zone & Pandal',
-            status: p.status === 'booked' ? 'Booked' : (p.status === 'maintenance' ? 'Maintenance' : 'available'),
-            badge: 'Map Zone',
-            isMapZone: true,
-            mapId: p.mapId || 'default-master-plan',
-            description: p.description || '',
-            facilities: Array.isArray(p.facilities) ? p.facilities.join(', ') : (p.facilities || ''),
-            images: p.images || (p.image ? [p.image] : []),
-            image: p.image || '',
-            coordinates: p.coordinates || { x: 30, y: 30, width: 15, height: 10 },
-            distanceFromGate: p.distanceFromGate || '80 m',
-            distanceFromCanal: p.distanceFromCanal || '20 m',
-            color: p.color || '#C9A84C',
-            priority: p.priority || 0
-          }))
-
-          setSpots(mapZones)
+  const loadPlotsFromApi = async () => {
+    // 1. Check SiteConfig first
+    try {
+      const scRes = await fetch(buildApiUrl('/api/site-config/map_plots_config'))
+      if (scRes.ok) {
+        const scData = await scRes.json()
+        if (scData?.value && Array.isArray(scData.value) && scData.value.length > 0) {
+          const cleaned = scData.value
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+          setSpots(cleaned.map(normalizePlotToSpot))
+          try {
+            localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(scData.value))
+          } catch (e) {}
+          return
         }
-      })
-      .catch(() => {})
+      }
+    } catch (e) {}
+
+    // 2. Check /api/map/plots
+    try {
+      const res = await fetch(buildApiUrl('/api/map/plots'))
+      if (!res.ok) return
+      const d = await res.json()
+      if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+        const cleaned = d.data
+          .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+          .filter(p => !isNonBookableLandmark(p))
+        setSpots(cleaned.map(normalizePlotToSpot))
+        try {
+          localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(d.data))
+        } catch (e) {}
+      }
+    } catch (e) {}
   }
 
   useEffect(() => {
@@ -140,7 +195,7 @@ export default function Spots() {
     
     let matchesMap = true
     if (selectedMapFilter !== 'All') {
-      const sMapId = spot.mapId || (spot.id === '2' ? 'chilika-map-02' : (spot.id === '3' ? 'simlipal-map-03' : 'default-master-plan'))
+      const sMapId = spot.mapId || 'default-master-plan'
       if (selectedMapFilter === 'default-master-plan' || selectedMapFilter === 'default-map') {
         matchesMap = sMapId === 'default-master-plan' || sMapId === 'default-map' || !spot.mapId
       } else {
@@ -396,7 +451,7 @@ export default function Spots() {
               <th>Spot / Zone Name</th>
               <th>Location</th>
               <th>Category</th>
-              <th>Rate (₹/Pindi)</th>
+              <th>Rate (₹/day)</th>
               <th>Max Capacity</th>
               <th>Status</th>
               <th>Actions</th>
@@ -432,7 +487,7 @@ export default function Spots() {
                     </span>
                   </td>
                   <td style={{ fontWeight: 700, color: 'var(--gold)' }}>
-                    ₹{spot.price?.toLocaleString()} <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}>{spot.id === 'cottage-rooms' ? '/night' : '/Pindi'}</small>
+                    ₹{spot.price?.toLocaleString()} <small style={{ color: 'var(--text-muted)', fontWeight: 400 }}>/day</small>
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
@@ -623,7 +678,7 @@ export default function Spots() {
 
                   <div className="admin-map-form-2col">
                     <div className="admin-map-form-row">
-                      <label>PRICE (₹/PINDI)</label>
+                      <label>PRICE (₹/DAY)</label>
                       <input
                         type="number"
                         className="admin-map-input"

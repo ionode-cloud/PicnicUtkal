@@ -4,24 +4,15 @@ import Lightbox from 'yet-another-react-lightbox'
 import 'yet-another-react-lightbox/styles.css'
 import { useSocket } from '../context/SocketContext'
 
-const DEFAULT_IMAGES = [
-  { src: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80', title: 'Forest Camping' },
-  { src: 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80', title: 'Nature Walks' },
-  { src: 'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=800&q=80', title: 'River Swimming' },
-  { src: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80', title: 'Dolphin Boating' },
-  { src: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80', title: 'Barunei Adventure' },
-  { src: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80', title: 'Mayurbhanj Safari' }
-]
-
 const getStoredGallery = () => {
   try {
     const saved = localStorage.getItem('picnicutkal_user_view_config')
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (parsed.gallery && parsed.gallery.length > 0) return parsed.gallery
+      if (parsed.gallery && Array.isArray(parsed.gallery)) return parsed.gallery
     }
   } catch (e) {}
-  return DEFAULT_IMAGES
+  return []
 }
 
 export default function Gallery() {

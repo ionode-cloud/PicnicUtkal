@@ -14,6 +14,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 const INITIAL_HOMEPAGE_ZONES = [
   {
@@ -100,11 +101,34 @@ export default function Zones() {
 
   const { socket } = useSocket()
 
-  // Save to localStorage & emit Socket.io event for real-time Home page update
+  // Fetch zones from MongoDB database on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/admin_zones'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && Array.isArray(d.data) && d.data.length > 0) {
+          setZones(d.data)
+          try {
+            localStorage.setItem('picnicutkal_admin_zones', JSON.stringify(d.data))
+          } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Save to localStorage & MongoDB & emit Socket.io event for real-time Home page update
   const saveAndBroadcast = (updatedZones) => {
     setZones(updatedZones)
     try {
       localStorage.setItem('picnicutkal_admin_zones', JSON.stringify(updatedZones))
+    } catch (e) {}
+
+    try {
+      fetch(buildApiUrl('/api/site-config/admin_zones'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: updatedZones })
+      })
     } catch (e) {}
 
     if (socket) {

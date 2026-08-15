@@ -2,43 +2,46 @@ import { useState, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import { LuTrees as Trees, LuCompass as Compass, LuHeart as Heart } from 'react-icons/lu'
 import { useSocket } from '../context/SocketContext'
-
-const DEFAULT_ABOUT = {
-  title: 'Pioneering Premium Eco-Tourism & Picnic Experiences in Odisha',
-  subtitle: "Connecting nature lovers with handcrafted, secure, and serene picnic sanctuaries across Odisha's rivers, forests, and hills.",
-  mission: 'To empower families, corporate groups, and travelers to reconnect with nature through sustainable, frictionless, and memorable picnic experiences.',
-  vision: 'To become eastern India\'s leading eco-hospitality network by preserving natural habitats while delivering world-class outdoor leisure services.',
-  features: [
-    '100% Verified Private & Eco-Friendly Locations',
-    '24/7 On-Site Security & Clean Drinking Water',
-    'Pre-booked Private Cooking & Catering Units',
-    'Instant E-Pass & Invoice Generation'
-  ],
-  featureCards: [
-    { icon: '🌿', title: 'Nature Preservation', desc: 'We promote plastic-free, low-impact tourist habits. Part of our booking revenue is donated to local wildlife conservation initiatives.' },
-    { icon: '🏄', title: 'Curated Adventures', desc: 'From water slides to ziplines, our adventure zones are certified by international safety agencies to guarantee safety first.' },
-    { icon: '🏡', title: 'Premium Hospitality', desc: 'Pre-ordered hot meals, clean restrooms, CCTV-monitored zones, and on-site local guides make planning stress-free.' }
-  ],
-  partnerships: [
-    '🌲 Odisha Tourism',
-    '🐯 Eco-Development Committees',
-    '🤝 Local Forest Communities'
-  ]
-}
+import { buildApiUrl } from '../services/api'
 
 const getStoredAbout = () => {
   try {
     const saved = localStorage.getItem('picnicutkal_user_view_config')
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (parsed.about) return { ...DEFAULT_ABOUT, ...parsed.about }
+      if (parsed.about) return parsed.about
     }
   } catch (e) {}
-  return DEFAULT_ABOUT
+  return {
+    title: 'About PicnicUtkal',
+    subtitle: '',
+    mission: '',
+    features: [],
+    featureCards: [],
+    partnerships: [],
+    heroImage: ''
+  }
 }
 
 export default function About() {
   const [about, setAbout] = useState(getStoredAbout)
+
+  // Fetch about config from MongoDB database on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/user_view_config'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && d.data && d.data.about) {
+          setAbout(prev => ({ ...prev, ...d.data.about }))
+          try {
+            const saved = localStorage.getItem('picnicutkal_user_view_config')
+            const parsed = saved ? JSON.parse(saved) : {}
+            localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, about: d.data.about }))
+          } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   // Socket.io: live-reload when admin updates About page
   const { socket } = useSocket()
@@ -71,35 +74,42 @@ export default function About() {
           <div>
             <span className="section-eyebrow">Our Story</span>
             <h1 className="heading-2" style={{ marginBottom: 'var(--space-4)' }}>
-              {about.title || DEFAULT_ABOUT.title}
+              {about.title || 'About PicnicUtkal'}
             </h1>
-            <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', lineHeight: '1.75' }}>
-              {about.subtitle || DEFAULT_ABOUT.subtitle}
-            </p>
-            <p style={{ color: 'var(--text-secondary)', lineHeight: '1.75' }}>
-              {about.mission || DEFAULT_ABOUT.mission}
-            </p>
+            {about.subtitle && (
+              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-4)', lineHeight: '1.75' }}>
+                {about.subtitle}
+              </p>
+            )}
+            {about.mission && (
+              <p style={{ color: 'var(--text-secondary)', lineHeight: '1.75' }}>
+                {about.mission}
+              </p>
+            )}
           </div>
-          <div>
-            <img 
-              src={about.heroImage || "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80"} 
-              alt="About PicnicUtkal" 
-              style={{ borderRadius: 'var(--radius-xl)', width: '100%', height: '400px', objectFit: 'cover', boxShadow: 'var(--shadow-lg)' }} 
-              onError={e => { e.target.src = "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&q=80" }}
-            />
-          </div>
+          {about.heroImage && (
+            <div>
+              <img 
+                src={about.heroImage} 
+                alt="About PicnicUtkal" 
+                style={{ borderRadius: 'var(--radius-xl)', width: '100%', height: '400px', objectFit: 'cover', boxShadow: 'var(--shadow-lg)' }} 
+              />
+            </div>
+          )}
         </div>
 
         {/* Mission / Vision Cards */}
-        <div className="about-mission-grid">
-          {(about.featureCards || DEFAULT_ABOUT.featureCards).map((card, i) => (
-            <div key={i} className="card" style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              <div style={{ fontSize: '32px', lineHeight: 1 }}>{card.icon}</div>
-              <h3 className="heading-4">{card.title}</h3>
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{card.desc}</p>
-            </div>
-          ))}
-        </div>
+        {about.featureCards && about.featureCards.length > 0 && (
+          <div className="about-mission-grid">
+            {about.featureCards.map((card, i) => (
+              <div key={i} className="card" style={{ padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
+                <div style={{ fontSize: '32px', lineHeight: 1 }}>{card.icon}</div>
+                <h3 className="heading-4">{card.title}</h3>
+                <p style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)' }}>{card.desc}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Features Highlights */}
         {about.features && about.features.length > 0 && (
@@ -117,12 +127,12 @@ export default function About() {
         )}
 
         {/* Partners Section */}
-        {(about.partnerships || DEFAULT_ABOUT.partnerships).length > 0 && (
+        {about.partnerships && about.partnerships.length > 0 && (
           <div style={{ textAlign: 'center', marginBottom: 'var(--space-16)' }}>
             <span className="section-eyebrow">Supported By</span>
             <h2 className="heading-3" style={{ marginBottom: 'var(--space-8)' }}>Our Valued Partnerships</h2>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 'var(--space-12)', flexWrap: 'wrap', opacity: 0.75 }}>
-              {(about.partnerships || DEFAULT_ABOUT.partnerships).map((partner, i) => (
+              {about.partnerships.map((partner, i) => (
                 <span key={i} style={{ fontSize: 'var(--text-lg)', fontWeight: '700', color: 'var(--text-secondary)' }}>{partner}</span>
               ))}
             </div>

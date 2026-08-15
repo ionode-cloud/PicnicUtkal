@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
 import { useSocket } from '../context/SocketContext'
 import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom'
@@ -10,7 +10,7 @@ import {
   LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
   LuChevronRight as ChevronRight, LuSparkles as Sparkles, LuArrowRight as ArrowRight, LuShieldCheck as ShieldCheck, LuUsers as Users, LuWifi as Wifi, LuLock as Lock,
   LuHouse as HomeIcon, LuCircleCheck as CheckCircle2, LuMusic as Music, LuCoffee as Coffee, LuSparkle as Sparkle, LuLoader as Loader2,
-  LuPhone as Phone, LuCreditCard as CreditCard, LuUser as User
+  LuPhone as Phone, LuCreditCard as CreditCard, LuUser as User, LuImage as ImageIcon
 } from 'react-icons/lu'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Navigation, Thumbs, FreeMode, Autoplay } from 'swiper/modules'
@@ -21,187 +21,7 @@ import 'swiper/css/navigation'
 import 'swiper/css/thumbs'
 import 'swiper/css/autoplay'
 
-const PLOT_IMAGES = {
-  pandal: [
-    'https://images.unsplash.com/photo-1547082299-de196ea013d6?w=800&q=80',
-    'https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80',
-    'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?w=800&q=80'
-  ],
-  cottage: [
-    'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80',
-    'https://images.unsplash.com/photo-1618773928121-c32242e63f39?w=800&q=80',
-    'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80'
-  ],
-  default: [
-    'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80',
-    'https://images.unsplash.com/photo-1533850595620-7b1711221751?w=800&q=80'
-  ]
-}
-
-const PANDAL_ADDONS = [
-  { 
-    id: 'ad_gas_chulha', 
-    name: '🔥 Gas & Chulha Booking', 
-    desc: 'Full outdoor kitchen burner stove and filled LPG cylinder setup.', 
-    priceAddon: 250,
-    items: [
-      '1x Commercial Single-Burner Chulha (Stove)',
-      '1x 5kg LPG Gas Cylinder (Pre-filled, ready to use)',
-      'High-pressure gas regulator and safety hose pipe',
-      'Gas lighter utility included'
-    ]
-  },
-  { 
-    id: 'ad_cooking_kit', 
-    name: '🍳 Cooking Accessories Pack', 
-    desc: 'Complete picnic cookware, serving spoons and preparation kit.', 
-    priceAddon: 150,
-    items: [
-      '2x Large Aluminum Cooking Pots (Dekchi with lids)',
-      '1x Deep Frying Pan (Kadai) & 1x Tawa',
-      'Large cooking ladles, spatula & serving spoons (Khanti & Chhanki)',
-      'Heavy-duty chopping board & 2x stainless steel kitchen knives',
-      'Dishwashing gel, scrubber sponge & cleaning cloth'
-    ]
-  },
-  { 
-    id: 'ad_sound', 
-    name: '🔊 Standard Sound System', 
-    desc: 'Dual speakers, microphone, Bluetooth audio receiver', 
-    priceAddon: 150,
-    items: [
-      '2x Active Sound Tower Speakers (JBL 15-inch)',
-      '1x Audio Mixing Console (Yamaha 6-channel)',
-      '1x Wireless Handheld Vocal Microphone',
-      'Bluetooth receiver, AUX cable, and power extension leads'
-    ]
-  },
-  { 
-    id: 'ad_catering', 
-    name: '🍽 Catering Table Setup', 
-    desc: 'Elegant buffet tables with satin cloth skirting', 
-    priceAddon: 100,
-    items: [
-      '4x Buffet / food serving tables (6x3 ft metal frame)',
-      'Premium white satin fabric table spreads',
-      'Pleated gold border table skirtings'
-    ]
-  },
-  { 
-    id: 'ad_decor', 
-    name: '🌸 Floral Welcome Arch', 
-    desc: 'Decorated entry arch with fresh seasonal flowers', 
-    priceAddon: 250,
-    items: [
-      'Yellow/orange fresh marigolds & white lily floral decorations',
-      'Sturdy welcome gate frame structure',
-      'Welcome text writing board'
-    ]
-  },
-  { 
-    id: 'ad_power', 
-    name: '⚡ Dedicated Silent Generator', 
-    desc: 'Uninterrupted power supply backup for event hours', 
-    priceAddon: 200,
-    items: [
-      '1x 5 KVA Silent Diesel Generator Set',
-      'Fuel included for up to 8 hours of peak load operation',
-      'Safety MCB distribution box and extension cables'
-    ]
-  }
-]
-
-const COTTAGE_ROOM_TYPES = [
-  { id: 'cottage-1', name: '🏡 Cottage 1 (Standard)', desc: '2 Beds · AC · Attached Bath · Garden View', price: 999 },
-  { id: 'cottage-2', name: '🏘️ Cottage 2 (Deluxe)', desc: '3 Beds · AC · Attached Bath · Canal View · TV', price: 1499 },
-  { id: 'cottage-3', name: '🏠 Cottage 3 (Premium Suite)', desc: '4 Beds · AC · Attached Bath · Riverside View · TV · Kitchenette', price: 1999 }
-]
-
-const DEFAULT_PLOTS = [
-  {
-    _id: 'pandal-1',
-    title: 'Pandal — Upper Block',
-    price: 499,
-    area: '3500 sq ft',
-    capacity: 120,
-    description: 'Shaded pandal structure near the canal with cool breeze and scenic water views.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'Riverside View'],
-    status: 'available'
-  },
-  {
-    _id: 'pandal-2',
-    title: 'Pandal — Center Block',
-    price: 499,
-    area: '3200 sq ft',
-    capacity: 100,
-    description: 'Central pandal with easy access to restroom facilities.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'DJ Point'],
-    status: 'booked'
-  },
-  {
-    _id: 'pandal-3',
-    title: 'Pandal — West Block',
-    price: 399,
-    area: '2800 sq ft',
-    capacity: 90,
-    description: 'Cozy west-side pandal nestled among trees, perfect for intimate family picnics.',
-    facilities: ['Shade', 'Seating', 'BBQ Area', 'Garden View'],
-    status: 'available'
-  },
-  {
-    _id: 'pandal-4',
-    title: 'Pandal — East Block',
-    price: 449,
-    area: '3000 sq ft',
-    capacity: 95,
-    description: 'East-side pandal with direct parking access, ideal for large group events.',
-    facilities: ['Shade', 'Seating', 'Parking Access', 'Electricity'],
-    status: 'available'
-  },
-  {
-    _id: 'pandal-5',
-    title: 'Pandal — Road Block',
-    price: 449,
-    area: '3000 sq ft',
-    capacity: 100,
-    description: 'Roadside pandal near the main pathway — convenient access and great for large gatherings.',
-    facilities: ['Shade', 'Seating', 'Lighting', 'Road Access'],
-    status: 'available'
-  },
-  {
-    _id: 'pandal-6',
-    title: 'Pandal — North East Block',
-    price: 499,
-    area: '3200 sq ft',
-    capacity: 110,
-    description: 'Premium north-east pandal with open views, near the parking zone — ideal for large events.',
-    facilities: ['Shade', 'Seating', 'Electricity', 'Parking Access', 'Open View'],
-    status: 'available'
-  },
-  {
-    _id: 'stage-stair',
-    title: 'Stage / Stair Area',
-    price: 299,
-    area: '1200 sq ft',
-    capacity: 50,
-    description: 'Elevated stage area with stairs — perfect for performances, ceremonies and photo backdrops.',
-    facilities: ['Stage Lighting', 'Sound System', 'Backdrop', 'Steps'],
-    status: 'available'
-  },
-  {
-    _id: 'cottage-rooms',
-    title: 'Cottage Rooms',
-    price: 999,
-    area: '4800 sq ft',
-    capacity: 36,
-    description: 'Comfortable cottage accommodation block with 3 room types — Standard (Cottage 1 ₹999/night), Deluxe (Cottage 2 ₹1499/night), and Premium Suite (Cottage 3 ₹1999/night). All rooms include AC, attached bath and scenic views.',
-    facilities: ['AC Rooms', 'Attached Bath', 'Garden View', 'Canal View', 'Riverside View', 'TV', 'Kitchenette (Suite)'],
-    status: 'available',
-    isCottage: true
-  }
-]
-
-export default function PlotDetail() {
+function PlotDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
@@ -235,9 +55,42 @@ export default function PlotDetail() {
   })
   const [selectedDates, setSelectedDates] = useState(() => draft?.selectedDates || [])
   const [selectedAddons, setSelectedAddons] = useState(() => draft?.selectedAddons || [])
-  const [selectedCottageId, setSelectedCottageId] = useState(() => draft?.selectedCottageId || 'cottage-2')
+  const [selectedCottageId, setSelectedCottageId] = useState(() => draft?.selectedCottageId || 'standard')
   const [selectedVehicle, setSelectedVehicle] = useState(() => draft?.selectedVehicle || 'car')
   const [expandedAddons, setExpandedAddons] = useState([])
+
+  const [addonsList, setAddonsList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_event_addons')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) { return [] }
+  })
+
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/addons_config'), { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.value && Array.isArray(d.value)) {
+          setAddonsList(d.value)
+          try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(d.value)) } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const { socket } = useSocket()
+
+  useEffect(() => {
+    if (!socket) return
+    const handleAddonsUpdate = (data) => {
+      if (data && Array.isArray(data.addons)) {
+        setAddonsList(data.addons)
+        try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(data.addons)) } catch (e) {}
+      }
+    }
+    socket.on('addons_config_update', handleAddonsUpdate)
+    return () => socket.off('addons_config_update', handleAddonsUpdate)
+  }, [socket])
 
   const getStoredRules = () => {
     try {
@@ -250,15 +103,13 @@ export default function PlotDetail() {
       }
     } catch (e) {}
     return [
-      { text: 'Alcohol consumption is strictly prohibited inside the sanctuary picnic campus' },
-      { text: 'Littering is an offense; please dispose of plastic trash in colored bins only' },
-      { text: 'Fires or self-organized BBQ must be restricted within designated brick fire pits' },
-      { text: 'Decorations using cello tape or nails on trees/walls are strictly banned' }
+      { id: 'def-1', title: 'Valid Photo ID Required', desc: 'Aadhaar, Voter ID or Driving License must be produced upon entry for all adult members.' },
+      { id: 'def-2', title: 'Plastic-Free Sanctuary', desc: 'Strict zero-single-use-plastic zone. Carry eco-friendly containers and trash bags.' },
+      { id: 'def-3', title: 'Eco-Hours Timing', desc: 'Grounds open 07:00 AM to 06:30 PM. Overnight stays are allowed strictly in pre-booked cottages.' }
     ]
   }
 
   const [activeRules, setActiveRules] = useState(getStoredRules)
-  const { socket } = useSocket()
 
   useEffect(() => {
     if (!socket) return
@@ -290,44 +141,46 @@ export default function PlotDetail() {
   }, [id, customerName, guests, phone, aadhaar, visitDate, selectedDates, durationDays, selectedAddons, selectedCottageId, selectedVehicle])
 
   useEffect(() => {
+    if (!id) return
+
+    // Reject stale temporary frontend IDs immediately — they were never saved in DB
+    if (id.startsWith('plot-') || id.startsWith('spot-') || /^plot-\d+$/.test(id)) {
+      setPlot(null)
+      setError('This link is outdated. Please navigate to the Spots or Map page to find a valid zone.')
+      setLoading(false)
+      // Clear stale draft for this ID
+      try { localStorage.removeItem(`picnicutkal_plot_draft_${id}`) } catch (e) {}
+      return
+    }
+
+    setPlot(null)
+    setError('')
     setLoading(true)
     let isMounted = true
 
-    // Safety timeout: stop spinner after 2 seconds max
-    const timer = setTimeout(() => {
-      if (isMounted && loading) {
-        const fallback = DEFAULT_PLOTS.find(p => p._id === id || p.id === id) || DEFAULT_PLOTS[0]
-        setPlot(fallback)
-        setLoading(false)
-      }
-    }, 2000)
-
-    fetch(buildApiUrl(`/api/map/plots/${id}`))
-      .then(r => r.json())
-      .then(d => {
+    fetch(buildApiUrl(`/api/map/plots/${id}`), { cache: 'no-store' })
+      .then(async res => {
         if (!isMounted) return
-        if (d.success && d.data) {
-          setPlot(d.data)
-        } else {
-          const local = DEFAULT_PLOTS.find(p => p._id === id || p.id === id) || DEFAULT_PLOTS[0]
-          setPlot(local)
+        if (res.status === 200) {
+          const d = await res.json()
+          if (d.success && d.data) {
+            setPlot(d.data)
+            setError('')
+            return
+          }
         }
+        setError('Spot or Zone not found')
       })
       .catch(() => {
         if (!isMounted) return
-        const local = DEFAULT_PLOTS.find(p => p._id === id || p.id === id) || DEFAULT_PLOTS[0]
-        setPlot(local)
+        setError('Spot or Zone not found')
       })
       .finally(() => {
-        if (isMounted) {
-          clearTimeout(timer)
-          setLoading(false)
-        }
+        if (isMounted) setLoading(false)
       })
 
     return () => {
       isMounted = false
-      clearTimeout(timer)
     }
   }, [id])
 
@@ -360,6 +213,19 @@ export default function PlotDetail() {
     )
   }
 
+  const cottageRoomTypes = useMemo(() => {
+    if (!plot) return []
+    if (Array.isArray(plot.roomTypes) && plot.roomTypes.length > 0) {
+      return plot.roomTypes
+    }
+    if (plot.isCottage || plot._id === 'cottage-rooms') {
+      return [
+        { id: 'standard', name: `${plot.title} (Standard)`, desc: plot.description || 'AC · Attached Bath', price: plot.price || 999 }
+      ]
+    }
+    return []
+  }, [plot])
+
   if (loading) {
     return (
       <div className="plot-loading-container">
@@ -381,26 +247,27 @@ export default function PlotDetail() {
     )
   }
 
-  const isCottage = plot._id === 'cottage-rooms' || plot.isCottage
-  const isPandal = plot._id.startsWith('pandal')
+  const isCottage = plot ? (plot._id === 'cottage-rooms' || plot.isCottage) : false
+  const isPandal = plot ? (plot._id.startsWith('pandal') || plot.isPandal) : false
 
   // Select current price
-  let basePrice = plot.price
-  if (isCottage) {
-    const selectedCot = COTTAGE_ROOM_TYPES.find(c => c.id === selectedCottageId)
-    basePrice = selectedCot ? selectedCot.price : 999
+  let basePrice = plot ? plot.price : 0
+  if (isCottage && cottageRoomTypes.length > 0) {
+    const selectedCot = cottageRoomTypes.find(c => c.id === selectedCottageId) || cottageRoomTypes[0]
+    basePrice = selectedCot ? selectedCot.price : (plot.price || 0)
   }
 
   const baseTotal = basePrice * (Number(durationDays) || 1)
   
-  const selectedAddonsObjects = PANDAL_ADDONS.filter(a => selectedAddons.includes(a.id))
+  const activeAddonsList = addonsList.filter(a => a.status === 'Active' || !a.status)
+  const selectedAddonsObjects = activeAddonsList.filter(a => selectedAddons.includes(a.id))
 
-  const addonsTotal = selectedAddonsObjects.reduce((sum, a) => sum + a.priceAddon, 0)
+  const addonsTotal = selectedAddonsObjects.reduce((sum, a) => sum + (Number(a.priceAddon) || Number(a.price) || 0), 0)
 
   const grandTotal = baseTotal + addonsTotal
 
-  const activeCottageName = isCottage 
-    ? COTTAGE_ROOM_TYPES.find(c => c.id === selectedCottageId)?.name 
+  const activeCottageName = isCottage && cottageRoomTypes.length > 0
+    ? (cottageRoomTypes.find(c => c.id === selectedCottageId)?.name || cottageRoomTypes[0]?.name)
     : ''
 
   const maxCapacity = plot ? (Number(plot.capacity) || 100) : 100
@@ -469,7 +336,7 @@ export default function PlotDetail() {
         description: plot.description
       }
 
-      navigate('/booking', {
+      navigate(`/booking?plotId=${plot._id}`, {
         state: {
           plot: selectedPlotObj,
           durationDays: durationDays,
@@ -484,12 +351,20 @@ export default function PlotDetail() {
     }, 800)
   }
 
-  // Get gallery images (use updated plot.images / plot.image from admin backend, fallback to default)
-  const images = (Array.isArray(plot.images) && plot.images.filter(Boolean).length > 0)
+  // Get gallery images (use strictly uploaded plot.images / plot.image from admin backend, no dummy images)
+  const rawImages = (Array.isArray(plot.images) && plot.images.filter(Boolean).length > 0)
     ? plot.images.filter(Boolean)
-    : (plot.image
-        ? [plot.image]
-        : (isCottage ? PLOT_IMAGES.cottage : (isPandal ? PLOT_IMAGES.pandal : PLOT_IMAGES.default)))
+    : (plot.image ? [plot.image] : [])
+  const images = rawImages.map(imgSrc => {
+    if (!imgSrc) return ''
+    if (typeof imgSrc === 'string' && imgSrc.startsWith('/uploads')) {
+      const backendOrigin = import.meta.env.VITE_API_URL 
+        ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+        : 'http://localhost:5300'
+      return `${backendOrigin}${imgSrc}`
+    }
+    return imgSrc
+  }).filter(Boolean)
 
   const facilities = plot.facilities?.length > 0
     ? plot.facilities
@@ -533,41 +408,68 @@ export default function PlotDetail() {
           <div className="spot-main-content">
             {/* Swiper Gallery */}
             <div className="spot-gallery-wrapper">
-              <Swiper
-                spaceBetween={10}
-                navigation={true}
-                autoplay={{
-                  delay: 3000,
-                  disableOnInteraction: false,
-                  pauseOnMouseEnter: true
-                }}
-                loop={images.length > 1}
-                thumbs={{ swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null }}
-                modules={[Navigation, Thumbs, FreeMode, Autoplay]}
-                className="spot-main-slider"
-              >
-                {images.map((img, i) => (
-                  <SwiperSlide key={i}>
-                    <img src={img} alt={`${plot.title} View ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  </SwiperSlide>
-                ))}
-              </Swiper>
+              {images.length > 0 ? (
+                <>
+                  <Swiper
+                    spaceBetween={10}
+                    navigation={images.length > 1}
+                    autoplay={images.length > 1 ? {
+                      delay: 3000,
+                      disableOnInteraction: false,
+                      pauseOnMouseEnter: true
+                    } : false}
+                    loop={images.length > 1}
+                    thumbs={{ swiper: thumbsSwiper && !thumbsSwiper.destroyed ? thumbsSwiper : null }}
+                    modules={[Navigation, Thumbs, FreeMode, Autoplay]}
+                    className="spot-main-slider"
+                  >
+                    {images.map((img, i) => (
+                      <SwiperSlide key={i}>
+                        <img src={img} alt={`${plot.title} View ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      </SwiperSlide>
+                    ))}
+                  </Swiper>
 
-              <Swiper
-                onSwiper={setThumbsSwiper}
-                spaceBetween={10}
-                slidesPerView={3}
-                freeMode={true}
-                watchSlidesProgress={true}
-                modules={[FreeMode, Navigation, Thumbs]}
-                className="spot-thumbs-slider"
-              >
-                {images.map((img, i) => (
-                  <SwiperSlide key={i}>
-                    <img src={img} alt={`Thumb ${i + 1}`} />
-                  </SwiperSlide>
-                ))}
-              </Swiper>
+                  {images.length > 1 && (
+                    <Swiper
+                      onSwiper={setThumbsSwiper}
+                      spaceBetween={10}
+                      slidesPerView={Math.min(images.length, 4)}
+                      freeMode={true}
+                      watchSlidesProgress={true}
+                      modules={[FreeMode, Navigation, Thumbs]}
+                      className="spot-thumbs-slider"
+                    >
+                      {images.map((img, i) => (
+                        <SwiperSlide key={i}>
+                          <img src={img} alt={`Thumb ${i + 1}`} />
+                        </SwiperSlide>
+                      ))}
+                    </Swiper>
+                  )}
+                </>
+              ) : (
+                <div
+                  style={{
+                    width: '100%',
+                    minHeight: '340px',
+                    borderRadius: 'var(--radius-lg, 12px)',
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px dashed var(--border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    color: 'var(--text-muted)',
+                    padding: '30px'
+                  }}
+                >
+                  <ImageIcon size={44} style={{ opacity: 0.4, color: 'var(--gold)' }} />
+                  <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-secondary)' }}>No Image Available</span>
+                  <span style={{ fontSize: '12px', opacity: 0.7 }}>No photo has been uploaded for this zone yet</span>
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -577,12 +479,12 @@ export default function PlotDetail() {
             </div>
 
             {/* Cottage Room Type Selector (If Cottage) */}
-            {isCottage && (
+            {isCottage && cottageRoomTypes.length > 0 && (
               <div className="spot-card-info section-card">
                 <h2 className="heading-4">Choose Cottage Room</h2>
                 <p className="spot-subtext">Select which room type you would like to book for your overnight picnic stay.</p>
                 <div className="zones-list-detail">
-                  {COTTAGE_ROOM_TYPES.map(cot => {
+                  {cottageRoomTypes.map(cot => {
                     const isSelected = selectedCottageId === cot.id
                     return (
                       <div
@@ -603,7 +505,7 @@ export default function PlotDetail() {
                         <div className="zone-detail-main">
                           <h3>{cot.name}</h3>
                           <p>{cot.desc}</p>
-                          <span className="zone-capacity-tag">👥 Bed capacity: Up to {cot.id === 'cottage-1' ? '2' : (cot.id === 'cottage-2' ? '3' : '4')} guests</span>
+                          <span className="zone-capacity-tag">👥 Bed capacity: Up to {cot.capacity || (cot.id === 'cottage-1' ? '2' : (cot.id === 'cottage-2' ? '3' : '4'))} guests</span>
                         </div>
                         <div className="zone-detail-price">
                           <span>₹{cot.price}</span>
@@ -617,50 +519,51 @@ export default function PlotDetail() {
             )}
 
             {/* Addons Selection */}
-            <div className="spot-card-info section-card">
-              <h2 className="heading-4">Add Custom Event Add-ons</h2>
-              <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your booking.</p>
-              <div className="zones-list-detail">
-                {PANDAL_ADDONS.map(addon => {
-                  const isSelected = selectedAddons.includes(addon.id)
-                  const isExpanded = expandedAddons.includes(addon.id)
-                  return (
-                    <div
-                      key={addon.id}
-                      className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
-                      onClick={() => handleAddonToggle(addon.id)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="addon-row-content">
-                        <div className="zone-detail-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            style={{ pointerEvents: 'none' }}
-                            id={`addon-check-${addon.id}`}
-                          />
-                        </div>
-                        <div className="addon-row-body">
-                          <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
-                            <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
-                            {addon.items && (
-                              <button
-                                type="button"
-                                className="addon-details-btn"
-                                onClick={(e) => toggleExpandAddon(e, addon.id)}
-                              >
-                                {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
-                              </button>
-                            )}
+            {activeAddonsList.length > 0 && (
+              <div className="spot-card-info section-card">
+                <h2 className="heading-4">Add Custom Event Add-ons</h2>
+                <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your booking.</p>
+                <div className="zones-list-detail">
+                  {activeAddonsList.map(addon => {
+                    const isSelected = selectedAddons.includes(addon.id)
+                    const isExpanded = expandedAddons.includes(addon.id)
+                    return (
+                      <div
+                        key={addon.id}
+                        className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
+                        onClick={() => handleAddonToggle(addon.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="addon-row-content">
+                          <div className="zone-detail-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              style={{ pointerEvents: 'none' }}
+                              id={`addon-check-${addon.id}`}
+                            />
                           </div>
-                          <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
-                            <span>+ ₹{addon.priceAddon}</span>
-                            <small>/ flat addon</small>
+                          <div className="addon-row-body">
+                            <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
+                              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
+                              <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
+                              {addon.items && Array.isArray(addon.items) && addon.items.length > 0 && (
+                                <button
+                                  type="button"
+                                  className="addon-details-btn"
+                                  onClick={(e) => toggleExpandAddon(e, addon.id)}
+                                >
+                                  {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                                </button>
+                              )}
+                            </div>
+                            <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
+                              <span>+ ₹{addon.priceAddon || addon.price || 0}</span>
+                              <small>/ flat addon</small>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
                       {/* Collapsible Items Details */}
                       {isExpanded && addon.items && (
@@ -673,7 +576,7 @@ export default function PlotDetail() {
                             {addon.items.map((item, idx) => (
                               <div key={idx} className="addon-item-row">
                                 <Check size={11} className="addon-check-icon" />
-                                <span>{item}</span>
+                                <span>{typeof item === 'string' ? item : (item.title || item.name || item.text || '')}</span>
                               </div>
                             ))}
                           </div>
@@ -684,6 +587,7 @@ export default function PlotDetail() {
                 })}
               </div>
             </div>
+          )}
 
 
 
@@ -694,7 +598,7 @@ export default function PlotDetail() {
                 {facilities.map((item, index) => (
                   <div key={index} className="amenity-item-detail">
                     <CheckCircle2 size={16} color="var(--forest)" />
-                    <span>{item}</span>
+                    <span>{typeof item === 'string' ? item : (item.title || item.name || item.text || '')}</span>
                   </div>
                 ))}
               </div>
@@ -707,7 +611,9 @@ export default function PlotDetail() {
                 {activeRules.map((rule, index) => (
                   <div key={index} className="rule-item-detail">
                     <AlertTriangle size={16} color="var(--gold-dark)" />
-                    <span>{rule.text || rule}</span>
+                    <span>
+                      {typeof rule === 'string' ? rule : (rule.desc ? `${rule.title ? `${rule.title}: ` : ''}${rule.desc}` : (rule.title || rule.text || ''))}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -929,3 +835,5 @@ export default function PlotDetail() {
     </>
   )
 }
+
+export default PlotDetail

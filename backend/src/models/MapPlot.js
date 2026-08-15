@@ -27,7 +27,11 @@ const mapPlotSchema = new mongoose.Schema({
   image: { type: String },
   images: [{ type: String }],
   distanceFromGate: { type: String },
-  distanceFromCanal: { type: String }
+  distanceFromCanal: { type: String },
+  customId: { type: String, index: true },
+  isLandmark: { type: Boolean, default: false },
+  isFree: { type: Boolean, default: false },
+  isCottage: { type: Boolean, default: false }
 }, { timestamps: true })
 
 module.exports = mongoose.model('MapPlot', mapPlotSchema)

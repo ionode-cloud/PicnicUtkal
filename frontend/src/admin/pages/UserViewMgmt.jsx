@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
 import { useLogo } from '../../context/LogoContext'
+import { buildApiUrl } from '../../services/api'
 
 const DEFAULT_CONFIG = {
   home: {
@@ -42,7 +43,6 @@ const DEFAULT_CONFIG = {
     ],
     whyImgMain: 'https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=500&q=80',
     whyImgSecondary: 'https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=300&q=80',
-    whyBadgeText: '4.9 · 15,000+ Reviews',
 
     // Spots Section
     spotsEyebrow: "Handpicked Locations",
@@ -99,7 +99,6 @@ const DEFAULT_CONFIG = {
     title: "Pioneering Premium Eco-Tourism & Picnic Experiences in Odisha",
     subtitle: "Connecting nature lovers with handcrafted, secure, and serene picnic sanctuaries across Odisha's rivers, forests, and hills.",
     mission: "To empower families, corporate groups, and travelers to reconnect with nature through sustainable, frictionless, and memorable picnic experiences.",
-    vision: "To become eastern India's leading eco-hospitality network by preserving natural habitats while delivering world-class outdoor leisure services.",
     features: [
       "100% Verified Private & Eco-Friendly Locations",
       "24/7 On-Site Security & Clean Drinking Water",
@@ -241,6 +240,40 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   const [homeData, setHomeData] = useState(config.home || DEFAULT_CONFIG.home)
   const [newHeroImgUrl, setNewHeroImgUrl] = useState('')
   const [heroImgInputMode, setHeroImgInputMode] = useState('url') // 'url' | 'file'
+  const [whyMainImgInputMode, setWhyMainImgInputMode] = useState('file') // 'file' | 'url'
+  const [whySecImgInputMode, setWhySecImgInputMode] = useState('file')   // 'file' | 'url'
+
+  const handleWhyMainImgFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size should be under 5MB!')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setHomeData(p => ({ ...p, whyImgMain: reader.result }))
+        toast.success('Local image selected for Why Section (Main)!')
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleWhySecImgFileUpload = (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('File size should be under 5MB!')
+        return
+      }
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setHomeData(p => ({ ...p, whyImgSecondary: reader.result }))
+        toast.success('Local image selected for Why Section (Secondary)!')
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   // About Form state
   const [aboutData, setAboutData] = useState(config.about || DEFAULT_CONFIG.about)
@@ -276,35 +309,72 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   // Footer Form state
   const [footerData, setFooterData] = useState(config.footer || DEFAULT_CONFIG.footer)
 
-  const handleSaveFooter = (e) => {
-    e.preventDefault()
-    setConfig(prev => ({ ...prev, footer: footerData }))
+  // Save config persistently to MongoDB database
+  const saveConfigToDb = async (updatedConfig) => {
     try {
-      const saved = localStorage.getItem('picnicutkal_user_view_config')
-      const parsed = saved ? JSON.parse(saved) : {}
-      localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, footer: footerData }))
+      await fetch(buildApiUrl('/api/site-config/user_view_config'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: updatedConfig })
+      })
     } catch (e) {}
-    emitFooterConfigUpdate(footerData)
-    toast.success('✅ Footer details saved & broadcasted live across website!')
   }
 
-  // Sync to localStorage
+  // Load config from MongoDB database on mount
   useEffect(() => {
-    localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({
-      home: homeData,
-      about: aboutData,
-      gallery: galleryItems,
-      contact: contactData
-    }))
-  }, [homeData, aboutData, galleryItems, contactData])
+    fetch(buildApiUrl('/api/site-config/user_view_config'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && d.data) {
+          setConfig(prev => ({ ...prev, ...d.data }))
+          if (d.data.home) setHomeData(d.data.home)
+          if (d.data.about) setAboutData(d.data.about)
+          if (d.data.gallery) setGalleryItems(d.data.gallery)
+          if (d.data.contact) setContactData(d.data.contact)
+          if (d.data.footer) setFooterData(d.data.footer)
+          try {
+            localStorage.setItem('picnicutkal_user_view_config', JSON.stringify(d.data))
+          } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const handleSaveFooter = (e) => {
+    e.preventDefault()
+    const updated = { ...config, footer: footerData }
+    setConfig(updated)
+    try {
+      localStorage.setItem('picnicutkal_user_view_config', JSON.stringify(updated))
+    } catch (e) {}
+    saveConfigToDb(updated)
+    emitFooterConfigUpdate(footerData)
+    toast.success('✅ Footer details saved & persisted to database!')
+  }
+
+  // Sync to localStorage safely
+  useEffect(() => {
+    try {
+      localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({
+        home: homeData,
+        about: aboutData,
+        gallery: galleryItems,
+        contact: contactData,
+        footer: footerData
+      }))
+    } catch (e) {
+      console.warn('LocalStorage quota limit reached in UserViewMgmt (MongoDB persists all data safely):', e)
+    }
+  }, [homeData, aboutData, galleryItems, contactData, footerData])
 
   // Save Home Tab Content
   const handleSaveHome = (e) => {
     e.preventDefault()
-    setConfig(prev => ({ ...prev, home: homeData }))
-    // Broadcast via Socket.io so Home page updates live for all visitors
+    const updated = { ...config, home: homeData }
+    setConfig(updated)
+    saveConfigToDb(updated)
     emitHomeConfigUpdate(homeData)
-    toast.success('✅ Home page content saved & broadcast live via Socket.io!')
+    toast.success('✅ Home page content saved & persisted to database!')
   }
 
   // Hero Banner Images handlers
@@ -367,9 +437,11 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   // Save About Tab Content
   const handleSaveAbout = (e) => {
     e.preventDefault()
-    setConfig(prev => ({ ...prev, about: aboutData }))
+    const updated = { ...config, about: aboutData }
+    setConfig(updated)
+    saveConfigToDb(updated)
     emitAboutConfigUpdate(aboutData)
-    toast.success('✅ About page content saved & broadcast live!')
+    toast.success('✅ About page content saved & persisted to database!')
   }
 
   const handleAddFeature = () => {
@@ -413,33 +485,37 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
       src: newImgSrc,
       title: newImgTitle.trim()
     }
-    setGalleryItems(prev => {
-      const updated = [newItem, ...prev]
-      emitGalleryConfigUpdate(updated)
-      return updated
-    })
+    const updatedGallery = [newItem, ...galleryItems]
+    setGalleryItems(updatedGallery)
+    const updatedConfig = { ...config, gallery: updatedGallery }
+    setConfig(updatedConfig)
+    saveConfigToDb(updatedConfig)
+    emitGalleryConfigUpdate(updatedGallery)
     setNewImgSrc('')
     setNewImgTitle('')
-    toast.success('✅ Gallery photo added & broadcast live!')
+    toast.success('✅ Gallery photo added & persisted to database!')
   }
 
   const handleDeleteGalleryItem = (id, title) => {
     if (window.confirm(`Delete photo "${title}" from Gallery?`)) {
-      setGalleryItems(prev => {
-        const updated = prev.filter(item => item.id !== id)
-        emitGalleryConfigUpdate(updated)
-        return updated
-      })
-      toast.success('✅ Gallery photo removed & broadcast live!')
+      const updatedGallery = galleryItems.filter(item => item.id !== id)
+      setGalleryItems(updatedGallery)
+      const updatedConfig = { ...config, gallery: updatedGallery }
+      setConfig(updatedConfig)
+      saveConfigToDb(updatedConfig)
+      emitGalleryConfigUpdate(updatedGallery)
+      toast.success('✅ Gallery photo removed & persisted to database!')
     }
   }
 
   // Save Contact Tab Content
   const handleSaveContact = (e) => {
     e.preventDefault()
-    setConfig(prev => ({ ...prev, contact: contactData }))
+    const updated = { ...config, contact: contactData }
+    setConfig(updated)
+    saveConfigToDb(updated)
     emitContactConfigUpdate(contactData)
-    toast.success('✅ Contact details saved & broadcast live!')
+    toast.success('✅ Contact details saved & persisted to database!')
   }
 
   return (
@@ -761,30 +837,139 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                   </div>
                 </div>
 
-                {/* Section Images & Review Badge */}
+                {/* Section Images */}
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px', marginTop: '8px' }}>
                   <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)', marginBottom: '12px', display: 'block' }}>
-                    Section Photos & Overlay Badge:
+                    Section Photos:
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '14px' }}>
-                    <div>
-                      <div className="input-wrapper" style={{ marginBottom: '10px' }}>
-                        <label className="input-label">Main Image URL (large left photo)</label>
-                        <input type="url" className="input" value={homeData.whyImgMain || ''} onChange={e => setHomeData(p => ({ ...p, whyImgMain: e.target.value }))} placeholder="https://images.unsplash.com/..." />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                    {/* Main Image (Large Left Photo) */}
+                    <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)', margin: 0, fontSize: '12px' }}>
+                          Main Image (Large Left Photo)
+                        </label>
+                        <div style={{ display: 'flex', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                          <button
+                            type="button"
+                            onClick={() => setWhyMainImgInputMode('file')}
+                            className={`btn ${whyMainImgInputMode === 'file' ? 'btn-gold' : 'btn-ghost'}`}
+                            style={{ padding: '4px 10px', fontSize: '11px' }}
+                          >
+                            <Upload size={12} style={{ marginRight: '4px' }} /> Local File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWhyMainImgInputMode('url')}
+                            className={`btn ${whyMainImgInputMode === 'url' ? 'btn-gold' : 'btn-ghost'}`}
+                            style={{ padding: '4px 10px', fontSize: '11px' }}
+                          >
+                            <LinkIcon size={12} style={{ marginRight: '4px' }} /> Image URL
+                          </button>
+                        </div>
                       </div>
-                      {homeData.whyImgMain && <img src={homeData.whyImgMain} alt="Why main" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />}
+
+                      {whyMainImgInputMode === 'file' ? (
+                        <div>
+                          <label className="input-label" style={{ fontSize: '11px', marginBottom: '4px' }}>Upload Local Photo:</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleWhyMainImgFileUpload}
+                            className="input"
+                            style={{ width: '100%', padding: '6px 10px' }}
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="input-label" style={{ fontSize: '11px', marginBottom: '4px' }}>Web Image URL:</label>
+                          <input
+                            type="url"
+                            className="input"
+                            placeholder="https://images.unsplash.com/..."
+                            value={homeData.whyImgMain || ''}
+                            onChange={e => setHomeData(p => ({ ...p, whyImgMain: e.target.value }))}
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+                      )}
+
+                      {homeData.whyImgMain && (
+                        <div>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Preview:</span>
+                          <img
+                            src={homeData.whyImgMain}
+                            alt="Why Main Preview"
+                            style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                            onError={e => { e.target.style.display = 'none' }}
+                          />
+                        </div>
+                      )}
                     </div>
-                    <div>
-                      <div className="input-wrapper" style={{ marginBottom: '10px' }}>
-                        <label className="input-label">Secondary Image URL (small right photo)</label>
-                        <input type="url" className="input" value={homeData.whyImgSecondary || ''} onChange={e => setHomeData(p => ({ ...p, whyImgSecondary: e.target.value }))} placeholder="https://images.unsplash.com/..." />
+
+                    {/* Secondary Image (Small Right Photo) */}
+                    <div style={{ padding: '16px', borderRadius: 'var(--radius-md)', background: 'var(--bg-primary)', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                        <label className="input-label" style={{ fontWeight: 700, color: 'var(--gold)', margin: 0, fontSize: '12px' }}>
+                          Secondary Image (Small Right Photo)
+                        </label>
+                        <div style={{ display: 'flex', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                          <button
+                            type="button"
+                            onClick={() => setWhySecImgInputMode('file')}
+                            className={`btn ${whySecImgInputMode === 'file' ? 'btn-gold' : 'btn-ghost'}`}
+                            style={{ padding: '4px 10px', fontSize: '11px' }}
+                          >
+                            <Upload size={12} style={{ marginRight: '4px' }} /> Local File
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setWhySecImgInputMode('url')}
+                            className={`btn ${whySecImgInputMode === 'url' ? 'btn-gold' : 'btn-ghost'}`}
+                            style={{ padding: '4px 10px', fontSize: '11px' }}
+                          >
+                            <LinkIcon size={12} style={{ marginRight: '4px' }} /> Image URL
+                          </button>
+                        </div>
                       </div>
-                      {homeData.whyImgSecondary && <img src={homeData.whyImgSecondary} alt="Why secondary" style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }} />}
+
+                      {whySecImgInputMode === 'file' ? (
+                        <div>
+                          <label className="input-label" style={{ fontSize: '11px', marginBottom: '4px' }}>Upload Local Photo:</label>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleWhySecImgFileUpload}
+                            className="input"
+                            style={{ width: '100%', padding: '6px 10px' }}
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="input-label" style={{ fontSize: '11px', marginBottom: '4px' }}>Web Image URL:</label>
+                          <input
+                            type="url"
+                            className="input"
+                            placeholder="https://images.unsplash.com/..."
+                            value={homeData.whyImgSecondary || ''}
+                            onChange={e => setHomeData(p => ({ ...p, whyImgSecondary: e.target.value }))}
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+                      )}
+
+                      {homeData.whyImgSecondary && (
+                        <div>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Preview:</span>
+                          <img
+                            src={homeData.whyImgSecondary}
+                            alt="Why Secondary Preview"
+                            style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}
+                            onError={e => { e.target.style.display = 'none' }}
+                          />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="input-wrapper">
-                    <label className="input-label">Review Badge Text (overlay on photos, e.g. "4.9 · 15,000+ Reviews")</label>
-                    <input type="text" className="input" value={homeData.whyBadgeText || ''} onChange={e => setHomeData(p => ({ ...p, whyBadgeText: e.target.value }))} />
                   </div>
                 </div>
               </div>
@@ -806,7 +991,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
               </div>
               <div>
                 <h3 style={{ fontSize: '18px', fontWeight: 700 }}>About Page Content</h3>
-                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Modify mission, vision, and core service highlights</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Modify story image, subtitle summary, mission statement, and core highlights</p>
               </div>
             </div>
 
@@ -892,9 +1077,10 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                 <label className="input-label">Subtitle Summary</label>
                 <textarea
                   className="input"
-                  rows={2}
-                  value={aboutData.subtitle}
+                  rows={3}
+                  value={aboutData.subtitle || ''}
                   onChange={e => setAboutData(p => ({ ...p, subtitle: e.target.value }))}
+                  placeholder="Connecting nature lovers with handcrafted, secure, and serene picnic sanctuaries..."
                 />
               </div>
 
@@ -902,20 +1088,11 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                 <label className="input-label">Our Mission Statement</label>
                 <textarea
                   className="input"
-                  rows={3}
-                  value={aboutData.mission}
+                  rows={4}
+                  value={aboutData.mission || ''}
                   onChange={e => setAboutData(p => ({ ...p, mission: e.target.value }))}
+                  placeholder="To empower families, corporate groups, and travelers to reconnect with nature..."
                   required
-                />
-              </div>
-
-              <div className="input-wrapper">
-                <label className="input-label">Our Vision</label>
-                <textarea
-                  className="input"
-                  rows={3}
-                  value={aboutData.vision}
-                  onChange={e => setAboutData(p => ({ ...p, vision: e.target.value }))}
                 />
               </div>
 

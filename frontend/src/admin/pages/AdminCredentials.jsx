@@ -77,9 +77,11 @@ export default function AdminCredentials() {
   const [selectedTabs, setSelectedTabs] = useState(['dashboard', 'spots', 'bookings'])
   const [showFormPass, setShowFormPass] = useState(false)
 
-  // Sync staff list to localStorage
+  // Sync staff list to localStorage safely
   useEffect(() => {
-    localStorage.setItem('picnicutkal_staff_accounts', JSON.stringify(staffList))
+    try {
+      localStorage.setItem('picnicutkal_staff_accounts', JSON.stringify(staffList))
+    } catch (e) {}
   }, [staffList])
 
   // Reset Inline Form to default state

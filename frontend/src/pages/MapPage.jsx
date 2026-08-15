@@ -11,16 +11,13 @@ import {
 import masterPlanImg from '../assets/master-plan.png'
 import { useSocket } from '../context/SocketContext'
 import { buildApiUrl } from '../services/api'
-
-
+import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
 
 const STATUS_CONFIG = {
   available:   { label: 'Picnic Spot', color: '#52B788', icon: CheckCircle },
   booked:      { label: 'Picnic Spot', color: '#52B788', icon: CheckCircle },
   maintenance: { label: 'Maintenance', color: '#FAB005', icon: Clock }
 }
-
-import SpotAvailabilityCalendar from '../components/ui/SpotAvailabilityCalendar'
 
 function buildPathD(points, svgW, svgH) {
   if (!points || points.length < 2) return ''
@@ -77,10 +74,12 @@ export default function MapPage() {
 
   const { socket } = useSocket()
 
-  const fetchMapPlots = () => {
-    fetch(buildApiUrl('/api/map/maps'))
-      .then(r => r.json())
-      .then(d => {
+  const fetchMapPlots = async () => {
+    // 1. Fetch maps from backend /api/map/maps
+    try {
+      const r = await fetch(buildApiUrl('/api/map/maps'))
+      if (r.ok) {
+        const d = await r.json()
         if (d.success && Array.isArray(d.data) && d.data.length > 0) {
           setMaps(d.data)
           setSelectedMapId(prev => (prev && d.data.some(m => m._id === prev)) ? prev : d.data[0]._id)
@@ -88,13 +87,38 @@ export default function MapPage() {
             localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(d.data))
           } catch (e) {}
         }
-      })
-      .catch(() => {})
+      }
+    } catch (e) {}
 
-    fetch(buildApiUrl('/api/map/plots'))
-      .then(r => r.json())
-      .then(d => { if (d.success && Array.isArray(d.data)) setPlots(d.data) })
-      .catch(() => {})
+    // 2. Fetch plots from /api/map/plots (primary) then SiteConfig fallback
+    try {
+      // Always prefer the real /api/map/plots endpoint (MongoDB source)
+      const pRes = await fetch(buildApiUrl('/api/map/plots'), { cache: 'no-store' })
+      if (pRes.ok) {
+        const d = await pRes.json()
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          // Filter out stale temporary IDs like 'plot-1786816983749'
+          const clean = d.data.filter(p => !/^(plot|spot)-\d+$/.test(p._id || p.id || ''))
+          setPlots(clean)
+          try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(clean)) } catch (e) {}
+          return
+        }
+      }
+    } catch (e) {}
+
+    // Fallback: SiteConfig map_plots_config
+    try {
+      const scPlotsRes = await fetch(buildApiUrl('/api/site-config/map_plots_config'), { cache: 'no-store' })
+      if (scPlotsRes.ok) {
+        const scPlotsData = await scPlotsRes.json()
+        const val = scPlotsData?.value || scPlotsData?.data
+        if (Array.isArray(val) && val.length > 0) {
+          const clean = val.filter(p => !/^(plot|spot)-\d+$/.test(p._id || p.id || ''))
+          setPlots(clean)
+          try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(clean)) } catch (e) {}
+        }
+      }
+    } catch (e) {}
   }
 
   /* Real-time Socket.io listener for maps and plot updates */
@@ -172,27 +196,13 @@ export default function MapPage() {
       .catch(() => {})
   }
 
-  const isPrimaryMapSelected = 
-    selectedMapId === 'default-master-plan' || 
-    selectedMapId === 'default-map' || 
-    selectedMapId === maps[0]?._id || 
-    currentMap?.isDefault ||
-    !selectedMapId
-
   const visiblePlots = plots.filter(p => {
+    const isDefaultMasterPlan = selectedMapId === 'default-master-plan' || selectedMapId === 'default-map' || !selectedMapId
     let matchMap = false
-    if (!p.mapId) {
-      matchMap = isPrimaryMapSelected
-    } else if (isPrimaryMapSelected) {
-      matchMap = (
-        p.mapId === 'default-master-plan' || 
-        p.mapId === 'default-map' || 
-        p.mapId === selectedMapId || 
-        p.mapId === currentMap?._id || 
-        p.mapId === maps[0]?._id
-      )
+    if (isDefaultMasterPlan) {
+      matchMap = p.mapId === 'default-master-plan' || p.mapId === 'default-map' || !p.mapId
     } else {
-      matchMap = (p.mapId === selectedMapId || p.mapId === currentMap?._id)
+      matchMap = p.mapId === selectedMapId
     }
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase())
     return matchMap && matchSearch
@@ -412,7 +422,7 @@ export default function MapPage() {
                       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                     >
                       <span className="mp-hotspot-label">
-                        {isPandal && plot.price > 0 ? `₹${plot.price}/Pindi` : plot.title}
+                        {plot.price > 0 && !plot.isFree && !plot.isLandmark && !plot.isGate && !plot.isParking ? `₹${plot.price}/day` : plot.title}
                       </span>
                       <span className="mp-hotspot-status-dot" style={{ background: sColor }} />
                     </motion.div>
@@ -480,30 +490,28 @@ export default function MapPage() {
 
                 <div className="mp-popup-body">
                   <div className="mp-popup-stats">
-                    {!selected.isGate && !selected.isParking && !selected.isCottage && (
+                    {(selected.isFree || selected.isLandmark || !selected.price || selected.price === 0 || selected.isGate || selected.isParking) ? (
+                      <div className="mp-popup-stat">
+                        <IndianRupee size={14} />
+                        <div>
+                          <span className="mp-popup-stat-val">Free Access</span>
+                          <span className="mp-popup-stat-lbl">Landmark / Facility</span>
+                        </div>
+                      </div>
+                    ) : selected.isCottage ? (
                       <div className="mp-popup-stat">
                         <IndianRupee size={14} />
                         <div>
                           <span className="mp-popup-stat-val">₹{selected.price?.toLocaleString()}</span>
-                          <span className="mp-popup-stat-lbl">Flat / Pandal</span>
+                          <span className="mp-popup-stat-lbl">Per Day</span>
                         </div>
                       </div>
-                    )}
-                    {selected.isCottage && (
+                    ) : (
                       <div className="mp-popup-stat">
                         <IndianRupee size={14} />
                         <div>
-                          <span className="mp-popup-stat-val">₹999 – ₹1,999</span>
-                          <span className="mp-popup-stat-lbl">Per Night</span>
-                        </div>
-                      </div>
-                    )}
-                    {selected.isParking && (
-                      <div className="mp-popup-stat">
-                        <IndianRupee size={14} />
-                        <div>
-                          <span className="mp-popup-stat-val">Free</span>
-                          <span className="mp-popup-stat-lbl">Parking</span>
+                          <span className="mp-popup-stat-val">₹{selected.price?.toLocaleString()}</span>
+                          <span className="mp-popup-stat-lbl">Flat / Day</span>
                         </div>
                       </div>
                     )}
@@ -591,7 +599,7 @@ export default function MapPage() {
                   )}
 
                   {/* Spot Date-wise Availability Calendar */}
-                  {!selected.isGate && !selected.isParking && (
+                  {!(selected.isFree || selected.isLandmark || !selected.price || selected.price === 0 || selected.isGate || selected.isParking) && (
                     <div style={{ marginTop: '12px' }}>
                       <SpotAvailabilityCalendar
                         spotId={selected._id || selected.id}
@@ -619,13 +627,20 @@ export default function MapPage() {
                       <ExternalLink size={14} />
                       View on Google Maps
                     </a>
-                    {!selected.isGate && !selected.isParking && (
+                    {!(selected.isFree || selected.isLandmark || !selected.price || selected.price === 0 || selected.isGate || selected.isParking) ? (
                       <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                         <button
                           id={`mp-details-${selected._id}`}
                           className="mp-btn-book"
                           style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--cream)', border: '1px solid rgba(255,255,255,0.2)', flex: 1 }}
-                          onClick={() => navigate(`/plots/${selected._id}`)}
+                          onClick={() => {
+                            const plotId = selected._id || selected.id || ''
+                            if (!plotId || /^(plot|spot)-\d+$/.test(plotId)) {
+                              alert('This zone link is outdated. Please reload the map to see updated zones.')
+                              return
+                            }
+                            navigate(`/plots/${plotId}`)
+                          }}
                         >
                           Details
                         </button>
@@ -633,12 +648,27 @@ export default function MapPage() {
                           id={`mp-book-${selected._id}`}
                           className="mp-btn-book"
                           style={{ flex: 1 }}
-                          onClick={() => navigate(`/plots/${selected._id}?book=true`, { state: { initialDate: mapVisitDate } })}
+                          onClick={() => {
+                            const plotId = selected._id || selected.id || ''
+                            if (!plotId || /^(plot|spot)-\d+$/.test(plotId)) {
+                              alert('This zone link is outdated. Please reload the map to see updated zones.')
+                              return
+                            }
+                            navigate(`/plots/${plotId}?book=true`, { state: { initialDate: mapVisitDate } })
+                          }}
                         >
                           <Star size={14} />
                           {mapVisitDate ? `Book for ${mapVisitDate}` : 'Book Now'}
                         </button>
                       </div>
+                    ) : (
+                      <button
+                        id={`mp-details-${selected._id}`}
+                        className="mp-btn-book"
+                        style={{ background: 'rgba(64, 192, 87, 0.15)', color: '#40C057', border: '1px solid rgba(64, 192, 87, 0.3)', width: '100%', cursor: 'default' }}
+                      >
+                        ✓ Open Landmark / Facility (Free Access)
+                      </button>
                     )}
                   </div>
                 </div>

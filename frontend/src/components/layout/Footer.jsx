@@ -4,6 +4,7 @@ import { LuLeaf as Leaf, LuPhone as Phone, LuMail as Mail, LuMapPin as MapPin } 
 import { FaInstagram, FaFacebookF, FaYoutube, FaXTwitter } from 'react-icons/fa6'
 import { useLogo } from '../../context/LogoContext'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 const DEFAULT_FOOTER = {
   tagline: "Odisha's Premier Picnic Destination. Discover breathtaking nature spots, book your perfect picnic zone, and create unforgettable memories.",
@@ -55,6 +56,23 @@ export default function Footer() {
   const { logoConfig } = useLogo()
   const { socket } = useSocket()
   const [footer, setFooter] = useState(getStoredFooter)
+
+  // Fetch footer config from MongoDB backend on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/user_view_config'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && d.data && d.data.footer) {
+          setFooter(prev => ({ ...prev, ...d.data.footer }))
+          try {
+            const saved = localStorage.getItem('picnicutkal_user_view_config')
+            const parsed = saved ? JSON.parse(saved) : {}
+            localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, footer: d.data.footer }))
+          } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!socket) return

@@ -4,6 +4,7 @@ import { useLocation, useNavigate, Link, useSearchParams } from 'react-router-do
 import { Helmet } from 'react-helmet-async'
 import { useAuthStore } from '../store'
 import { buildApiUrl } from '../services/api'
+import { useSocket } from '../context/SocketContext'
 import { motion } from 'framer-motion'
 import {
   LuUser as User, LuMail as Mail, LuPhone as Phone, LuCalendar as Calendar, LuUsers as Users, LuFileText as FileText,
@@ -11,7 +12,8 @@ import {
   LuArrowRight as ArrowRight, LuArrowLeft as ArrowLeft, LuIndianRupee as IndianRupee, LuMapPin as MapPin, LuLoader as Loader2,
   LuPartyPopper as PartyPopper, LuCopy as Copy, LuCheck as Check, LuShieldCheck as ShieldCheck, LuClock as Clock,
   LuIdCard as IdCard, LuStar as Star, LuSparkles as Sparkles, LuChevronRight as ChevronRight, LuShieldAlert as ShieldAlert,
-  LuReceipt as Receipt, LuPrinter as Printer, LuX as X, LuTicket as Ticket, LuDownload as Download, LuHouse as HomeIcon
+  LuReceipt as Receipt, LuPrinter as Printer, LuX as X, LuTicket as Ticket, LuDownload as Download, LuHouse as HomeIcon,
+  LuBuilding2 as Building2, LuQrCode as QrCode
 } from 'react-icons/lu'
 
 const STEPS = [
@@ -98,6 +100,57 @@ export default function BookingPage() {
     } catch (e) { return null }
   }
 
+  const [upiConfig, setUpiConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_upi_qr_config')
+      if (saved) return JSON.parse(saved)
+    } catch (e) {}
+    return {
+      enabled: true,
+      upiId: 'picnicutkal@upi',
+      payeeName: 'PicnicUtkal Resort',
+      note: 'Picnic Spot Reservation',
+      useCustomQrImage: false,
+      customQrImage: '',
+      instructions: 'Open PhonePe, Google Pay, Paytm, or BHIM app and scan the QR code to finish your reservation.',
+      paymentConfirmationNote: 'After completing UPI transfer, click Confirm & Pay to get your instant QR reservation ticket.',
+      showBankDetails: true,
+      accountHolder: 'PicnicUtkal Tourism Pvt Ltd',
+      bankName: 'HDFC Bank',
+      accountNumber: '50200088991122',
+      ifscCode: 'HDFC0001234'
+    }
+  })
+  const [copiedUpi, setCopiedUpi] = useState(false)
+
+  // Fetch UPI QR Config from SiteConfig on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/upi_qr_config'))
+      .then(r => r.json())
+      .then(d => {
+        if (d && (d.data || d.value)) {
+          const val = d.data || d.value
+          setUpiConfig(prev => ({ ...prev, ...val }))
+          try { localStorage.setItem('picnicutkal_upi_qr_config', JSON.stringify(val)) } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Socket listener for real-time UPI QR config updates
+  const { socket } = useSocket()
+  useEffect(() => {
+    if (!socket) return
+    const handleUpiUpdate = (data) => {
+      if (data?.upiConfig) {
+        setUpiConfig(data.upiConfig)
+        try { localStorage.setItem('picnicutkal_upi_qr_config', JSON.stringify(data.upiConfig)) } catch (e) {}
+      }
+    }
+    socket.on('upi_qr_config_update', handleUpiUpdate)
+    return () => socket.off('upi_qr_config_update', handleUpiUpdate)
+  }, [socket])
+
   const draftForm = getDraftForm()
 
   const [form, setForm] = useState(() => ({
@@ -108,7 +161,8 @@ export default function BookingPage() {
     durationDays: location.state?.durationDays || draftForm?.durationDays || 1,
     persons: location.state?.initialGuests || draftForm?.persons || 1,
     specialNote: draftForm?.specialNote || '',
-    paymentMethod: draftForm?.paymentMethod || 'upi'
+    paymentMethod: draftForm?.paymentMethod || 'upi',
+    transactionRef: draftForm?.transactionRef || ''
   }))
 
   useEffect(() => {
@@ -137,30 +191,45 @@ export default function BookingPage() {
     }
   }, [user, location.state])
 
-  // Fetch Plot or Spot details if not passed via state
+  // Fetch Plot or Spot details if not passed via state or on page refresh
   useEffect(() => {
-    if (!plot && !spot) {
-      const plotId = searchParams.get('plotId')
-      const spotId = searchParams.get('spotId')
+    const plotId = searchParams.get('plotId') || location.state?.plot?._id || location.state?.plot?.id
+    const spotId = searchParams.get('spotId') || location.state?.spot?.id
 
+    if (!plot && !spot) {
       if (plotId) {
         setFetching(true)
-        fetch(buildApiUrl(`/api/map/plots/${plotId}`))
-          .then(r => r.json())
-          .then(d => {
-            if (d.success) setPlot(d.data)
-            else setError('Zone not found.')
+        fetch(buildApiUrl(`/api/map/plots/${plotId}`), { cache: 'no-store' })
+          .then(async r => {
+            if (r.status === 200) {
+              const d = await r.json()
+              if (d.success && d.data) {
+                setPlot(d.data)
+                setError('')
+                return
+              }
+            }
+            setError('Zone not found in database. Please return to the Map.')
           })
           .catch(() => setError('Error loading zone details.'))
           .finally(() => setFetching(false))
       } else if (spotId) {
         setFetching(true)
-        fetch(buildApiUrl(`/api/spots/${spotId}`))
-          .then(r => r.json())
-          .then(d => {
-            if (d.success) setSpot(d.data)
-            else if (d.name) setSpot(d)
-            else setError('Spot not found.')
+        fetch(buildApiUrl(`/api/spots/${spotId}`), { cache: 'no-store' })
+          .then(async r => {
+            if (r.status === 200) {
+              const d = await r.json()
+              if (d.success && d.data) {
+                setSpot(d.data)
+                setError('')
+                return
+              } else if (d.name) {
+                setSpot(d)
+                setError('')
+                return
+              }
+            }
+            setError('Spot not found.')
           })
           .catch(() => setError('Error loading spot details.'))
           .finally(() => setFetching(false))
@@ -168,10 +237,10 @@ export default function BookingPage() {
         setError('No item selected for booking. Please go back to the Map or Spots tab.')
       }
     }
-  }, [plot, spot, searchParams])
+  }, [plot, spot, searchParams, location.state])
 
   const selectedAddons = location.state?.selectedAddons || []
-  const addonsTotal = selectedAddons.reduce((sum, a) => sum + (a.priceAddon || 0), 0)
+  const addonsTotal = selectedAddons.reduce((sum, a) => sum + (Number(a.priceAddon) || Number(a.price) || 0), 0)
   const baseSpotTotal = pricePerPerson * (Number(form.durationDays) || 1)
   const total = baseSpotTotal + addonsTotal
 
@@ -182,8 +251,24 @@ export default function BookingPage() {
   }
 
   const handleConfirmPayment = async () => {
-    setLoading(true)
     setError('')
+
+    // Validate mandatory UTR for UPI payments
+    if (form.paymentMethod === 'upi') {
+      const utr = (form.transactionRef || '').trim()
+      if (!utr) {
+        setError('⚠️ Please enter the UPI Transaction ID / UTR Number to confirm your reservation.')
+        toast.error('UPI UTR Number is required to confirm booking!')
+        return
+      }
+      if (utr.length < 6) {
+        setError('⚠️ Please enter a valid UPI Transaction / UTR reference number (minimum 6 digits).')
+        toast.error('Please enter a valid UTR number')
+        return
+      }
+    }
+
+    setLoading(true)
     try {
       const res = await fetch(buildApiUrl('/api/bookings'), {
         method:  'POST',
@@ -201,26 +286,31 @@ export default function BookingPage() {
           persons:       Number(form.persons || location.state?.initialGuests || 1),
           specialNote:   form.specialNote || '',
           paymentMethod: form.paymentMethod || 'upi',
-          visitors:      visitors
+          transactionRef: (form.transactionRef || '').trim(),
+          visitors:      visitors,
+          selectedAddons: selectedAddons
         })
       })
       const data = await res.json()
-      if (!res.ok || !data.success) throw new Error(data.message || 'Booking failed. Please try again.')
+      if (!res.ok || !data.success) {
+        throw new Error(data.message || 'Booking failed. Please try again.')
+      }
       
-      setBooking(data.data)
+      const confirmedBooking = data.data || data.booking
+      setBooking(confirmedBooking)
       setStep(1)
       toast.success('🎉 Booking Confirmed Successfully!')
 
       try {
-        const newBooking = data.data
-        localStorage.setItem('picnicutkal_last_invoice', JSON.stringify(newBooking))
+        localStorage.setItem('picnicutkal_last_invoice', JSON.stringify(confirmedBooking))
         const existing = JSON.parse(localStorage.getItem('picnicutkal_my_bookings') || '[]')
-        const updated = [newBooking, ...existing.filter(b => b.bookingId !== newBooking.bookingId && b._id !== newBooking._id)]
+        const updated = [confirmedBooking, ...existing.filter(b => b.bookingId !== confirmedBooking.bookingId && b._id !== confirmedBooking._id)]
         localStorage.setItem('picnicutkal_my_bookings', JSON.stringify(updated))
         localStorage.removeItem('picnicutkal_checkout_form')
       } catch (e) {}
     } catch (err) {
       setError(err.message)
+      toast.error(err.message)
     } finally {
       setLoading(false)
     }
@@ -378,7 +468,7 @@ export default function BookingPage() {
                         <div className="bk2-section-title"><CreditCard size={14} />Select Payment Method</div>
 
                         <div className="bk2-pay-methods">
-                          {PAYMENT_METHODS.map(m => (
+                          {PAYMENT_METHODS.filter(m => m.id !== 'upi' || upiConfig.enabled).map(m => (
                             <label key={m.id} className={`bk2-pay-card ${form.paymentMethod === m.id ? 'selected' : ''}`}>
                               <input type="radio" name="paymentMethod" value={m.id}
                                 checked={form.paymentMethod === m.id} onChange={handleChange} className="sr-only" />
@@ -394,24 +484,66 @@ export default function BookingPage() {
                           ))}
                         </div>
 
-                        {form.paymentMethod === 'upi' && (
+                        {form.paymentMethod === 'upi' && upiConfig.enabled && (
                           <div style={{ background: 'rgba(255, 255, 255, 0.05)', border: '1px solid var(--border)', borderRadius: '16px', padding: '20px', textAlign: 'center', margin: '16px 0' }}>
-                            <div style={{ background: '#ffffff', padding: '16px', borderRadius: '14px', display: 'inline-block', marginBottom: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
+                            <div style={{ background: '#ffffff', padding: '16px', borderRadius: '14px', display: 'inline-block', marginBottom: '12px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)', maxWidth: '100%' }}>
                               <img
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=picnicutkal@upi%26pn=PicnicUtkal%26am=${total}%26cu=INR`}
+                                src={upiConfig.useCustomQrImage && upiConfig.customQrImage 
+                                  ? upiConfig.customQrImage 
+                                  : `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=upi://pay?pa=${encodeURIComponent(upiConfig.upiId || 'picnicutkal@upi')}%26pn=${encodeURIComponent(upiConfig.payeeName || 'PicnicUtkal')}%26am=${total}%26cu=INR%26tn=${encodeURIComponent(upiConfig.note || 'Picnic Spot Booking')}`
+                                }
                                 alt="UPI QR Code"
-                                style={{ width: '160px', height: '160px', display: 'block', margin: '0 auto' }}
+                                style={{ width: '170px', height: '170px', display: 'block', margin: '0 auto', objectFit: 'contain' }}
                               />
-                              <div style={{ fontSize: '12px', color: '#111827', marginTop: '8px', fontWeight: 800, fontFamily: 'monospace', letterSpacing: '0.5px' }}>
-                                picnicutkal@upi
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', marginTop: '10px' }}>
+                                <span style={{ fontSize: '13px', color: '#111827', fontWeight: 800, fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                                  {upiConfig.upiId || 'picnicutkal@upi'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!upiConfig.upiId) return
+                                    navigator.clipboard?.writeText(upiConfig.upiId)
+                                    setCopiedUpi(true)
+                                    setTimeout(() => setCopiedUpi(false), 2000)
+                                  }}
+                                  style={{ background: 'rgba(0,0,0,0.06)', border: 'none', borderRadius: '4px', padding: '2px 6px', cursor: 'pointer', fontSize: '11px', fontWeight: 600, color: '#374151' }}
+                                  title="Copy UPI ID"
+                                >
+                                  {copiedUpi ? '✓ Copied' : 'Copy'}
+                                </button>
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, marginTop: '2px' }}>
+                                {upiConfig.payeeName || 'PicnicUtkal Resort'}
                               </div>
                             </div>
-                            <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--gold)', marginBottom: '4px' }}>
+
+                            <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--gold)', marginBottom: '4px' }}>
                               Scan QR Code to Pay ₹{total.toLocaleString()}
                             </div>
-                            <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>
-                              Open PhonePe, Google Pay, Paytm, or BHIM app and scan the QR code to finish your reservation.
+
+                            <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.4 }}>
+                              {upiConfig.instructions || 'Scan the QR code using any UPI App (PhonePe, GPay, Paytm, BHIM) to complete payment.'}
                             </p>
+
+                            {/* UTR / Transaction ID input (MANDATORY) */}
+                            <div style={{ textAlign: 'left', padding: '16px', borderRadius: '12px', border: '1.5px solid var(--gold)' }}>
+                              <label style={{ fontSize: '12px', fontWeight: 800, color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                <span>UPI Transaction UTR / Ref Number <span style={{ color: 'var(--error)' }}>* (Required)</span></span>
+                                <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>Mandatory to Confirm</span>
+                              </label>
+                              <input
+                                type="text"
+                                name="transactionRef"
+                                className="input"
+                                placeholder="Enter 12-digit UTR No. from your UPI payment receipt (e.g. 4231XXXXXXXX)"
+                                value={form.transactionRef || ''}
+                                onChange={handleChange}
+                                required
+                                style={{ fontSize: '13px', padding: '10px 14px', fontFamily: 'monospace', fontWeight: 600, border: '1px solid var(--border)' }}
+                              />
+                              
+                            </div>
                           </div>
                         )}
 

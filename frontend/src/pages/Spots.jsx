@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
-import { Link, useSearchParams } from 'react-router-dom'
-import { LuSearch as Search, LuLayoutGrid as Grid, LuList as List, LuMapPin as MapPin, LuStar as Star, LuSlidersHorizontal as SlidersHorizontal, LuX as X, LuChevronDown as ChevronDown, LuLoader as Loader } from 'react-icons/lu'
+import { Link, useSearchParams, useNavigate } from 'react-router-dom'
+import { LuSearch as Search, LuLayoutGrid as Grid, LuList as List, LuMapPin as MapPin, LuStar as Star, LuSlidersHorizontal as SlidersHorizontal, LuX as X, LuChevronDown as ChevronDown, LuLoader as Loader, LuImage as ImageIcon } from 'react-icons/lu'
 import { useSocket } from '../context/SocketContext'
 import { buildApiUrl } from '../services/api'
 
-// Helper: normalize a plot from admin API into public spot shape
+// Helper: normalize a plot from admin API / Map Management into public spot shape
 function normalizePlot(p) {
   const facilities = Array.isArray(p.facilities)
     ? p.facilities
@@ -14,35 +14,82 @@ function normalizePlot(p) {
       ? p.facilities.split(',').map(f => f.trim()).filter(Boolean)
       : []
 
+  const isLandmark = Boolean(p.isFree || p.isLandmark || Number(p.price) === 0 || p.isGate || p.isParking)
+
   return {
     id: p._id || p.id,
     name: p.title || p.name || 'Unnamed Spot',
     location: p.location || (p.mapId === 'chilika-map-02' ? 'Chilika Lake, Puri' : p.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Picnic Ground'),
     district: p.district || 'Khordha',
-    price: Number(p.price) || 499,
+    price: Number(p.price) || 0,
     rating: p.rating || 4.8,
     reviews: p.reviews || 0,
     image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image || ''),
     images: p.images || (p.image ? [p.image] : []),
     zones: facilities.length > 0 ? facilities : ['Shade', 'Seating'],
     capacity: Number(p.capacity) || 100,
-    badge: p.badge || 'Map Zone',
-    status: p.status || 'active',
+    badge: isLandmark ? 'Free Landmark' : (p.isCottage ? 'Cottage' : (p.badge || 'Map Zone')),
+    status: p.status || 'available',
     isBooked: Boolean(p.isBooked || p.status === 'booked'),
+    isFree: isLandmark,
+    isLandmark: isLandmark,
+    isCottage: Boolean(p.isCottage),
     mapId: p.mapId || 'default-master-plan',
     description: p.description || ''
   }
 }
 
-const DEFAULT_IMAGE = 'https://images.unsplash.com/photo-1547082299-de196ea013d6?w=600&q=80'
+function resolvePlotImage(imgSrc) {
+  if (!imgSrc) return ''
+  if (typeof imgSrc === 'string' && imgSrc.startsWith('/uploads')) {
+    const backendOrigin = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+      : 'http://localhost:5300'
+    return `${backendOrigin}${imgSrc}`
+  }
+  return imgSrc
+}
 
 export default function Spots() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const selectedMapId = searchParams.get('mapId')
   const peopleParam   = searchParams.get('people')
 
-  const [spots, setSpots] = useState([])
-  const [loading, setLoading] = useState(true)
+  const isNonBookableLandmark = (p) => Boolean(
+    p.isLandmark ||
+    p.isFree ||
+    Number(p.price) === 0 ||
+    p.price === 0 ||
+    p._id === 'main-gate' ||
+    p._id === 'parking' ||
+    p.id === 'main-gate' ||
+    p.id === 'parking'
+  )
+
+  // Filter out old temporary frontend IDs like 'plot-1786816983749'
+  const isStaleTemporaryId = (p) => {
+    const id = p._id || p.id || ''
+    return /^plot-\d+$/.test(id) || /^spot-\d+$/.test(id)
+  }
+
+  const [spots, setSpots] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_admin_plots')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+            .filter(p => !isStaleTemporaryId(p))
+          return cleaned.map(normalizePlot)
+        }
+      }
+    } catch (e) {}
+    return []
+  })
+  const [loading, setLoading] = useState(false)
 
   const [view, setView] = useState('grid')
   const [searchQ, setSearchQ] = useState('')
@@ -50,17 +97,46 @@ export default function Spots() {
   const [filters, setFilters] = useState({ minPrice: 0, maxPrice: 2000, minRating: 0, zone: '' })
   const [sort, setSort] = useState('price-low')
 
-  // Load spots from backend API (same source as admin Spots panel)
-  const fetchSpots = () => {
-    fetch(buildApiUrl('/api/map/plots'))
-      .then(r => r.json())
-      .then(d => {
+  // Load spots from backend API / Map Management
+  const fetchSpots = async () => {
+    // 1. Check /api/map/plots from database
+    try {
+      const res = await fetch(buildApiUrl('/api/map/plots'), { cache: 'no-store' })
+      if (res.ok) {
+        const d = await res.json()
         if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-          setSpots(d.data.map(normalizePlot))
+          const cleaned = d.data
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+            .filter(p => !isStaleTemporaryId(p))
+          setSpots(cleaned.map(normalizePlot))
+          try {
+            localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(d.data))
+          } catch (e) {}
+          setLoading(false)
+          return
         }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+      }
+    } catch (e) {}
+
+    // 2. Check SiteConfig fallback
+    try {
+      const scRes = await fetch(buildApiUrl('/api/site-config/map_plots_config'), { cache: 'no-store' })
+      if (scRes.ok) {
+        const scData = await scRes.json()
+        if (scData?.value && Array.isArray(scData.value) && scData.value.length > 0) {
+          const cleaned = scData.value
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+          setSpots(cleaned.map(normalizePlot))
+          try {
+            localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(scData.value))
+          } catch (e) {}
+        }
+      }
+    } catch (e) {} finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
@@ -212,18 +288,42 @@ export default function Spots() {
                 <p>No spots found. Try adjusting your filters.</p>
                 <button className="btn btn-primary" onClick={() => { setSearchQ(''); setFilters({ minPrice: 0, maxPrice: 2000, minRating: 0, zone: '' }) }}>Clear Filters</button>
               </div>
-            ) : filtered.map((spot, i) => (
+            ) : filtered.map((spot, i) => {
+              const isValidId = spot.id && !/^(plot|spot)-\d+$/.test(spot.id)
+              const handleCardClick = () => isValidId ? navigate(`/plots/${spot.id}`) : navigate('/spots')
+              return (
               <motion.div key={spot.id} className={`spot-card ${view === 'list' ? 'spot-card--list' : ''}`}
                 initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }} transition={{ delay: i * 0.06 }} whileHover={{ y: -4 }}>
+                viewport={{ once: true }} transition={{ delay: i * 0.06 }} whileHover={{ y: -4 }}
+                style={{ cursor: 'pointer' }}
+                onClick={handleCardClick}>
                 <div className="spot-card__image-wrap">
-                  <img
-                    src={spot.image || DEFAULT_IMAGE}
-                    alt={spot.name}
-                    className="spot-card__image"
-                    loading="lazy"
-                    onError={e => { e.target.src = DEFAULT_IMAGE }}
-                  />
+                  {resolvePlotImage(spot.image) ? (
+                    <img
+                      src={resolvePlotImage(spot.image)}
+                      alt={spot.name}
+                      className="spot-card__image"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        minHeight: '200px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'rgba(255,255,255,0.03)',
+                        gap: '6px',
+                        color: 'var(--text-muted)'
+                      }}
+                    >
+                      <ImageIcon size={32} style={{ opacity: 0.35, color: 'var(--gold)' }} />
+                      <span style={{ fontSize: '11px', fontWeight: 600 }}>No Image Available</span>
+                    </div>
+                  )}
                   <div className="spot-card__image-overlay" />
                   {spot.isBooked || spot.status === 'booked' ? (
                     <span className="spot-card__badge badge" style={{ background: '#ef4444', color: '#ffffff', fontWeight: 800 }}>🔴 BOOKED</span>
@@ -243,22 +343,33 @@ export default function Spots() {
                   <div className="spot-card__footer">
                     <div className="spot-card__price">
                       <span className="spot-card__price-amount">₹{spot.price}</span>
-                      <span className="spot-card__price-unit">{spot.id === 'cottage-rooms' ? '/night' : '/pandal'}</span>
+                      <span className="spot-card__price-unit">/day</span>
                     </div>
                     <div className="spot-card__actions">
-                      <Link to={`/plots/${spot.id}`} className="btn btn-outline btn-sm" id={`details-${spot.id}`}>Details</Link>
+                      <Link
+                        to={isValidId ? `/plots/${spot.id}` : '/spots'}
+                        className="btn btn-outline btn-sm"
+                        id={`details-${spot.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >Details</Link>
                       {spot.isBooked || spot.status === 'booked' ? (
                         <button disabled className="btn btn-sm" style={{ background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.4)', cursor: 'not-allowed', fontWeight: 700 }}>
                           🔴 BOOKED
                         </button>
                       ) : (
-                        <Link to={`/plots/${spot.id}?book=true`} className="btn btn-primary btn-sm" id={`book-${spot.id}`}>Book Now</Link>
+                        <Link
+                          to={isValidId ? `/plots/${spot.id}?book=true` : '/spots'}
+                          className="btn btn-primary btn-sm"
+                          id={`book-${spot.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >Book Now</Link>
                       )}
                     </div>
                   </div>
                 </div>
               </motion.div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>

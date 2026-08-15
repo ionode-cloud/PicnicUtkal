@@ -27,48 +27,94 @@ router.post('/', async (req, res) => {
     const {
       plotId, plotTitle, plotPrice,
       name, email, phone,
-      visitDate, persons, specialNote,
-      paymentMethod, visitors
+      visitDate, persons, durationDays, specialNote,
+      paymentMethod, visitors, selectedAddons
     } = req.body
 
-    if (!plotId || !plotTitle || !name || !email || !phone || !visitDate || !persons) {
+    if (!plotId || !name || !email || !phone || !visitDate || !persons) {
       return res.status(400).json({ success: false, message: 'All required fields must be provided.' })
     }
 
-    const parsedDate = new Date(visitDate)
-    const validVisitDate = isNaN(parsedDate.getTime()) ? new Date(Date.now() + 86400000) : parsedDate
-    const validPrice = Number(plotPrice) > 0 ? Number(plotPrice) : 499
-    const validPersons = Number(persons) > 0 ? Number(persons) : 1
-    // Spot booking price is a flat rate for the plot (or explicitly passed totalAmount)
-    const totalAmount = Number(req.body.totalAmount) > 0 ? Number(req.body.totalAmount) : validPrice
-
-    // Server-side Double Booking Validation Check for exact spot + date
-    const formattedVisitDateStr = validVisitDate.toISOString().split('T')[0]
-    const startOfDay = new Date(`${formattedVisitDateStr}T00:00:00.000Z`)
-    const endOfDay   = new Date(`${formattedVisitDateStr}T23:59:59.999Z`)
-
-    const existingBooking = await Booking.findOne({
-      $or: [{ plotId }, { plotTitle }],
-      status: { $ne: 'cancelled' },
-      visitDate: { $gte: startOfDay, $lte: endOfDay }
-    })
-
-    if (existingBooking) {
-      return res.status(400).json({
-        success: false,
-        message: "This spot is already booked for this date. Please select another date."
+    // 1. Authoritative MongoDB Plot Lookup
+    let plotDoc = null
+    if (mongoose.Types.ObjectId.isValid(plotId)) {
+      plotDoc = await MapPlot.findById(plotId)
+    }
+    if (!plotDoc) {
+      const cleanTitle = String(plotTitle || plotId).replace(/^(plot|pandal|zone)-/i, '').replace(/[-_]/g, ' ').trim()
+      plotDoc = await MapPlot.findOne({
+        $or: [
+          { customId: plotId },
+          { title: new RegExp(cleanTitle, 'i') }
+        ]
       })
     }
 
+    // Check special cottage-rooms virtual fallback or error if plot does not exist
+    if (!plotDoc && plotId !== 'cottage-rooms') {
+      return res.status(404).json({ success: false, message: 'Picnic plot / zone not found in database.' })
+    }
+
+    const authoritativePlotId = plotDoc ? String(plotDoc._id) : plotId
+    const authoritativePlotTitle = plotDoc ? plotDoc.title : (plotTitle || 'Cottage Rooms')
+    const authoritativeBasePrice = plotDoc ? Number(plotDoc.price) : (Number(plotPrice) || 999)
+
+    // 2. Validate Duration & Persons
+    const validDuration = Math.max(1, Number(durationDays) || 1)
+    const validPersons = Math.max(1, Number(persons) || 1)
+
+    // 3. Authoritative Pricing Calculation on Backend
+    const baseTotal = authoritativeBasePrice * validDuration
+    let addonsTotal = 0
+    if (Array.isArray(selectedAddons) && selectedAddons.length > 0) {
+      addonsTotal = selectedAddons.reduce((sum, a) => sum + (Number(a.priceAddon) || Number(a.price) || 0), 0)
+    }
+    const authoritativeTotalAmount = baseTotal + addonsTotal
+
+    // 4. Validate Visit Date & Range Availability
+    const parsedDate = new Date(visitDate)
+    const validVisitDate = isNaN(parsedDate.getTime()) ? new Date(Date.now() + 86400000) : parsedDate
+    const formattedVisitDateStr = validVisitDate.toISOString().split('T')[0]
+
+    const startOfRange = new Date(`${formattedVisitDateStr}T00:00:00.000Z`)
+    const endOfRange = new Date(startOfRange)
+    endOfRange.setDate(endOfRange.getDate() + validDuration - 1)
+    endOfRange.setHours(23, 59, 59, 999)
+
+    // Check if plot is already booked for any date within the requested range
+    const existingBooking = await Booking.findOne({
+      $or: [
+        { plotId: authoritativePlotId },
+        { plotId: String(plotId) },
+        { plotTitle: authoritativePlotTitle }
+      ],
+      status: { $ne: 'cancelled' },
+      visitDate: { $gte: startOfRange, $lte: endOfRange }
+    })
+
+    if (existingBooking) {
+      return res.status(409).json({
+        success: false,
+        message: 'This spot is already booked for the selected date. Please select another date.'
+      })
+    }
+
+    // 5. Create and Save Authoritative Booking Record
     const booking = new Booking({
-      plotId, plotTitle, plotPrice: validPrice,
-      name, email, phone,
+      plotId: authoritativePlotId,
+      plotTitle: authoritativePlotTitle,
+      plotPrice: authoritativeBasePrice,
+      durationDays: validDuration,
+      name: name.trim(),
+      email: email.trim().toLowerCase(),
+      phone: phone.trim(),
       visitDate: validVisitDate,
       persons: validPersons,
       specialNote: specialNote || '',
       visitors: visitors || [],
+      selectedAddons: selectedAddons || [],
       paymentMethod: paymentMethod || 'upi',
-      totalAmount,
+      totalAmount: authoritativeTotalAmount,
       paymentStatus: paymentMethod === 'cash' ? 'pending' : 'paid',
       status: 'confirmed'
     })
@@ -76,11 +122,16 @@ router.post('/', async (req, res) => {
     await booking.save()
 
     if (req.io) {
-      req.io.emit('plot_updated', { plotId, visitDate: formattedVisitDateStr, status: 'booked' })
+      req.io.emit('plot_updated', { plotId: authoritativePlotId, visitDate: formattedVisitDateStr, status: 'booked' })
       req.io.emit('plots_update')
     }
 
-    res.status(201).json({ success: true, data: booking })
+    res.status(201).json({
+      success: true,
+      data: booking,
+      booking,
+      referenceCode: booking.bookingId || booking._id
+    })
   } catch (err) {
     res.status(400).json({ success: false, message: err.message })
   }
@@ -92,16 +143,7 @@ router.get('/', async (req, res) => {
     const { email } = req.query
     const filter = email ? { email: new RegExp(`^${email.trim()}$`, 'i') } : {}
     const bookings = await Booking.find(filter).sort({ createdAt: -1 })
-    
-    // Auto-correct any existing legacy bookings where totalAmount was multiplied by persons
-    for (const b of bookings) {
-      if (b.persons > 1 && b.totalAmount === b.plotPrice * b.persons) {
-        b.totalAmount = b.plotPrice
-        await Booking.updateOne({ _id: b._id }, { totalAmount: b.plotPrice }).catch(() => {})
-      }
-    }
-
-    res.json({ success: true, data: bookings })
+    res.status(200).json({ success: true, data: bookings })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -116,14 +158,16 @@ router.get('/availability', async (req, res) => {
       return res.status(400).json({ success: false, message: 'spotId or plotId query parameter required' })
     }
 
-    const targetTitle = String(targetId).replace(/-/g, ' ')
+    const targetConditions = [
+      { plotId: String(targetId) },
+      { spotId: String(targetId) }
+    ]
+    if (mongoose.Types.ObjectId.isValid(targetId)) {
+      targetConditions.push({ plotId: new mongoose.Types.ObjectId(targetId) })
+    }
+
     const bookings = await Booking.find({
-      $or: [
-        { plotId: targetId },
-        { spotId: targetId },
-        { bookingId: targetId },
-        { plotTitle: new RegExp(targetTitle, 'i') }
-      ],
+      $or: targetConditions,
       status: { $ne: 'cancelled' }
     })
 
@@ -147,7 +191,7 @@ router.get('/availability', async (req, res) => {
       availabilityMap[d] = { status: 'booked', available: false }
     })
 
-    res.json({
+    res.status(200).json({
       success: true,
       spotId: targetId,
       bookedDates,
@@ -170,7 +214,7 @@ router.get('/:bookingId', async (req, res) => {
       await Booking.updateOne({ _id: booking._id }, { totalAmount: booking.plotPrice }).catch(() => {})
     }
 
-    res.json({ success: true, data: booking })
+    res.status(200).json({ success: true, data: booking })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -197,7 +241,7 @@ router.delete('/:bookingId', async (req, res) => {
       req.io.emit('plots_update')
     }
 
-    res.json({ success: true, message: 'Booking deleted successfully', data: booking })
+    res.status(200).json({ success: true, message: 'Booking deleted successfully', data: booking })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -220,7 +264,7 @@ router.put('/:bookingId', async (req, res) => {
       req.io.emit('plots_update')
     }
 
-    res.json({ success: true, data: booking })
+    res.status(200).json({ success: true, data: booking })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }

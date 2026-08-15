@@ -17,66 +17,7 @@ import 'swiper/css/free-mode'
 import 'swiper/css/navigation'
 import 'swiper/css/thumbs'
 
-const EVENT_ADDONS = [
-  { 
-    id: 'ad_gas_chulha', 
-    name: '🔥 Gas & Chulha Booking', 
-    desc: 'Full outdoor kitchen burner stove and filled LPG cylinder setup.', 
-    priceAddon: 250,
-    items: [
-      '1x Commercial Single-Burner Chulha (Stove)',
-      '1x 5kg LPG Gas Cylinder (Pre-filled, ready to use)',
-      'High-pressure gas regulator and safety hose pipe',
-      'Gas lighter utility included'
-    ]
-  },
-  { 
-    id: 'ad_cooking_kit', 
-    name: '🍳 Cooking Accessories Pack', 
-    desc: 'Complete picnic cookware, serving spoons and preparation kit.', 
-    priceAddon: 150,
-    items: [
-      '2x Large Aluminum Cooking Pots (Dekchi with lids)',
-      '1x Deep Frying Pan (Kadai) & 1x Tawa',
-      'Large cooking ladles, spatula & serving spoons (Khanti & Chhanki)',
-      'Heavy-duty chopping board & 2x stainless steel kitchen knives',
-      'Dishwashing gel, scrubber sponge & cleaning cloth'
-    ]
-  },
-  { 
-    id: 'ad_sound', 
-    name: '🔊 Standard Sound System', 
-    desc: 'Dual speakers, microphone, Bluetooth audio receiver', 
-    priceAddon: 150,
-    items: [
-      '2x Active Sound Tower Speakers (JBL 15-inch)',
-      '1x Audio Mixing Console (Yamaha 6-channel)',
-      '1x Wireless Handheld Vocal Microphone',
-      'Bluetooth receiver, AUX cable, and power extension leads'
-    ]
-  },
-  { 
-    id: 'ad_catering', 
-    name: '🍽 Catering Table Setup', 
-    desc: 'Elegant buffet tables with satin cloth skirting', 
-    priceAddon: 100,
-    items: [
-      '4x Buffet / food serving tables (6x3 ft metal frame)',
-      'Premium white satin fabric table spreads',
-      'Pleated gold border table skirtings'
-    ]
-  },
-  { 
-    id: 'ad_decor', 
-    name: '🌸 Floral Welcome Arch', 
-    desc: 'Decorated entry arch with fresh seasonal flowers', 
-    priceAddon: 250,
-    items: [
-      'Yellow/orange fresh marigolds & white lily floral decorations',
-      'Structure arch frame setup & tear-down after event'
-    ]
-  }
-]
+
 
 const SPOTS_DB = {
   '1': {
@@ -236,6 +177,39 @@ export default function SpotDetail() {
       .catch(() => {})
   }, [id])
 
+  const [addonsList, setAddonsList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_event_addons')
+      return saved ? JSON.parse(saved) : []
+    } catch (e) { return [] }
+  })
+
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/addons_config'), { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.value && Array.isArray(d.value)) {
+          setAddonsList(d.value)
+          try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(d.value)) } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const { socket } = useSocket()
+
+  useEffect(() => {
+    if (!socket) return
+    const handleAddonsUpdate = (data) => {
+      if (data && Array.isArray(data.addons)) {
+        setAddonsList(data.addons)
+        try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(data.addons)) } catch (e) {}
+      }
+    }
+    socket.on('addons_config_update', handleAddonsUpdate)
+    return () => socket.off('addons_config_update', handleAddonsUpdate)
+  }, [socket])
+
   const spot = dynamicSpot || SPOTS_DB[id] || SPOTS_DB['1']
 
   const handleZoneToggle = (zoneId) => {
@@ -257,14 +231,16 @@ export default function SpotDetail() {
     )
   }
 
+  const activeAddonsList = addonsList.filter(a => a.status === 'Active' || !a.status)
+
   // Calculate pricing breakdown (flat rates per pandal)
   const baseTotal = spot.basePrice
-  const zonesTotal = spot.zones
+  const zonesTotal = (spot.zones || [])
     .filter(z => selectedZones.includes(z.id))
     .reduce((sum, z) => sum + z.priceAddon, 0)
-  const eventAddonsTotal = EVENT_ADDONS
+  const eventAddonsTotal = activeAddonsList
     .filter(a => selectedAddons.includes(a.id))
-    .reduce((sum, a) => sum + a.priceAddon, 0)
+    .reduce((sum, a) => sum + (Number(a.priceAddon) || Number(a.price) || 0), 0)
   const durationMultiplier = selectedDuration === 'custom' ? 1 : Number(selectedDuration)
   const grandTotal = (baseTotal + zonesTotal + eventAddonsTotal) * durationMultiplier
 
@@ -412,50 +388,51 @@ export default function SpotDetail() {
             </div>
 
             {/* Custom Event Add-ons */}
-            <div className="spot-card-info section-card">
-              <h2 className="heading-4">Add Custom Event Add-ons</h2>
-              <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your booking.</p>
-              <div className="zones-list-detail">
-                {EVENT_ADDONS.map(addon => {
-                  const isSelected = selectedAddons.includes(addon.id)
-                  const isExpanded = expandedAddons.includes(addon.id)
-                  return (
-                    <div
-                      key={addon.id}
-                      className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
-                      onClick={() => handleAddonToggle(addon.id)}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="addon-row-content">
-                        <div className="zone-detail-checkbox">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            style={{ pointerEvents: 'none' }}
-                            id={`addon-check-${addon.id}`}
-                          />
-                        </div>
-                        <div className="addon-row-body">
-                          <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
-                            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
-                            <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
-                            {addon.items && (
-                              <button
-                                type="button"
-                                className="addon-details-btn"
-                                onClick={(e) => toggleExpandAddon(e, addon.id)}
-                              >
-                                {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
-                              </button>
-                            )}
+            {activeAddonsList.length > 0 && (
+              <div className="spot-card-info section-card">
+                <h2 className="heading-4">Add Custom Event Add-ons</h2>
+                <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your booking.</p>
+                <div className="zones-list-detail">
+                  {activeAddonsList.map(addon => {
+                    const isSelected = selectedAddons.includes(addon.id)
+                    const isExpanded = expandedAddons.includes(addon.id)
+                    return (
+                      <div
+                        key={addon.id}
+                        className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
+                        onClick={() => handleAddonToggle(addon.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="addon-row-content">
+                          <div className="zone-detail-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              style={{ pointerEvents: 'none' }}
+                              id={`addon-check-${addon.id}`}
+                            />
                           </div>
-                          <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
-                            <span>+ ₹{addon.priceAddon}</span>
-                            <small>/ flat addon</small>
+                          <div className="addon-row-body">
+                            <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
+                              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
+                              <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
+                              {addon.items && Array.isArray(addon.items) && addon.items.length > 0 && (
+                                <button
+                                  type="button"
+                                  className="addon-details-btn"
+                                  onClick={(e) => toggleExpandAddon(e, addon.id)}
+                                >
+                                  {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                                </button>
+                              )}
+                            </div>
+                            <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
+                              <span>+ ₹{addon.priceAddon || addon.price || 0}</span>
+                              <small>/ flat addon</small>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
                       {/* Collapsible Items Details */}
                       {isExpanded && addon.items && (
@@ -479,6 +456,7 @@ export default function SpotDetail() {
                 })}
               </div>
             </div>
+          )}
 
 
 

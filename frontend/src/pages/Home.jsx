@@ -5,7 +5,7 @@ import { Helmet } from 'react-helmet-async'
 import {
   LuSearch as Search, LuMapPin as MapPin, LuCalendar as Calendar, LuUsers as Users, LuStar as Star, LuArrowRight as ArrowRight,
   LuWaves as Waves, LuFlame as Flame, LuMusic as Music, LuTent as Tent, LuTarget as Target, LuTrees as Trees, LuCamera as Camera,
-  LuChevronDown as ChevronDown, LuShield as Shield, LuClock as Clock, LuAward as Award, LuTrendingUp as TrendingUp
+  LuChevronDown as ChevronDown, LuShield as Shield, LuClock as Clock, LuAward as Award, LuTrendingUp as TrendingUp, LuImage as ImageIcon
 } from 'react-icons/lu'
 import { Swiper, SwiperSlide } from 'swiper/react'
 import { Autoplay, Pagination, EffectFade } from 'swiper/modules'
@@ -15,24 +15,40 @@ import 'swiper/css/effect-fade'
 import { useSocket } from '../context/SocketContext'
 import { buildApiUrl } from '../services/api'
 
-const HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=85',
-  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=85',
-  'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1920&q=85',
-  'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1920&q=85',
-]
+function getZoneIcon(label = '') {
+  const l = label.toLowerCase()
+  if (l.includes('swim') || l.includes('water')) return Waves
+  if (l.includes('bbq') || l.includes('cook') || l.includes('flame') || l.includes('food')) return Flame
+  if (l.includes('music') || l.includes('stage') || l.includes('dance')) return Music
+  if (l.includes('camp') || l.includes('tent')) return Tent
+  if (l.includes('adventur') || l.includes('sport') || l.includes('target')) return Target
+  if (l.includes('photo') || l.includes('camera') || l.includes('selfie')) return Camera
+  return Trees
+}
 
-const POPULAR_ZONES = [
-  { icon: Waves,  label: 'Swimming Zone', count: '12 spots', color: '#228BE6', href: '/spots?zone=swimming' },
-  { icon: Flame,  label: 'BBQ Zone',      count: '18 spots', color: '#FA5252', href: '/spots?zone=cooking'  },
-  { icon: Music,  label: 'Music Zone',    count: '8 spots',  color: '#BE4BDB', href: '/spots?zone=music'    },
-  { icon: Tent,   label: 'Camping Zone',  count: '15 spots', color: '#F76707', href: '/spots?zone=camping'  },
-  { icon: Target, label: 'Adventure',     count: '10 spots', color: '#E8590C', href: '/spots?zone=adventure'},
-  { icon: Trees,  label: 'Family Zone',   count: '22 spots', color: '#2F9E44', href: '/spots?zone=family'   },
-  { icon: Camera, label: 'Photo Zone',    count: '9 spots',  color: '#C9A84C', href: '/spots?zone=photo'    },
-]
+const getStoredPopularZones = () => {
+  try {
+    const saved = localStorage.getItem('picnicutkal_admin_zones')
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed.filter(z => z.status !== 'Inactive')
+      }
+    }
+  } catch (e) {}
+  return []
+}
 
-const FALLBACK_IMG = 'https://images.unsplash.com/photo-1547082299-de196ea013d6?w=600&q=80'
+function resolvePlotImage(imgSrc) {
+  if (!imgSrc) return ''
+  if (typeof imgSrc === 'string' && imgSrc.startsWith('/uploads')) {
+    const backendOrigin = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+      : 'http://localhost:5300'
+    return `${backendOrigin}${imgSrc}`
+  }
+  return imgSrc
+}
 
 function normalizePlot(p) {
   const facilities = Array.isArray(p.facilities)
@@ -47,34 +63,13 @@ function normalizePlot(p) {
     price: Number(p.price) || 499,
     rating: p.rating || 4.8,
     reviews: p.reviews || 0,
-    image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image || FALLBACK_IMG),
+    image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image || ''),
     zones: facilities.length > 0 ? facilities.slice(0, 4) : ['Shade', 'Seating'],
     capacity: Number(p.capacity) || 100,
     badge: p.badge || 'Map Zone',
     mapId: p.mapId || 'default-master-plan'
   }
 }
-
-const TESTIMONIALS = [
-  {
-    name: 'Priya Mohanty', location: 'Bhubaneswar', rating: 5,
-    comment: 'Amazing experience at Nandankanan! The booking was super smooth, got a QR ticket instantly. The swimming zone was clean and well-maintained. Highly recommend PicnicUtkal!',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Priya',
-    spot: 'Nandankanan Sanctuary',
-  },
-  {
-    name: 'Rajesh Kumar', location: 'Cuttack', rating: 5,
-    comment: 'We booked the BBQ zone for our family reunion. The food pre-order feature is genius — everything was ready when we arrived! Will definitely book again.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Rajesh',
-    spot: 'Chilika Lake Resort',
-  },
-  {
-    name: 'Sunita Dash', location: 'Puri', rating: 5,
-    comment: 'Daringbadi camping was a dream! PicnicUtkal made it so easy to book tents, arrange a bonfire, and get a guide. The landscape was absolutely gorgeous.',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sunita',
-    spot: 'Daringbadi Hill Station',
-  },
-]
 
 
 const fadeUp = {
@@ -88,6 +83,11 @@ const staggerContainer = {
 
 function SpotCard({ spot, index }) {
   const navigate = useNavigate()
+  const displayImage = resolvePlotImage(spot.image)
+
+  // Guard against stale temporary IDs
+  const isValidId = spot.id && !/^(plot|spot)-\d+$/.test(spot.id)
+
   return (
     <motion.div
       className="spot-card"
@@ -97,15 +97,36 @@ function SpotCard({ spot, index }) {
       whileInView="visible"
       viewport={{ once: true, margin: '-60px' }}
       whileHover={{ y: -8 }}
+      style={{ cursor: 'pointer' }}
+      onClick={() => isValidId ? navigate(`/plots/${spot.id}`) : navigate('/spots')}
     >
       <div className="spot-card__image-wrap">
-        <img
-          src={spot.image || FALLBACK_IMG}
-          alt={spot.name}
-          className="spot-card__image"
-          loading="lazy"
-          onError={e => { e.target.src = FALLBACK_IMG }}
-        />
+        {displayImage ? (
+          <img
+            src={displayImage}
+            alt={spot.name}
+            className="spot-card__image"
+            loading="lazy"
+          />
+        ) : (
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              minHeight: '200px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'rgba(255,255,255,0.03)',
+              gap: '6px',
+              color: 'var(--text-muted)'
+            }}
+          >
+            <ImageIcon size={32} style={{ opacity: 0.35, color: 'var(--gold)' }} />
+            <span style={{ fontSize: '11px', fontWeight: 600 }}>No Image Available</span>
+          </div>
+        )}
         <div className="spot-card__image-overlay" />
         <span className="spot-card__badge badge badge-gold">{spot.badge}</span>
         <span className="spot-card__capacity badge badge-glass">👥 {spot.capacity} capacity</span>
@@ -123,19 +144,19 @@ function SpotCard({ spot, index }) {
         <div className="spot-card__footer">
           <div className="spot-card__price">
             <span className="spot-card__price-amount">₹{spot.price}</span>
-            <span className="spot-card__price-unit">{spot.id === 'cottage-rooms' ? '/night' : '/pandal'}</span>
+            <span className="spot-card__price-unit">/day</span>
           </div>
           <div className="spot-card__actions">
             <button
               className="btn btn-outline btn-sm"
-              onClick={() => navigate(`/plots/${spot.id}`)}
+              onClick={(e) => { e.stopPropagation(); isValidId ? navigate(`/plots/${spot.id}`) : navigate('/spots') }}
               id={`details-spot-${spot.id}`}
             >
               Details
             </button>
             <button
               className="btn btn-primary btn-sm"
-              onClick={() => navigate(`/plots/${spot.id}?book=true`)}
+              onClick={(e) => { e.stopPropagation(); isValidId ? navigate(`/plots/${spot.id}?book=true`) : navigate('/spots') }}
               id={`book-spot-${spot.id}`}
             >
               Book Now
@@ -144,6 +165,7 @@ function SpotCard({ spot, index }) {
         </div>
       </div>
     </motion.div>
+
   )
 }
 
@@ -180,11 +202,6 @@ export default function Home() {
       }
     } catch (e) {}
     return [
-      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80',
-      'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80',
-      'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=800&q=80',
-      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80',
-      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
       'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80',
     ]
   }
@@ -192,7 +209,37 @@ export default function Home() {
   const [galleryImages, setGalleryImages] = useState(getStoredGalleryImages)
   const [galleryOffset, setGalleryOffset] = useState(0)
 
-  // Socket.io: live-reload when admin saves Home page content or Gallery content
+  const [zonesList, setZonesList] = useState(getStoredPopularZones)
+
+  // Fetch persistent site config & zones from MongoDB database on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && d.data) {
+          if (d.data.user_view_config) {
+            const uv = d.data.user_view_config
+            if (uv.home) setHomeConfig(uv.home)
+            if (uv.gallery && Array.isArray(uv.gallery)) {
+              const urls = uv.gallery.map(item => typeof item === 'string' ? item : (item.src || item.url)).filter(Boolean)
+              if (urls.length > 0) setGalleryImages(urls)
+            }
+            try {
+              localStorage.setItem('picnicutkal_user_view_config', JSON.stringify(uv))
+            } catch (e) {}
+          }
+          if (d.data.admin_zones && Array.isArray(d.data.admin_zones)) {
+            setZonesList(d.data.admin_zones.filter(z => z.status !== 'Inactive'))
+            try {
+              localStorage.setItem('picnicutkal_admin_zones', JSON.stringify(d.data.admin_zones))
+            } catch (e) {}
+          }
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Socket.io: live-reload when admin saves Home page content, Gallery content, or Zones
   const { socket } = useSocket()
   useEffect(() => {
     if (!socket) return
@@ -212,11 +259,22 @@ export default function Home() {
         if (urls.length > 0) setGalleryImages(urls)
       }
     }
+    const zonesHandler = (data) => {
+      if (data && Array.isArray(data.zones)) {
+        const activeZones = data.zones.filter(z => z.status !== 'Inactive')
+        setZonesList(activeZones)
+        try {
+          localStorage.setItem('picnicutkal_admin_zones', JSON.stringify(data.zones))
+        } catch (e) {}
+      }
+    }
     socket.on('home_config_update', handler)
     socket.on('gallery_config_update', galleryHandler)
+    socket.on('zones_config_update', zonesHandler)
     return () => {
       socket.off('home_config_update', handler)
       socket.off('gallery_config_update', galleryHandler)
+      socket.off('zones_config_update', zonesHandler)
     }
   }, [socket])
 
@@ -233,13 +291,14 @@ export default function Home() {
       const saved = localStorage.getItem('picnicutkal_admin_maps')
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed.filter(m => m._id !== 'chilika-map-02' && m._id !== 'simlipal-map-03')
+          if (cleaned.length > 0) return cleaned
+        }
       }
     } catch (e) {}
     return [
-      { _id: 'default-master-plan', title: 'Barapita Master Plan (Main Ground)', linkedSpot: 'Barapita Ground, Deras' },
-      { _id: 'chilika-map-02', title: 'Chilika Lake Sanctuary Map', linkedSpot: 'Chilika Lake Sanctuary, Puri' },
-      { _id: 'simlipal-map-03', title: 'Simlipal Forest & Waterfall Map', linkedSpot: 'Simlipal Forest Reserve, Mayurbhanj' }
+      { _id: 'default-master-plan', title: 'Barapita Master Plan (Main Ground)', linkedSpot: 'Barapita Ground, Deras' }
     ]
   })
 
@@ -248,7 +307,11 @@ export default function Home() {
     if (!socket) return
     const mapHandler = (data) => {
       if (data && Array.isArray(data.maps)) {
-        setMaps(data.maps)
+        const cleaned = data.maps.filter(m => m._id !== 'chilika-map-02' && m._id !== 'simlipal-map-03')
+        setMaps(cleaned)
+        try {
+          localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(cleaned))
+        } catch (e) {}
       }
     }
     socket.on('map_config_update', mapHandler)
@@ -267,17 +330,73 @@ export default function Home() {
     navigate(`/spots?${params.toString()}`)
   }
 
-  // Load featured spots from backend (same source as admin Spots panel)
-  const [featuredSpots, setFeaturedSpots] = useState([])
-  const fetchFeatured = () => {
-    fetch(buildApiUrl('/api/map/plots'))
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-          setFeaturedSpots(d.data.map(normalizePlot))
+  const isNonBookableLandmark = (p) => Boolean(
+    p.isLandmark ||
+    p.isFree ||
+    Number(p.price) === 0 ||
+    p.price === 0 ||
+    p._id === 'main-gate' ||
+    p._id === 'parking' ||
+    p.id === 'main-gate' ||
+    p.id === 'parking'
+  )
+
+  // Load featured spots from backend & site config
+  const isStaleTemporaryId = (p) => {
+    const id = p._id || p.id || ''
+    return /^(plot|spot)-\d+$/.test(id)
+  }
+
+  const [featuredSpots, setFeaturedSpots] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_admin_plots')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const cleaned = parsed
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+            .filter(p => !isStaleTemporaryId(p))
+          return cleaned.map(normalizePlot)
         }
-      })
-      .catch(() => {})
+      }
+    } catch (e) {}
+    return []
+  })
+
+  const fetchFeatured = async () => {
+    // Primary: /api/map/plots (MongoDB — persistent IDs)
+    try {
+      const r = await fetch(buildApiUrl('/api/map/plots'), { cache: 'no-store' })
+      if (r.ok) {
+        const d = await r.json()
+        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
+          const cleaned = d.data
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+            .filter(p => !isStaleTemporaryId(p))
+          setFeaturedSpots(cleaned.map(normalizePlot))
+          try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(d.data.filter(p => !isStaleTemporaryId(p)))) } catch (e) {}
+          return
+        }
+      }
+    } catch (e) {}
+
+    // Fallback: SiteConfig map_plots_config
+    try {
+      const scRes = await fetch(buildApiUrl('/api/site-config/map_plots_config'), { cache: 'no-store' })
+      if (scRes.ok) {
+        const scData = await scRes.json()
+        if (scData?.value && Array.isArray(scData.value) && scData.value.length > 0) {
+          const cleaned = scData.value
+            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+            .filter(p => !isNonBookableLandmark(p))
+            .filter(p => !isStaleTemporaryId(p))
+          setFeaturedSpots(cleaned.map(normalizePlot))
+          try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(cleaned)) } catch (e) {}
+        }
+      }
+    } catch (e) {}
   }
 
   useEffect(() => {
@@ -330,20 +449,24 @@ export default function Home() {
       {/* HERO */}
       <section className="hero" ref={heroRef}>
         <motion.div className="hero__bg" style={{ y: heroParallax }}>
-          <Swiper
-            modules={[Autoplay, Pagination, EffectFade]}
-            effect="fade"
-            autoplay={{ delay: 5000, disableOnInteraction: false }}
-            pagination={{ clickable: true }}
-            loop
-            className="hero__swiper"
-          >
-            {(homeConfig.heroImages && homeConfig.heroImages.length > 0 ? homeConfig.heroImages : HERO_IMAGES).map((img, i) => (
-              <SwiperSlide key={i}>
-                <div className="hero__slide" style={{ backgroundImage: `url(${img})` }} />
-              </SwiperSlide>
-            ))}
-          </Swiper>
+          {homeConfig.heroImages && homeConfig.heroImages.length > 0 ? (
+            <Swiper
+              modules={[Autoplay, Pagination, EffectFade]}
+              effect="fade"
+              autoplay={{ delay: 5000, disableOnInteraction: false }}
+              pagination={{ clickable: true }}
+              loop={homeConfig.heroImages.length > 1}
+              className="hero__swiper"
+            >
+              {homeConfig.heroImages.map((img, i) => (
+                <SwiperSlide key={i}>
+                  <div className="hero__slide" style={{ backgroundImage: `url(${img})` }} />
+                </SwiperSlide>
+              ))}
+            </Swiper>
+          ) : (
+            <div className="hero__slide" style={{ background: 'linear-gradient(135deg, #0d2818 0%, #04120a 100%)' }} />
+          )}
           <div className="hero-overlay" />
         </motion.div>
 
@@ -446,26 +569,29 @@ export default function Home() {
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
           >
-            {POPULAR_ZONES.map((zone, i) => (
-              <motion.a
-                key={zone.label}
-                href={zone.href}
-                className="zone-pill"
-                custom={i}
-                variants={fadeUp}
-                whileHover={{ scale: 1.05, y: -4 }}
-                whileTap={{ scale: 0.98 }}
-                id={`zone-${zone.label.toLowerCase().replace(/\s+/g,'-')}`}
-              >
-                <div className="zone-pill__icon" style={{ background: `${zone.color}18`, color: zone.color }}>
-                  <zone.icon size={24} />
-                </div>
-                <div>
-                  <div className="zone-pill__label">{zone.label}</div>
-                  <div className="zone-pill__count">{zone.count}</div>
-                </div>
-              </motion.a>
-            ))}
+            {zonesList.map((zone, i) => {
+              const ZoneIcon = zone.icon || getZoneIcon(zone.label)
+              return (
+                <motion.a
+                  key={zone.id || zone.label || i}
+                  href={zone.href || '/spots'}
+                  className="zone-pill"
+                  custom={i}
+                  variants={fadeUp}
+                  whileHover={{ scale: 1.05, y: -4 }}
+                  whileTap={{ scale: 0.98 }}
+                  id={`zone-${(zone.label || '').toLowerCase().replace(/\s+/g,'-')}`}
+                >
+                  <div className="zone-pill__icon" style={{ background: `${zone.color || '#228BE6'}18`, color: zone.color || '#228BE6' }}>
+                    <ZoneIcon size={24} />
+                  </div>
+                  <div>
+                    <div className="zone-pill__label">{zone.label}</div>
+                    <div className="zone-pill__count">{zone.count}</div>
+                  </div>
+                </motion.a>
+              )
+            })}
           </motion.div>
         </div>
       </section>
@@ -564,10 +690,6 @@ export default function Home() {
                   className="why-img why-img--secondary"
                   style={{ border: '4px solid var(--cream)' }}
                 />
-                <div className="why-badge glass-dark">
-                  <Star size={16} fill="var(--gold)" color="var(--gold)" />
-                  <span>{homeConfig.whyBadgeText || "4.9 · 15,000+ Reviews"}</span>
-                </div>
               </div>
             </div>
           </div>

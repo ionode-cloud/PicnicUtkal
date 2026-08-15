@@ -4,24 +4,22 @@ import { LuPhone as Phone, LuMail as Mail, LuMapPin as MapPin, LuSend as Send, L
 import toast from 'react-hot-toast'
 import { useSocket } from '../context/SocketContext'
 
-const DEFAULT_CONTACT = {
-  email: 'support@picnicutkal.com',
-  phone: '+91 98765 43210',
-  emergencyPhone: '+91 94370 12345',
-  address: 'Plot 42, Eco Park Road, Chandaka Forest Sanctuary, Bhubaneswar, Odisha 751024',
-  hours: 'Monday - Sunday: 7:00 AM - 9:00 PM IST',
-  mapEmbedUrl: 'https://maps.google.com/?q=Bhubaneswar+Odisha'
-}
-
 const getStoredContact = () => {
   try {
     const saved = localStorage.getItem('picnicutkal_user_view_config')
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (parsed.contact) return { ...DEFAULT_CONTACT, ...parsed.contact }
+      if (parsed.contact) return parsed.contact
     }
   } catch (e) {}
-  return DEFAULT_CONTACT
+  return {
+    email: '',
+    phone: '',
+    emergencyPhone: '',
+    address: '',
+    hours: '',
+    mapEmbedUrl: ''
+  }
 }
 
 export default function Contact() {
