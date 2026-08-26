@@ -11,7 +11,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts'
 import { useSocket } from '../../context/SocketContext'
-import { buildApiUrl } from '../../services/api'
+import { usePlots, useBookings, useUsers, useInvalidators } from '../../hooks/useQueryHooks'
 import toast from 'react-hot-toast'
 
 const COLORS = ['#1B4332', '#C9A84C', '#52B788', '#2D6A4F', '#38BDF8', '#F59E0B']
@@ -19,64 +19,44 @@ const COLORS = ['#1B4332', '#C9A84C', '#52B788', '#2D6A4F', '#38BDF8', '#F59E0B'
 export default function Dashboard() {
   const { socket, isConnected, liveVisitors, emitAdminAnnouncement } = useSocket()
   const [broadcastMsg, setBroadcastMsg] = useState('')
-  const [loading, setLoading] = useState(true)
 
-  // Real backend data states
-  const [bookings, setBookings] = useState([])
-  const [plots, setPlots] = useState([])
-  const [users, setUsers] = useState([])
+  // ── Shared cached queries (no re-fetch when switching admin tabs) ──
+  const { data: bookings = [], isLoading: loadingBookings, refetch: refetchBookings } = useBookings()
+  const { data: plots    = [], isLoading: loadingPlots,    refetch: refetchPlots }    = usePlots()
+  const { data: users    = [], isLoading: loadingUsers,    refetch: refetchUsers }    = useUsers()
+  const { invalidatePlots, invalidateBookings, invalidateUsers } = useInvalidators()
 
-  const fetchDashboardData = async () => {
-    setLoading(true)
-    try {
-      const [bookingsRes, plotsRes, usersRes] = await Promise.allSettled([
-        fetch(buildApiUrl('/api/bookings')).then(r => r.json()),
-        fetch(buildApiUrl('/api/map/plots')).then(r => r.json()),
-        fetch(buildApiUrl('/api/auth/users')).then(r => r.json())
-      ])
+  const loading = loadingBookings || loadingPlots || loadingUsers
 
-      if (bookingsRes.status === 'fulfilled' && bookingsRes.value?.success && Array.isArray(bookingsRes.value.data)) {
-        setBookings(bookingsRes.value.data)
-      }
-      if (plotsRes.status === 'fulfilled' && plotsRes.value?.success && Array.isArray(plotsRes.value.data)) {
-        setPlots(plotsRes.value.data)
-      }
-      if (usersRes.status === 'fulfilled' && usersRes.value?.success && Array.isArray(usersRes.value.data)) {
-        setUsers(usersRes.value.data)
-      }
-    } catch (err) {
-      console.error('Failed to load dashboard live data:', err)
-    } finally {
-      setLoading(false)
-    }
+  const fetchDashboardData = () => {
+    refetchBookings()
+    refetchPlots()
+    refetchUsers()
   }
 
-  // Initial fetch
-  useEffect(() => {
-    fetchDashboardData()
-  }, [])
-
-  // Real-time Socket Listener: auto-refresh stats live on any booking/plot/user event
+  // Real-time Socket Listener: invalidate cache so React Query re-fetches fresh data
   useEffect(() => {
     if (!socket) return
-    const handleUpdate = () => fetchDashboardData()
+    const handleBookingUpdate = () => invalidateBookings()
+    const handlePlotUpdate    = () => invalidatePlots()
+    const handleUserUpdate    = () => invalidateUsers()
 
-    socket.on('plots_update', handleUpdate)
-    socket.on('plot_updated', handleUpdate)
-    socket.on('new_booking', handleUpdate)
-    socket.on('booking_created', handleUpdate)
-    socket.on('booking_updated', handleUpdate)
-    socket.on('payment_success', handleUpdate)
-    socket.on('user_registered', handleUpdate)
+    socket.on('plots_update',     handlePlotUpdate)
+    socket.on('plot_updated',     handlePlotUpdate)
+    socket.on('new_booking',      handleBookingUpdate)
+    socket.on('booking_created',  handleBookingUpdate)
+    socket.on('booking_updated',  handleBookingUpdate)
+    socket.on('payment_success',  handleBookingUpdate)
+    socket.on('user_registered',  handleUserUpdate)
 
     return () => {
-      socket.off('plots_update', handleUpdate)
-      socket.off('plot_updated', handleUpdate)
-      socket.off('new_booking', handleUpdate)
-      socket.off('booking_created', handleUpdate)
-      socket.off('booking_updated', handleUpdate)
-      socket.off('payment_success', handleUpdate)
-      socket.off('user_registered', handleUpdate)
+      socket.off('plots_update',    handlePlotUpdate)
+      socket.off('plot_updated',    handlePlotUpdate)
+      socket.off('new_booking',     handleBookingUpdate)
+      socket.off('booking_created', handleBookingUpdate)
+      socket.off('booking_updated', handleBookingUpdate)
+      socket.off('payment_success', handleBookingUpdate)
+      socket.off('user_registered', handleUserUpdate)
     }
   }, [socket])
 

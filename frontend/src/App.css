@@ -4,8 +4,7 @@
    Forest Green • Cream • Gold Luxury Nature Theme
    ============================================================= */
 
-/* ── Google Fonts ── */
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+/* Google Fonts are loaded via <link rel="preload"> in index.html — no @import needed here */
 
 /* ── CSS Reset ── */
 *,
@@ -18,12 +17,36 @@
 
 html {
   scroll-behavior: smooth;
+  /* Prevent iOS from auto-resizing text in landscape mode */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  /* Remove 300ms tap delay on all mobile browsers */
+  touch-action: manipulation;
+  /* Prevent scroll chaining (bounce effect that causes layout jank) */
+  overscroll-behavior: none;
+  /* Improve font rendering on mobile */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 img,
 video {
   max-width: 100%;
   display: block;
+  /* Prevent layout shift while loading */
+  height: auto;
+}
+
+/* Remove gray tap highlight on mobile (replaced by explicit focus styles) */
+a,
+button,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent;
+  /* Remove 300ms tap delay on interactive elements */
+  touch-action: manipulation;
 }
 
 button,
@@ -42,6 +65,35 @@ ul,
 ol {
   list-style: none;
 }
+
+/* Lazy images: prevent layout shift by reserving space */
+img[loading="lazy"] {
+  min-height: 1px;
+}
+
+/* ─── Ultra-Smooth Shimmer Skeleton Utility ─── */
+@keyframes skeletonShimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.10) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.6s infinite ease-in-out;
+  border-radius: var(--radius-md, 8px);
+}
+
+
 
 /* ── Design Tokens — Light Theme ── */
 :root {
@@ -8661,6 +8713,10 @@ h6 {
    ══════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 992px) {
+  .hero__scroll-cue {
+    display: none !important;
+  }
+
   .spot-grid-layout,
   .booking-grid,
   .dashboard-grid {
@@ -8679,6 +8735,32 @@ h6 {
 }
 
 @media (max-width: 768px) {
+  /* Hero section mobile alignment & breathing room */
+  .hero {
+    height: auto !important;
+    min-height: 100svh !important;
+    padding-top: calc(var(--nav-height, 72px) + 20px) !important;
+    padding-bottom: 50px !important;
+    display: flex !important;
+    align-items: flex-start !important;
+  }
+
+  .hero__content {
+    padding-top: 0 !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .hero__eyebrow {
+    margin-bottom: 2px !important;
+    font-size: 12.5px !important;
+    padding: 5px 14px !important;
+  }
+
+  .hero__scroll-cue {
+    display: none !important;
+  }
+
   /* Container paddings */
   .container-fluid,
   .container {
@@ -8688,8 +8770,9 @@ h6 {
 
   /* Headings & Typography */
   .heading-hero {
-    font-size: clamp(26px, 7vw, 40px) !important;
+    font-size: clamp(26px, 7vw, 38px) !important;
     line-height: 1.25 !important;
+    margin-bottom: 4px !important;
   }
 
   .heading-1 {
@@ -8701,17 +8784,24 @@ h6 {
   }
 
   .hero__subtitle {
-    font-size: 14px !important;
-    line-height: 1.5 !important;
+    font-size: 13.5px !important;
+    line-height: 1.55 !important;
+    margin-bottom: 6px !important;
+    color: rgba(245, 240, 232, 0.9) !important;
   }
 
   /* Hero search box mobile polish */
   .hero__search {
-    padding: 14px !important;
+    padding: 16px !important;
     border-radius: 20px !important;
     width: 100% !important;
     max-width: 100% !important;
-    margin: 0 auto !important;
+    margin: 8px 0 0 0 !important;
+    background: rgba(10, 38, 23, 0.75) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.18) !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
   }
 
   .hero__search-form {
@@ -8721,22 +8811,39 @@ h6 {
     align-items: stretch !important;
   }
 
+  .hero__search-divider {
+    display: none !important;
+  }
+
   .hero__search-field {
     width: 100% !important;
-    background: rgba(0, 0, 0, 0.3) !important;
+    background: rgba(0, 0, 0, 0.35) !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;
     border-radius: 12px !important;
     padding: 10px 14px !important;
   }
 
+  .hero__search-field select {
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23C9A84C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 8px center !important;
+    padding-right: 28px !important;
+  }
+
   .hero__search-btn {
     width: 100% !important;
     margin: 4px 0 0 0 !important;
+    display: flex !important;
+    align-items: center !important;
     justify-content: center !important;
+    gap: 8px !important;
     border-radius: 12px !important;
-    height: 48px !important;
-    font-size: 15px !important;
+    height: 50px !important;
+    font-size: 16px !important;
     font-weight: 700 !important;
+    cursor: pointer !important;
   }
 
   /* Form Grids */
@@ -8797,5 +8904,105 @@ h6 {
   .spot-header-actions .btn {
     width: 100% !important;
     justify-content: center !important;
+  }
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   PRODUCTION MOBILE PERFORMANCE — Critical Optimizations
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Scrolling performance ── */
+/* GPU-accelerated scrolling on mobile (iOS & Android) */
+.admin-page-scrollable-content,
+.admin-table-scroll-wrapper,
+.mp-main-content,
+.spots-grid,
+.booking-list {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* ── Image rendering ── */
+/* Crisp images on high-DPI (retina) mobile screens */
+img {
+  image-rendering: auto;
+  /* Prevent blurry images on Retina displays */
+  -webkit-backface-visibility: hidden;
+}
+
+/* ── Buttons & Interactive Elements ── */
+/* Minimum 44×44px touch target (Apple HIG & Material Design recommendation) */
+@media (max-width: 768px) {
+  .btn,
+  button:not([aria-hidden]) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Larger font size on mobile — prevent iOS from zooming on input focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Prevent layout shift from scrollbar appearing/disappearing */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  /* Optimize hero parallax — disable on mobile for better scroll perf */
+  .hero {
+    will-change: auto !important;
+  }
+
+  /* Reduce animation complexity on mobile to save battery & improve FPS */
+  .spot-card:hover {
+    transform: none !important;
+  }
+}
+
+/* ── Reduce motion for accessibility + battery on mobile ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  html {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Content visibility — paint offscreen sections only when needed ── */
+/* This is the biggest single CSS performance win on long pages */
+.why-section,
+.gallery-section,
+.zones-section,
+.testimonials-section,
+.cta-section {
+  content-visibility: auto;
+  /* Reserve approximate height so scroll position stays stable */
+  contain-intrinsic-size: 0 600px;
+}
+
+/* ── Print optimizations ── */
+@media print {
+  .navbar,
+  .footer,
+  .scroll-to-top-fab,
+  .admin-sidebar-nav-container,
+  .admin-navbar-sticky-header {
+    display: none !important;
+  }
+
+  * {
+    background: transparent !important;
+    color: #000 !important;
+    box-shadow: none !important;
   }
 }

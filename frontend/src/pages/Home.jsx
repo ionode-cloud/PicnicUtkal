@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState, useEffect, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, useScroll, useTransform } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
@@ -14,6 +14,7 @@ import 'swiper/css/pagination'
 import 'swiper/css/effect-fade'
 import { useSocket } from '../context/SocketContext'
 import { buildApiUrl } from '../services/api'
+import { usePlots, useSiteConfig, useMaps, useInvalidators } from '../hooks/useQueryHooks'
 
 function getZoneIcon(label = '') {
   const l = label.toLowerCase()
@@ -24,19 +25,6 @@ function getZoneIcon(label = '') {
   if (l.includes('adventur') || l.includes('sport') || l.includes('target')) return Target
   if (l.includes('photo') || l.includes('camera') || l.includes('selfie')) return Camera
   return Trees
-}
-
-const getStoredPopularZones = () => {
-  try {
-    const saved = localStorage.getItem('picnicutkal_admin_zones')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.filter(z => z.status !== 'Inactive')
-      }
-    }
-  } catch (e) {}
-  return []
 }
 
 function resolvePlotImage(imgSrc) {
@@ -165,9 +153,91 @@ function SpotCard({ spot, index }) {
         </div>
       </div>
     </motion.div>
-
   )
 }
+
+function HomeSkeleton() {
+  return (
+    <div className="home-skeleton-wrapper" style={{ minHeight: '100vh', width: '100%' }}>
+      {/* Hero Skeleton */}
+      <section className="hero" style={{ minHeight: '85vh', position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <div className="hero__bg" style={{ background: 'linear-gradient(135deg, #071a0f 0%, #030c07 100%)' }}>
+          <div className="hero-overlay" />
+        </div>
+
+        <div className="hero__content container-fluid" style={{ display: 'flex', flexDirection: 'column', gap: '20px', maxWidth: '800px', zIndex: 2, padding: '40px 20px' }}>
+          {/* Eyebrow badge */}
+          <div className="skeleton-shimmer" style={{ width: '160px', height: '30px', borderRadius: '999px' }} />
+          
+          {/* Title Lines */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+            <div className="skeleton-shimmer" style={{ width: '85%', height: '54px', borderRadius: '12px' }} />
+            <div className="skeleton-shimmer" style={{ width: '65%', height: '54px', borderRadius: '12px' }} />
+          </div>
+
+          {/* Subtitle Lines */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
+            <div className="skeleton-shimmer" style={{ width: '95%', height: '22px', borderRadius: '6px' }} />
+            <div className="skeleton-shimmer" style={{ width: '70%', height: '22px', borderRadius: '6px' }} />
+          </div>
+
+          {/* Search Box Glass Container */}
+          <div className="hero__search glass" style={{ marginTop: '24px', padding: '18px 24px', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="skeleton-shimmer" style={{ flex: 1, minWidth: '180px', height: '48px', borderRadius: '10px' }} />
+            <div className="skeleton-shimmer" style={{ flex: 1, minWidth: '180px', height: '48px', borderRadius: '10px' }} />
+            <div className="skeleton-shimmer" style={{ width: '140px', height: '48px', borderRadius: '10px' }} />
+          </div>
+        </div>
+      </section>
+
+      {/* Popular Zones Skeleton */}
+      <section className="section section-sm zones-section">
+        <div className="container-fluid">
+          <div className="section-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
+            <div className="skeleton-shimmer" style={{ width: '120px', height: '20px', borderRadius: '999px' }} />
+            <div className="skeleton-shimmer" style={{ width: '280px', height: '36px', borderRadius: '8px' }} />
+          </div>
+          <div className="zones-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="zone-pill" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px 20px', border: '1px solid var(--border)' }}>
+                <div className="skeleton-shimmer" style={{ width: '44px', height: '44px', borderRadius: '12px', flexShrink: 0 }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                  <div className="skeleton-shimmer" style={{ width: '80%', height: '18px', borderRadius: '4px' }} />
+                  <div className="skeleton-shimmer" style={{ width: '50%', height: '12px', borderRadius: '4px' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Featured Spots Skeleton */}
+      <section className="section spots-section">
+        <div className="container-fluid">
+          <div className="section-header" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
+            <div className="skeleton-shimmer" style={{ width: '140px', height: '20px', borderRadius: '999px' }} />
+            <div className="skeleton-shimmer" style={{ width: '320px', height: '36px', borderRadius: '8px' }} />
+          </div>
+          <div className="spots-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px' }}>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="spot-card" style={{ height: '340px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div className="skeleton-shimmer" style={{ width: '100%', height: '180px', borderRadius: 'var(--radius-lg)' }} />
+                <div className="skeleton-shimmer" style={{ width: '70%', height: '22px', borderRadius: '6px' }} />
+                <div className="skeleton-shimmer" style={{ width: '40%', height: '16px', borderRadius: '6px' }} />
+                <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div className="skeleton-shimmer" style={{ width: '80px', height: '24px', borderRadius: '4px' }} />
+                  <div className="skeleton-shimmer" style={{ width: '90px', height: '32px', borderRadius: '8px' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+let isInitialHomeLoad = true
 
 export default function Home() {
   const heroRef = useRef(null)
@@ -177,146 +247,71 @@ export default function Home() {
   const [searchData, setSearchData] = useState({ location: '', date: '', people: '' })
   const navigate = useNavigate()
 
-  // Load User View config from Admin Panel (localStorage)
-  const getStoredHomeConfig = () => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_user_view_config')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return parsed.home || {}
-      }
-    } catch (e) {}
-    return {}
-  }
+  const { data: siteConfigData, isLoading: siteConfigLoading } = useSiteConfig()
+  const { data: rawPlots = [], isLoading: plotsLoading } = usePlots()
+  const { data: rawMaps = [], isLoading: mapsLoading } = useMaps()
+  const { invalidatePlots, invalidateSiteConfig, invalidateMaps } = useInvalidators()
 
-  const [homeConfig, setHomeConfig] = useState(getStoredHomeConfig)
+  // Derive homeConfig, galleryImages, zonesList, and maps directly from fresh query data
+  const homeConfig = useMemo(() => {
+    return siteConfigData?.user_view_config?.home || {}
+  }, [siteConfigData])
 
-  const getStoredGalleryImages = () => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_user_view_config')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.gallery && Array.isArray(parsed.gallery) && parsed.gallery.length > 0) {
-          return parsed.gallery.map(item => typeof item === 'string' ? item : (item.src || item.url)).filter(Boolean)
-        }
-      }
-    } catch (e) {}
-    return [
-      'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80',
-    ]
-  }
+  const galleryImages = useMemo(() => {
+    const raw = siteConfigData?.user_view_config?.gallery
+    if (Array.isArray(raw)) {
+      return raw.map(item => typeof item === 'string' ? item : (item.src || item.url)).filter(Boolean)
+    }
+    return []
+  }, [siteConfigData])
 
-  const [galleryImages, setGalleryImages] = useState(getStoredGalleryImages)
   const [galleryOffset, setGalleryOffset] = useState(0)
 
-  const [zonesList, setZonesList] = useState(getStoredPopularZones)
+  const zonesList = useMemo(() => {
+    const raw = siteConfigData?.admin_zones
+    if (Array.isArray(raw)) {
+      return raw.filter(z => z.status !== 'Inactive')
+    }
+    return []
+  }, [siteConfigData])
 
-  // Fetch persistent site config & zones from MongoDB database on mount
-  useEffect(() => {
-    fetch(buildApiUrl('/api/site-config'))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d && d.success && d.data) {
-          if (d.data.user_view_config) {
-            const uv = d.data.user_view_config
-            if (uv.home) setHomeConfig(uv.home)
-            if (uv.gallery && Array.isArray(uv.gallery)) {
-              const urls = uv.gallery.map(item => typeof item === 'string' ? item : (item.src || item.url)).filter(Boolean)
-              if (urls.length > 0) setGalleryImages(urls)
-            }
-            try {
-              localStorage.setItem('picnicutkal_user_view_config', JSON.stringify(uv))
-            } catch (e) {}
-          }
-          if (d.data.admin_zones && Array.isArray(d.data.admin_zones)) {
-            setZonesList(d.data.admin_zones.filter(z => z.status !== 'Inactive'))
-            try {
-              localStorage.setItem('picnicutkal_admin_zones', JSON.stringify(d.data.admin_zones))
-            } catch (e) {}
-          }
-        }
-      })
-      .catch(() => {})
-  }, [])
+  const maps = useMemo(() => {
+    const cleaned = rawMaps.filter(m => m._id !== 'chilika-map-02' && m._id !== 'simlipal-map-03')
+    if (cleaned.length > 0) return cleaned
+    return [
+      { _id: 'default-master-plan', title: 'Barapita Master Plan (Main Ground)', linkedSpot: 'Barapita Ground, Deras' }
+    ]
+  }, [rawMaps])
 
-  // Socket.io: live-reload when admin saves Home page content, Gallery content, or Zones
+  // Socket.io: live-reload when admin saves Home page content, Gallery content, Zones, or Maps
   const { socket } = useSocket()
   useEffect(() => {
     if (!socket) return
-    const handler = (data) => {
-      if (data && data.config) {
-        setHomeConfig(data.config)
-        try {
-          const saved = localStorage.getItem('picnicutkal_user_view_config')
-          const parsed = saved ? JSON.parse(saved) : {}
-          localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, home: data.config }))
-        } catch (e) {}
-      }
-    }
-    const galleryHandler = (data) => {
-      if (data && Array.isArray(data.config)) {
-        const urls = data.config.map(item => typeof item === 'string' ? item : (item.src || item.url)).filter(Boolean)
-        if (urls.length > 0) setGalleryImages(urls)
-      }
-    }
-    const zonesHandler = (data) => {
-      if (data && Array.isArray(data.zones)) {
-        const activeZones = data.zones.filter(z => z.status !== 'Inactive')
-        setZonesList(activeZones)
-        try {
-          localStorage.setItem('picnicutkal_admin_zones', JSON.stringify(data.zones))
-        } catch (e) {}
-      }
-    }
-    socket.on('home_config_update', handler)
-    socket.on('gallery_config_update', galleryHandler)
-    socket.on('zones_config_update', zonesHandler)
+    const handleHomeUpdate = () => invalidateSiteConfig()
+    const handleGalleryUpdate = () => invalidateSiteConfig()
+    const handleZonesUpdate = () => invalidateSiteConfig()
+    const handleMapUpdate = () => invalidateMaps()
+
+    socket.on('home_config_update', handleHomeUpdate)
+    socket.on('gallery_config_update', handleGalleryUpdate)
+    socket.on('zones_config_update', handleZonesUpdate)
+    socket.on('map_config_update', handleMapUpdate)
     return () => {
-      socket.off('home_config_update', handler)
-      socket.off('gallery_config_update', galleryHandler)
-      socket.off('zones_config_update', zonesHandler)
+      socket.off('home_config_update', handleHomeUpdate)
+      socket.off('gallery_config_update', handleGalleryUpdate)
+      socket.off('zones_config_update', handleZonesUpdate)
+      socket.off('map_config_update', handleMapUpdate)
     }
-  }, [socket])
+  }, [socket, invalidateSiteConfig, invalidateMaps])
 
   // Rotate gallery images every 5 minutes (300,000ms)
   useEffect(() => {
+    if (galleryImages.length === 0) return
     const timer = setInterval(() => {
       setGalleryOffset(prev => prev + 1)
     }, 5 * 60 * 1000)
     return () => clearInterval(timer)
-  }, [])
-
-  const [maps, setMaps] = useState(() => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_admin_maps')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned = parsed.filter(m => m._id !== 'chilika-map-02' && m._id !== 'simlipal-map-03')
-          if (cleaned.length > 0) return cleaned
-        }
-      }
-    } catch (e) {}
-    return [
-      { _id: 'default-master-plan', title: 'Barapita Master Plan (Main Ground)', linkedSpot: 'Barapita Ground, Deras' }
-    ]
-  })
-
-  // Listen to Socket.io for live maps update
-  useEffect(() => {
-    if (!socket) return
-    const mapHandler = (data) => {
-      if (data && Array.isArray(data.maps)) {
-        const cleaned = data.maps.filter(m => m._id !== 'chilika-map-02' && m._id !== 'simlipal-map-03')
-        setMaps(cleaned)
-        try {
-          localStorage.setItem('picnicutkal_admin_maps', JSON.stringify(cleaned))
-        } catch (e) {}
-      }
-    }
-    socket.on('map_config_update', mapHandler)
-    return () => socket.off('map_config_update', mapHandler)
-  }, [socket])
+  }, [galleryImages.length])
 
   const [isSearched, setIsSearched] = useState(false)
 
@@ -341,72 +336,25 @@ export default function Home() {
     p.id === 'parking'
   )
 
-  // Load featured spots from backend & site config
+  // Load featured spots — use shared React Query cache so navigating
+  // away and back doesn't re-fetch while data is still fresh
   const isStaleTemporaryId = (p) => {
     const id = p._id || p.id || ''
     return /^(plot|spot)-\d+$/.test(id)
   }
 
-  const [featuredSpots, setFeaturedSpots] = useState(() => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_admin_plots')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned = parsed
-            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
-            .filter(p => !isNonBookableLandmark(p))
-            .filter(p => !isStaleTemporaryId(p))
-          return cleaned.map(normalizePlot)
-        }
-      }
-    } catch (e) {}
-    return []
-  })
+  const featuredSpots = useMemo(() => {
+    return rawPlots
+      .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+      .filter(p => !isNonBookableLandmark(p))
+      .filter(p => !isStaleTemporaryId(p))
+      .map(normalizePlot)
+  }, [rawPlots])
 
-  const fetchFeatured = async () => {
-    // Primary: /api/map/plots (MongoDB — persistent IDs)
-    try {
-      const r = await fetch(buildApiUrl('/api/map/plots'), { cache: 'no-store' })
-      if (r.ok) {
-        const d = await r.json()
-        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-          const cleaned = d.data
-            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
-            .filter(p => !isNonBookableLandmark(p))
-            .filter(p => !isStaleTemporaryId(p))
-          setFeaturedSpots(cleaned.map(normalizePlot))
-          try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(d.data.filter(p => !isStaleTemporaryId(p)))) } catch (e) {}
-          return
-        }
-      }
-    } catch (e) {}
-
-    // Fallback: SiteConfig map_plots_config
-    try {
-      const scRes = await fetch(buildApiUrl('/api/site-config/map_plots_config'), { cache: 'no-store' })
-      if (scRes.ok) {
-        const scData = await scRes.json()
-        if (scData?.value && Array.isArray(scData.value) && scData.value.length > 0) {
-          const cleaned = scData.value
-            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
-            .filter(p => !isNonBookableLandmark(p))
-            .filter(p => !isStaleTemporaryId(p))
-          setFeaturedSpots(cleaned.map(normalizePlot))
-          try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(cleaned)) } catch (e) {}
-        }
-      }
-    } catch (e) {}
-  }
-
-  useEffect(() => {
-    fetchFeatured()
-  }, [])
-
-  // Listen for live real-time spot updates via Socket.io
+  // Listen for live real-time spot updates via Socket.io → invalidate cache
   useEffect(() => {
     if (!socket) return
-    const handleUpdate = () => fetchFeatured()
+    const handleUpdate = () => invalidatePlots()
     socket.on('plots_update', handleUpdate)
     socket.on('plot_updated', handleUpdate)
     return () => {
@@ -437,7 +385,28 @@ export default function Home() {
     return true
   })
 
+  const [minLoading, setMinLoading] = useState(() => isInitialHomeLoad)
+  useEffect(() => {
+    if (isInitialHomeLoad) {
+      const timer = setTimeout(() => {
+        setMinLoading(false)
+        isInitialHomeLoad = false
+      }, 1200)
+      return () => clearTimeout(timer)
+    }
+  }, [])
+
+  const heroSlides = useMemo(() => {
+    if (!homeConfig.heroImages || !Array.isArray(homeConfig.heroImages)) return []
+    return homeConfig.heroImages.filter(img => img && !String(img).includes('photo-1506905925346-21bda4d32df4'))
+  }, [homeConfig.heroImages])
+
+  if (siteConfigLoading || minLoading) {
+    return <HomeSkeleton />
+  }
+
   return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.35 }}>
     <>
       <Helmet>
         <title>PicnicUtkal — Odisha's Premier Picnic Destination</title>
@@ -449,20 +418,24 @@ export default function Home() {
       {/* HERO */}
       <section className="hero" ref={heroRef}>
         <motion.div className="hero__bg" style={{ y: heroParallax }}>
-          {homeConfig.heroImages && homeConfig.heroImages.length > 0 ? (
+          {heroSlides.length > 0 ? (
             <Swiper
+              key={heroSlides.map(img => typeof img === 'string' ? img : (img?.url || '')).join(',')}
               modules={[Autoplay, Pagination, EffectFade]}
               effect="fade"
               autoplay={{ delay: 5000, disableOnInteraction: false }}
               pagination={{ clickable: true }}
-              loop={homeConfig.heroImages.length > 1}
+              loop={heroSlides.length > 1}
               className="hero__swiper"
             >
-              {homeConfig.heroImages.map((img, i) => (
-                <SwiperSlide key={i}>
-                  <div className="hero__slide" style={{ backgroundImage: `url(${img})` }} />
-                </SwiperSlide>
-              ))}
+              {heroSlides.map((img, i) => {
+                const resolvedUrl = resolvePlotImage(typeof img === 'string' ? img : (img?.url || img?.src || ''))
+                return (
+                  <SwiperSlide key={i}>
+                    <div className="hero__slide" style={{ backgroundImage: `url("${resolvedUrl}")` }} />
+                  </SwiperSlide>
+                )
+              })}
             </Swiper>
           ) : (
             <div className="hero__slide" style={{ background: 'linear-gradient(135deg, #0d2818 0%, #04120a 100%)' }} />
@@ -471,14 +444,16 @@ export default function Home() {
         </motion.div>
 
         <div className="hero__content container-fluid">
-          <motion.span
-            className="hero__eyebrow"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            {homeConfig.eyebrowText || "🌿 Welcome to Odisha's Nature Paradise"}
-          </motion.span>
+          {homeConfig.eyebrowText && (
+            <motion.span
+              className="hero__eyebrow"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              {homeConfig.eyebrowText}
+            </motion.span>
+          )}
 
           <motion.h1
             className="hero__title heading-hero"
@@ -486,9 +461,19 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            {homeConfig.heroTitleLine1 || "Find Your Perfect"}<br />
-            <span className="text-gradient">{homeConfig.heroTitleLine2 || "Picnic Escape"}</span><br />
-            {homeConfig.heroTitleLine3 || "in Odisha"}
+            {homeConfig.heroTitleLine1 ? (
+              <>
+                {homeConfig.heroTitleLine1}<br />
+                {homeConfig.heroTitleLine2 ? <><span className="text-gradient">{homeConfig.heroTitleLine2}</span><br /></> : null}
+                {homeConfig.heroTitleLine3 || ''}
+              </>
+            ) : (
+              <>
+                Find Your Perfect<br />
+                <span className="text-gradient">Picnic Escape</span><br />
+                in Odisha
+              </>
+            )}
           </motion.h1>
 
           <motion.p
@@ -497,7 +482,9 @@ export default function Home() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
           >
-            {homeConfig.heroSubtitle || "Discover 50+ premium picnic zones with swimming, BBQ, camping, adventure & more. Book instantly and arrive to a perfectly arranged picnic."}
+            {homeConfig.heroSubtitle !== undefined
+              ? homeConfig.heroSubtitle
+              : "Discover 50+ premium picnic zones with swimming, BBQ, camping, adventure & more. Book instantly and arrive to a perfectly arranged picnic."}
           </motion.p>
 
           {/* Search Box */}
@@ -601,7 +588,9 @@ export default function Home() {
         <div className="container-fluid">
           <div className="section-header">
             <span className="section-eyebrow">{homeConfig.spotsEyebrow || "Top Destinations"}</span>
-            <h2 className="section-title">{homeConfig.spotsTitle || "Featured Picnic Spots"}</h2>
+            <h2 className="section-title">
+              {homeConfig.spotsTitle && homeConfig.spotsTitle !== 'Featured Picnic Spots' ? homeConfig.spotsTitle : 'Picnic Spots'}
+            </h2>
             <p className="section-subtitle">
               {isSearched && searchData.location
                 ? `Showing spots for "${maps.find(m => m._id === searchData.location)?.title || 'Selected Location'}" (${displayedSpots.length} found)`
@@ -615,7 +604,15 @@ export default function Home() {
             whileInView="visible"
             viewport={{ once: true, margin: '-80px' }}
           >
-            {displayedSpots.length === 0 ? (
+            {plotsLoading ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="spot-card" style={{ height: '320px', background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: 'var(--radius-xl)', overflow: 'hidden', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ width: '100%', height: '180px', borderRadius: 'var(--radius-lg)', background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.5s infinite' }} />
+                  <div style={{ width: '70%', height: '22px', borderRadius: '6px', background: 'rgba(255,255,255,0.06)', animation: 'pulse 1.5s infinite' }} />
+                  <div style={{ width: '40%', height: '16px', borderRadius: '6px', background: 'rgba(255,255,255,0.04)', animation: 'pulse 1.5s infinite' }} />
+                </div>
+              ))
+            ) : displayedSpots.length === 0 ? (
               <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px 0' }}>
                 <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>No picnic spots found matching your search criteria.</p>
                 <button
@@ -680,12 +677,12 @@ export default function Home() {
             <div className="why-visual">
               <div className="why-img-stack">
                 <img
-                  src={homeConfig.whyImgMain || "https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=500&q=80"}
+                  src={homeConfig.whyImgMain}
                   alt="Happy family picnic"
                   className="why-img why-img--main"
                 />
                 <img
-                  src={homeConfig.whyImgSecondary || "https://images.unsplash.com/photo-1528360983277-13d401cdc186?w=300&q=80"}
+                  src={homeConfig.whyImgSecondary}
                   alt="Picnic zone"
                   className="why-img why-img--secondary"
                   style={{ border: '4px solid var(--cream)' }}
@@ -706,8 +703,17 @@ export default function Home() {
           </div>
           <div className="gallery-preview-grid">
             {(() => {
-              const pool = (galleryImages && galleryImages.length > 0) ? galleryImages : getStoredGalleryImages()
+              const pool = (galleryImages && galleryImages.length > 0) ? galleryImages : []
               const total = pool.length
+              if (total === 0) {
+                return Array.from({ length: 6 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`gallery-preview-item ${i === 0 || i === 5 ? 'gallery-preview-item--wide' : ''}`}
+                    style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 'var(--radius-lg)', animation: 'pulse 1.5s infinite', minHeight: '220px' }}
+                  />
+                ))
+              }
               const displayCount = Math.min(6, total)
               const items = Array.from({ length: displayCount }).map((_, i) => {
                 const idx = (galleryOffset + i) % total
@@ -738,6 +744,7 @@ export default function Home() {
       </section>
 
     </>
+    </motion.div>
   )
 }
 

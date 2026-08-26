@@ -59,12 +59,7 @@ function PlotDetail() {
   const [selectedVehicle, setSelectedVehicle] = useState(() => draft?.selectedVehicle || 'car')
   const [expandedAddons, setExpandedAddons] = useState([])
 
-  const [addonsList, setAddonsList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_event_addons')
-      return saved ? JSON.parse(saved) : []
-    } catch (e) { return [] }
-  })
+  const [addonsList, setAddonsList] = useState([])
 
   useEffect(() => {
     fetch(buildApiUrl('/api/site-config/addons_config'), { cache: 'no-store' })

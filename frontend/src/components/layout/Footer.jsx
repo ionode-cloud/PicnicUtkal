@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { LuLeaf as Leaf, LuPhone as Phone, LuMail as Mail, LuMapPin as MapPin } from 'react-icons/lu'
 import { FaInstagram, FaFacebookF, FaYoutube, FaXTwitter } from 'react-icons/fa6'
 import { useLogo } from '../../context/LogoContext'
 import { useSocket } from '../../context/SocketContext'
-import { buildApiUrl } from '../../services/api'
+import { useSiteConfig, useInvalidators } from '../../hooks/useQueryHooks'
 
 const DEFAULT_FOOTER = {
   tagline: "Odisha's Premier Picnic Destination. Discover breathtaking nature spots, book your perfect picnic zone, and create unforgettable memories.",
@@ -16,17 +16,6 @@ const DEFAULT_FOOTER = {
   youtube: "https://youtube.com",
   twitter: "https://twitter.com",
   copyright: `© ${new Date().getFullYear()} PicnicUtkal. All rights reserved.`
-}
-
-const getStoredFooter = () => {
-  try {
-    const saved = localStorage.getItem('picnicutkal_user_view_config')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (parsed.footer) return { ...DEFAULT_FOOTER, ...parsed.footer }
-    }
-  } catch (e) {}
-  return DEFAULT_FOOTER
 }
 
 const QUICK_LINKS = [
@@ -55,40 +44,22 @@ const SUPPORT = [
 export default function Footer() {
   const { logoConfig } = useLogo()
   const { socket } = useSocket()
-  const [footer, setFooter] = useState(getStoredFooter)
+  const { data: siteConfigData } = useSiteConfig()
+  const { invalidateSiteConfig } = useInvalidators()
 
-  // Fetch footer config from MongoDB backend on mount
-  useEffect(() => {
-    fetch(buildApiUrl('/api/site-config/user_view_config'))
-      .then(r => r.ok ? r.json() : null)
-      .then(d => {
-        if (d && d.success && d.data && d.data.footer) {
-          setFooter(prev => ({ ...prev, ...d.data.footer }))
-          try {
-            const saved = localStorage.getItem('picnicutkal_user_view_config')
-            const parsed = saved ? JSON.parse(saved) : {}
-            localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, footer: d.data.footer }))
-          } catch (e) {}
-        }
-      })
-      .catch(() => {})
-  }, [])
+  const footer = useMemo(() => {
+    return {
+      ...DEFAULT_FOOTER,
+      ...(siteConfigData?.user_view_config?.footer || {})
+    }
+  }, [siteConfigData])
 
   useEffect(() => {
     if (!socket) return
-    const handler = (data) => {
-      if (data && data.config) {
-        setFooter(prev => ({ ...prev, ...data.config }))
-        try {
-          const saved = localStorage.getItem('picnicutkal_user_view_config')
-          const parsed = saved ? JSON.parse(saved) : {}
-          localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, footer: data.config }))
-        } catch (e) {}
-      }
-    }
+    const handler = () => invalidateSiteConfig()
     socket.on('footer_config_update', handler)
     return () => socket.off('footer_config_update', handler)
-  }, [socket])
+  }, [socket, invalidateSiteConfig])
 
   return (
     <footer className="footer">

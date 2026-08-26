@@ -169,7 +169,7 @@ export default function SpotDetail() {
             location: d.data.mapId === 'chilika-map-02' ? 'Chilika Lake, Puri' : (d.data.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Ground, Deras'),
             basePrice: d.data.price || 499,
             description: d.data.description || 'Exclusive picnic spot surrounded by lush greenery.',
-            images: Array.isArray(d.data.images) && d.data.images.length > 0 ? d.data.images : [d.data.image || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1200&q=80'],
+            images: Array.isArray(d.data.images) && d.data.images.length > 0 ? d.data.images : [d.data.image || 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1200&q=80'],
             zones: []
           })
         }
@@ -177,12 +177,7 @@ export default function SpotDetail() {
       .catch(() => {})
   }, [id])
 
-  const [addonsList, setAddonsList] = useState(() => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_event_addons')
-      return saved ? JSON.parse(saved) : []
-    } catch (e) { return [] }
-  })
+  const [addonsList, setAddonsList] = useState([])
 
   useEffect(() => {
     fetch(buildApiUrl('/api/site-config/addons_config'), { cache: 'no-store' })

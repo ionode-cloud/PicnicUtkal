@@ -2,17 +2,56 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="./src/assets/logo.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="./src/assets/logo.png" />
+
+    <!-- Mobile-first viewport with viewport-fit=cover for iPhone notches/Dynamic Island -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#1B4332" />
+
+    <!-- PWA / Mobile web app -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PicnicUtkal" />
+    <meta name="format-detection" content="telephone=no" />
+
+    <!-- Preconnect to Google Fonts CDN — establishes TCP+TLS before font CSS is parsed -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!--
+      Load fonts with display=swap:
+      - Text is shown immediately in fallback font
+      - Swaps to web font as soon as it loads
+      - Zero render-blocking on mobile
+    -->
     <link
-      href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
+
+    <!--
+      JetBrains Mono is only used for code/mono elements — load lazily
+      (non-render-blocking because it's not in the critical path)
+    -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=optional"
+      rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    </noscript>
+
     <title>PicnicUtkal — Odisha's Premier Picnic Destination</title>
     <meta name="description" content="Discover and book premium picnic zones in Odisha. Swimming, camping, BBQ, adventure zones & more. Easy online booking with instant confirmation." />
+
+    <!-- Open Graph / Social sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="PicnicUtkal — Odisha's Premier Picnic Destination" />
+    <meta property="og:description" content="Book your perfect picnic spot in Odisha's most beautiful natural locations." />
+    <meta property="og:locale" content="en_IN" />
   </head>
   <body>
     <div id="root"></div>

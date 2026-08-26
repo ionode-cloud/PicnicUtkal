@@ -20,6 +20,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { useBookings, useInvalidators } from '../../hooks/useQueryHooks'
 import { buildApiUrl } from '../../services/api'
 
 // Normalise a DB booking for this page
@@ -39,8 +40,6 @@ const normalise = (b) => ({
 
 export default function BookingHistory() {
   const { socket } = useSocket()
-  const [history, setHistory] = useState([])
-  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
   
@@ -50,23 +49,23 @@ export default function BookingHistory() {
 
   const [selectedBill, setSelectedBill] = useState(null)
 
-  const fetchHistory = () => {
-    setLoading(true)
-    fetch(buildApiUrl('/api/bookings'))
-      .then(r => r.json())
-      .then(d => { if (d.success && Array.isArray(d.data)) setHistory(d.data.map(normalise)) })
-      .catch(() => toast.error('Failed to load booking history'))
-      .finally(() => setLoading(false))
-  }
+  // ── Shared cached query (no re-fetch on tab switch) ──
+  const { data: rawBookings = [], isLoading: loading, refetch } = useBookings()
+  const { invalidateBookings } = useInvalidators()
+  const history = rawBookings.map(normalise)
 
-  useEffect(() => { fetchHistory() }, [])
-
-  // Socket listener for real-time changes
+  // Socket listener for real-time changes: invalidate cache
   useEffect(() => {
     if (!socket) return
-    const handleUpdate = () => fetchHistory()
-    socket.on('plots_update', handleUpdate)
-    return () => socket.off('plots_update', handleUpdate)
+    const handleUpdate = () => invalidateBookings()
+    socket.on('plots_update',    handleUpdate)
+    socket.on('booking_created', handleUpdate)
+    socket.on('booking_updated', handleUpdate)
+    return () => {
+      socket.off('plots_update',    handleUpdate)
+      socket.off('booking_created', handleUpdate)
+      socket.off('booking_updated', handleUpdate)
+    }
   }, [socket])
 
   const handleDeleteBooking = async (bookingId) => {
@@ -76,7 +75,7 @@ export default function BookingHistory() {
         const res = await fetch(buildApiUrl(`/api/bookings/${bookingId}`), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
-          setHistory(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
+          invalidateBookings()
           toast.success(`Booking #${bookingId} deleted permanently!`)
         } else {
           toast.error(data.message || 'Failed to delete booking')
@@ -171,7 +170,7 @@ export default function BookingHistory() {
         </div>
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={fetchHistory} disabled={loading}>
+          <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={() => refetch()} disabled={loading}>
             <RefreshCw size={14} /> {loading ? 'Loading…' : 'Refresh'}
           </button>
           <button className="btn btn-gold btn-lg flex items-center gap-2" onClick={handleExportExcel}>

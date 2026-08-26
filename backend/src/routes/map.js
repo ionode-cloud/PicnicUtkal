@@ -4,24 +4,10 @@ const mongoose = require('mongoose')
 const MapPlot = require('../models/MapPlot')
 const InteractiveMap = require('../models/InteractiveMap')
 
-const SEED_MAP = {
-  title: 'Barapita Master Plan (Main Ground)',
-  image: '/assets/master-plan.png',
-  description: 'Central master plan containing Biotech parks, Riverside Pandals, and Main Gate.',
-  spotId: '1',
-  linkedSpot: 'Barapita Ground, Deras',
-  googleMapUrl: 'https://maps.google.com/?q=20.311450,85.690644',
-  isDefault: true
-}
-
 // GET all maps
 router.get('/maps', async (req, res) => {
   try {
-    let maps = await InteractiveMap.find().sort({ isDefault: -1, createdAt: 1 })
-    if (maps.length === 0) {
-      await InteractiveMap.create(SEED_MAP).catch(() => {})
-      maps = await InteractiveMap.find().sort({ isDefault: -1, createdAt: 1 })
-    }
+    const maps = await InteractiveMap.find().sort({ isDefault: -1, createdAt: 1 }).lean()
     res.json({ success: true, data: maps })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
@@ -93,7 +79,7 @@ router.get('/plots', async (req, res) => {
     if (req.query.mapId) {
       filter.mapId = req.query.mapId
     }
-    const plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 })
+    const plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 }).lean()
     res.json({ success: true, data: plots })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })

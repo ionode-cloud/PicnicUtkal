@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Helmet } from 'react-helmet-async'
 import { Link, useSearchParams, useNavigate } from 'react-router-dom'
 import { LuSearch as Search, LuLayoutGrid as Grid, LuList as List, LuMapPin as MapPin, LuStar as Star, LuSlidersHorizontal as SlidersHorizontal, LuX as X, LuChevronDown as ChevronDown, LuLoader as Loader, LuImage as ImageIcon } from 'react-icons/lu'
 import { useSocket } from '../context/SocketContext'
-import { buildApiUrl } from '../services/api'
+import { usePlots, useInvalidators } from '../hooks/useQueryHooks'
 
 // Helper: normalize a plot from admin API / Map Management into public spot shape
 function normalizePlot(p) {
@@ -73,88 +73,36 @@ export default function Spots() {
     return /^plot-\d+$/.test(id) || /^spot-\d+$/.test(id)
   }
 
-  const [spots, setSpots] = useState(() => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_admin_plots')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned = parsed
-            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
-            .filter(p => !isNonBookableLandmark(p))
-            .filter(p => !isStaleTemporaryId(p))
-          return cleaned.map(normalizePlot)
-        }
-      }
-    } catch (e) {}
-    return []
-  })
-  const [loading, setLoading] = useState(false)
-
   const [view, setView] = useState('grid')
   const [searchQ, setSearchQ] = useState('')
   const [filterOpen, setFilterOpen] = useState(false)
   const [filters, setFilters] = useState({ minPrice: 0, maxPrice: 2000, minRating: 0, zone: '' })
   const [sort, setSort] = useState('price-low')
 
-  // Load spots from backend API / Map Management
-  const fetchSpots = async () => {
-    // 1. Check /api/map/plots from database
-    try {
-      const res = await fetch(buildApiUrl('/api/map/plots'), { cache: 'no-store' })
-      if (res.ok) {
-        const d = await res.json()
-        if (d.success && Array.isArray(d.data) && d.data.length > 0) {
-          const cleaned = d.data
-            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
-            .filter(p => !isNonBookableLandmark(p))
-            .filter(p => !isStaleTemporaryId(p))
-          setSpots(cleaned.map(normalizePlot))
-          try {
-            localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(d.data))
-          } catch (e) {}
-          setLoading(false)
-          return
-        }
-      }
-    } catch (e) {}
+  // ── Shared cached query (no re-fetch on tab switch) ──
+  const { data: rawPlots = [], isLoading: loading } = usePlots()
+  const { invalidatePlots } = useInvalidators()
 
-    // 2. Check SiteConfig fallback
-    try {
-      const scRes = await fetch(buildApiUrl('/api/site-config/map_plots_config'), { cache: 'no-store' })
-      if (scRes.ok) {
-        const scData = await scRes.json()
-        if (scData?.value && Array.isArray(scData.value) && scData.value.length > 0) {
-          const cleaned = scData.value
-            .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
-            .filter(p => !isNonBookableLandmark(p))
-          setSpots(cleaned.map(normalizePlot))
-          try {
-            localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(scData.value))
-          } catch (e) {}
-        }
-      }
-    } catch (e) {} finally {
-      setLoading(false)
-    }
-  }
+  // Derive spots from cached plots data
+  const spots = useMemo(() => {
+    return rawPlots
+      .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
+      .filter(p => !isNonBookableLandmark(p))
+      .filter(p => !isStaleTemporaryId(p))
+      .map(normalizePlot)
+  }, [rawPlots])
 
-  useEffect(() => {
-    setLoading(true)
-    fetchSpots()
-  }, [])
-
-  // Real-time Socket.io listener for instant updates when admin edits spots
+  // Real-time Socket.io listener: invalidate cache when admin edits spots
   const { socket } = useSocket()
   useEffect(() => {
     if (!socket) return
-    const handleUpdate = () => fetchSpots()
-    socket.on('plots_update', handleUpdate)
-    socket.on('plot_updated', handleUpdate)
+    const handleUpdate = () => invalidatePlots()
+    socket.on('plots_update',    handleUpdate)
+    socket.on('plot_updated',    handleUpdate)
     socket.on('map_config_update', handleUpdate)
     return () => {
-      socket.off('plots_update', handleUpdate)
-      socket.off('plot_updated', handleUpdate)
+      socket.off('plots_update',    handleUpdate)
+      socket.off('plot_updated',    handleUpdate)
       socket.off('map_config_update', handleUpdate)
     }
   }, [socket])

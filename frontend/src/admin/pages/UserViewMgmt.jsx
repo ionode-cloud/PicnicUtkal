@@ -13,6 +13,17 @@ import { useSocket } from '../../context/SocketContext'
 import { useLogo } from '../../context/LogoContext'
 import { buildApiUrl } from '../../services/api'
 
+function resolvePlotImage(imgSrc) {
+  if (!imgSrc) return ''
+  if (typeof imgSrc === 'string' && imgSrc.startsWith('/uploads')) {
+    const backendOrigin = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+      : 'http://localhost:5300'
+    return `${backendOrigin}${imgSrc}`
+  }
+  return imgSrc
+}
+
 const DEFAULT_CONFIG = {
   home: {
     // Hero Banner Section
@@ -24,7 +35,7 @@ const DEFAULT_CONFIG = {
     ctaText: "Explore Spots Now",
     announcement: "🔥 Monsoon Special: Get 20% OFF on all Forest Gazebo bookings this weekend!",
     heroImages: [
-      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=85',
+      'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=85',
       'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=85',
       'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1920&q=85',
       'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1920&q=85'
@@ -46,7 +57,7 @@ const DEFAULT_CONFIG = {
 
     // Spots Section
     spotsEyebrow: "Handpicked Locations",
-    spotsTitle: "Featured Picnic Spots",
+    spotsTitle: "Picnic Spots",
     spotsSubtitle: "Discover top-rated spots across Odisha with instant online booking",
 
     // Zones Section
@@ -218,23 +229,8 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   // Socket.io real-time
   const { isConnected, emitHomeConfigUpdate, emitAboutConfigUpdate, emitGalleryConfigUpdate, emitContactConfigUpdate, emitFooterConfigUpdate } = useSocket()
 
-  // Persistent config state stored in localStorage
-  const [config, setConfig] = useState(() => {
-    try {
-      const saved = localStorage.getItem('picnicutkal_user_view_config')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        return {
-          ...DEFAULT_CONFIG,
-          ...parsed,
-          home: { ...DEFAULT_CONFIG.home, ...(parsed.home || {}) }
-        }
-      }
-      return DEFAULT_CONFIG
-    } catch (e) {
-      return DEFAULT_CONFIG
-    }
-  })
+  // Config state (persisted in MongoDB database)
+  const [config, setConfig] = useState(DEFAULT_CONFIG)
 
   // Home Form state
   const [homeData, setHomeData] = useState(config.home || DEFAULT_CONFIG.home)
@@ -320,8 +316,12 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
     } catch (e) {}
   }
 
-  // Load config from MongoDB database on mount
+  // Load config from MongoDB database on mount and clean up any bloated localStorage
   useEffect(() => {
+    try {
+      localStorage.removeItem('picnicutkal_user_view_config')
+    } catch (e) {}
+
     fetch(buildApiUrl('/api/site-config/user_view_config'))
       .then(r => r.ok ? r.json() : null)
       .then(d => {
@@ -332,9 +332,6 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
           if (d.data.gallery) setGalleryItems(d.data.gallery)
           if (d.data.contact) setContactData(d.data.contact)
           if (d.data.footer) setFooterData(d.data.footer)
-          try {
-            localStorage.setItem('picnicutkal_user_view_config', JSON.stringify(d.data))
-          } catch (e) {}
         }
       })
       .catch(() => {})
@@ -344,28 +341,10 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
     e.preventDefault()
     const updated = { ...config, footer: footerData }
     setConfig(updated)
-    try {
-      localStorage.setItem('picnicutkal_user_view_config', JSON.stringify(updated))
-    } catch (e) {}
     saveConfigToDb(updated)
     emitFooterConfigUpdate(footerData)
     toast.success('✅ Footer details saved & persisted to database!')
   }
-
-  // Sync to localStorage safely
-  useEffect(() => {
-    try {
-      localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({
-        home: homeData,
-        about: aboutData,
-        gallery: galleryItems,
-        contact: contactData,
-        footer: footerData
-      }))
-    } catch (e) {
-      console.warn('LocalStorage quota limit reached in UserViewMgmt (MongoDB persists all data safely):', e)
-    }
-  }, [homeData, aboutData, galleryItems, contactData, footerData])
 
   // Save Home Tab Content
   const handleSaveHome = (e) => {
@@ -684,7 +663,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '10px', marginBottom: '14px' }}>
                       {homeData.heroImages.map((imgSrc, idx) => (
                         <div key={idx} style={{ position: 'relative', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)' }}>
-                          <img src={imgSrc} alt={`Slider ${idx + 1}`} style={{ width: '100%', height: '80px', objectFit: 'cover', display: 'block' }} />
+                          <img src={resolvePlotImage(imgSrc)} alt={`Slider ${idx + 1}`} style={{ width: '100%', height: '80px', objectFit: 'cover', display: 'block' }} />
                           <div style={{ position: 'absolute', top: '4px', left: '4px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '4px' }}>
                             #{idx + 1}
                           </div>

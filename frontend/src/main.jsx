@@ -14,7 +14,23 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 5 * 60 * 1000,
+      // 3 minutes — data is considered fresh, no refetch during this period
+      staleTime: 3 * 60 * 1000,
+      // 15 minutes — keep in memory cache (survives tab switching)
+      gcTime: 15 * 60 * 1000,
+      // KEY mobile fix: don't refetch when user switches apps/tabs and comes back
+      // Without this, every time a mobile user switches to another app and returns,
+      // ALL queries fire again — causing loading spinners on every app switch
+      refetchOnWindowFocus: false,
+      // Refetch on reconnect (good for mobile — user might go offline and come back)
+      refetchOnReconnect: true,
+      // Only fetch when truly online — don't queue requests while offline
+      networkMode: 'online',
+    },
+    mutations: {
+      // Don't retry mutations on network error — let the user retry manually
+      retry: 0,
+      networkMode: 'online',
     },
   },
 })

@@ -17,46 +17,14 @@ import {
 import toast from 'react-hot-toast'
 
 import { useSocket } from '../../context/SocketContext'
-import { buildApiUrl } from '../../services/api'
+import { useUsers, useInvalidators } from '../../hooks/useQueryHooks'
 
 export default function Users() {
-  const [usersList, setUsersList] = useState(() => {
-    try {
-      const stored = localStorage.getItem('picnicutkal_registered_users')
-      if (stored) {
-        const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed)) return parsed
-      }
-    } catch (e) {}
-    return []
-  })
   const [searchQuery, setSearchQuery] = useState('')
 
-  const fetchUsers = () => {
-    fetch(buildApiUrl('/api/auth/users'))
-      .then(r => r.json())
-      .then(d => {
-        if (d.success && Array.isArray(d.data)) {
-          const apiUsers = d.data
-          // Merge API users with localStorage users
-          try {
-            const stored = localStorage.getItem('picnicutkal_registered_users')
-            const localUsers = stored ? JSON.parse(stored) : []
-            const combinedMap = new Map()
-            apiUsers.forEach(u => combinedMap.set(u.email, u))
-            localUsers.forEach(u => combinedMap.set(u.email, u))
-            setUsersList(Array.from(combinedMap.values()))
-          } catch (e) {
-            setUsersList(apiUsers)
-          }
-        }
-      })
-      .catch(() => {})
-  }
-
-  useEffect(() => {
-    fetchUsers()
-  }, [])
+  // ── Shared cached query (no re-fetch on tab switch) ──
+  const { data: usersList = [], isLoading } = useUsers()
+  const { invalidateUsers } = useInvalidators()
 
   // Socket.io real-time listener for new user registration
   const { socket } = useSocket()
@@ -64,11 +32,7 @@ export default function Users() {
     if (!socket) return
     const handleNewUser = (newUser) => {
       if (newUser && newUser.email) {
-        setUsersList(prev => {
-          const exists = prev.some(u => u.email === newUser.email)
-          if (exists) return prev
-          return [newUser, ...prev]
-        })
+        invalidateUsers()
         toast.success(`👤 New user registered: ${newUser.name || newUser.email}`)
       }
     }

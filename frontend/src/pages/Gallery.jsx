@@ -1,41 +1,49 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import Lightbox from 'yet-another-react-lightbox'
 import 'yet-another-react-lightbox/styles.css'
 import { useSocket } from '../context/SocketContext'
+import { useSiteConfig, useInvalidators } from '../hooks/useQueryHooks'
 
-const getStoredGallery = () => {
-  try {
-    const saved = localStorage.getItem('picnicutkal_user_view_config')
-    if (saved) {
-      const parsed = JSON.parse(saved)
-      if (parsed.gallery && Array.isArray(parsed.gallery)) return parsed.gallery
-    }
-  } catch (e) {}
-  return []
+function GallerySkeleton() {
+  return (
+    <div className="gallery-page container-fluid" style={{ padding: '40px 20px' }}>
+      <div style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+        <div className="skeleton-shimmer" style={{ width: '140px', height: '24px', borderRadius: '999px' }} />
+        <div className="skeleton-shimmer" style={{ width: '320px', height: '40px', borderRadius: '8px' }} />
+      </div>
+      <div className="gallery-grid-responsive" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="skeleton-shimmer" style={{ height: '240px', borderRadius: '16px' }} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function Gallery() {
   const [index, setIndex] = useState(-1)
-  const [images, setImages] = useState(getStoredGallery)
+  const { data: siteConfigData, isLoading } = useSiteConfig()
+  const { invalidateSiteConfig } = useInvalidators()
+
+  const images = useMemo(() => {
+    const raw = siteConfigData?.user_view_config?.gallery
+    if (Array.isArray(raw)) return raw
+    return []
+  }, [siteConfigData])
 
   // Socket.io: live-reload when admin updates gallery
   const { socket } = useSocket()
   useEffect(() => {
     if (!socket) return
-    const handler = (data) => {
-      if (data && Array.isArray(data.config)) {
-        setImages(data.config)
-        try {
-          const saved = localStorage.getItem('picnicutkal_user_view_config')
-          const parsed = saved ? JSON.parse(saved) : {}
-          localStorage.setItem('picnicutkal_user_view_config', JSON.stringify({ ...parsed, gallery: data.config }))
-        } catch (e) {}
-      }
-    }
+    const handler = () => invalidateSiteConfig()
     socket.on('gallery_config_update', handler)
     return () => socket.off('gallery_config_update', handler)
-  }, [socket])
+  }, [socket, invalidateSiteConfig])
+
+  if (isLoading) {
+    return <GallerySkeleton />
+  }
 
   return (
     <>

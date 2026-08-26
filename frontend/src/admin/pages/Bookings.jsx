@@ -29,6 +29,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { useBookings, useInvalidators } from '../../hooks/useQueryHooks'
 import { buildApiUrl } from '../../services/api'
 
 // Normalise a raw DB booking doc into the shape the component expects
@@ -49,8 +50,6 @@ const normalise = (b) => ({
 
 export default function Bookings() {
   const { socket } = useSocket()
-  const [bookings, setBookings] = useState([])
-  const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
 
@@ -61,24 +60,27 @@ export default function Bookings() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(15)
 
-  const fetchBookings = () => {
-    setLoading(true)
-    fetch(buildApiUrl('/api/bookings'))
-      .then(r => r.json())
-      .then(d => { if (d.success && Array.isArray(d.data)) setBookings(d.data.map(normalise)) })
-      .catch(() => toast.error('Failed to load bookings'))
-      .finally(() => setLoading(false))
-  }
+  // ── Shared cached query (no re-fetch on tab switch) ──
+  const { data: rawBookings = [], isLoading: loading, refetch: refetchBookings } = useBookings()
+  const { invalidateBookings } = useInvalidators()
 
-  // Initial fetch
-  useEffect(() => { fetchBookings() }, [])
+  // Apply normalise transform on top of cached data
+  const bookings = rawBookings.map(normalise)
 
-  // Real-time: refetch when a new booking is created
+  // Real-time: invalidate cache when a new booking is created
   useEffect(() => {
     if (!socket) return
-    const handleNew = () => fetchBookings()
-    socket.on('plots_update', handleNew)
-    return () => socket.off('plots_update', handleNew)
+    const handleNew = () => invalidateBookings()
+    socket.on('plots_update',    handleNew)
+    socket.on('new_booking',     handleNew)
+    socket.on('booking_created', handleNew)
+    socket.on('booking_updated', handleNew)
+    return () => {
+      socket.off('plots_update',    handleNew)
+      socket.off('new_booking',     handleNew)
+      socket.off('booking_created', handleNew)
+      socket.off('booking_updated', handleNew)
+    }
   }, [socket])
 
   // Esc Key Listener for Closing Left Slide-in Panel
@@ -89,20 +91,6 @@ export default function Bookings() {
     if (selectedBillDrawer) window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedBillDrawer])
-
-  // Auto-expire past bookings
-  useEffect(() => {
-    const today = new Date()
-    setBookings(prev => prev.map(bk => {
-      if (bk.bookingStatus === 'Confirmed' && bk.visitDate) {
-        const vDate = new Date(bk.visitDate)
-        const expiryDate = new Date(vDate)
-        expiryDate.setDate(expiryDate.getDate() + (bk.durationDays || 1))
-        if (today > expiryDate) return { ...bk, isExpired: true }
-      }
-      return bk
-    }))
-  }, [bookings.length])
 
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1) }, [searchQuery, statusFilter, itemsPerPage])
@@ -247,7 +235,7 @@ export default function Bookings() {
           <button className="btn btn-gold btn-sm flex items-center gap-1" onClick={handleResetAllExpired}>
             <RotateCcw size={14} /> Reset Completed Spots
           </button>
-          <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={fetchBookings} disabled={loading}>
+          <button className="btn btn-outline btn-sm flex items-center gap-1" onClick={() => refetchBookings()} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'spin' : ''} /> {loading ? 'Loading…' : 'Refresh'}
           </button>
           <span className="badge badge-glass" style={{ padding: '6px 12px', fontSize: '12px' }}>

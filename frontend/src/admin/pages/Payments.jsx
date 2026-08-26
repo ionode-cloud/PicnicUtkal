@@ -31,6 +31,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { useBookings, useInvalidators } from '../../hooks/useQueryHooks'
 import { buildApiUrl } from '../../services/api'
 
 // Derive a payment row from a DB booking document
@@ -65,9 +66,12 @@ export default function Payments() {
     setSearchParams(tab === 'qr' ? { tab: 'qr' } : {})
   }
 
-  // --- Transactions State ---
-  const [payments, setPayments] = useState([])
-  const [loading, setLoading] = useState(false)
+  // ── Shared cached query for bookings/payments (no re-fetch on tab switch) ──
+  const { data: rawBookings = [], isLoading: loading, refetch } = useBookings()
+  const { invalidateBookings } = useInvalidators()
+  const payments = rawBookings.map(toPayment)
+
+  // --- UI Filter State ---
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('All')
 
@@ -83,15 +87,6 @@ export default function Payments() {
   const [copiedUpi, setCopiedUpi] = useState(false)
   const [dragOver, setDragOver] = useState(false)
   const fileInputRef = useRef(null)
-
-  const fetchPayments = () => {
-    setLoading(true)
-    fetch(buildApiUrl('/api/bookings'))
-      .then(r => r.json())
-      .then(d => { if (d.success && Array.isArray(d.data)) setPayments(d.data.map(toPayment)) })
-      .catch(() => toast.error('Failed to load payments'))
-      .finally(() => setLoading(false))
-  }
 
   const fetchUpiConfig = () => {
     fetch(buildApiUrl('/api/site-config/upi_qr_config'))
@@ -109,14 +104,13 @@ export default function Payments() {
   }
 
   useEffect(() => {
-    fetchPayments()
     fetchUpiConfig()
   }, [])
 
   // Socket listener for real-time changes
   useEffect(() => {
     if (!socket) return
-    const handleUpdate = () => fetchPayments()
+    const handleUpdate = () => invalidateBookings()
     const handleUpiUpdate = (data) => {
       if (data?.upiConfig) {
         setUpiConfig(data.upiConfig)
@@ -126,11 +120,17 @@ export default function Payments() {
       }
     }
 
-    socket.on('plots_update', handleUpdate)
+    socket.on('plots_update',         handleUpdate)
+    socket.on('new_booking',          handleUpdate)
+    socket.on('booking_created',      handleUpdate)
+    socket.on('payment_success',      handleUpdate)
     socket.on('upi_qr_config_update', handleUpiUpdate)
 
     return () => {
-      socket.off('plots_update', handleUpdate)
+      socket.off('plots_update',         handleUpdate)
+      socket.off('new_booking',          handleUpdate)
+      socket.off('booking_created',      handleUpdate)
+      socket.off('payment_success',      handleUpdate)
       socket.off('upi_qr_config_update', handleUpiUpdate)
     }
   }, [socket])
@@ -783,7 +783,7 @@ export default function Payments() {
                   {st}
                 </button>
               ))}
-              <button className="btn btn-outline btn-sm" onClick={fetchPayments} disabled={loading} style={{ marginLeft: '8px', gap: '6px', display: 'flex', alignItems: 'center' }}>
+              <button className="btn btn-outline btn-sm" onClick={() => refetch()} disabled={loading} style={{ marginLeft: '8px', gap: '6px', display: 'flex', alignItems: 'center' }}>
                 <RefreshCw size={14} /> {loading ? 'Loading…' : 'Refresh'}
               </button>
             </div>
