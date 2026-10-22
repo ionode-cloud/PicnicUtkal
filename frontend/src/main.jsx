@@ -43,23 +43,23 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <SocketProvider>
             <LogoProvider>
               <App />
+              <Toaster
+                position="top-right"
+                toastOptions={{
+                  duration: 3500,
+                  style: {
+                    background: 'var(--bg-card)',
+                    color: 'var(--text-primary)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '12px',
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '0.875rem',
+                    boxShadow: 'var(--shadow-lg)',
+                  },
+                }}
+              />
             </LogoProvider>
           </SocketProvider>
-          <Toaster
-            position="top-right"
-            toastOptions={{
-              duration: 3500,
-              style: {
-                background: 'var(--bg-card)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border)',
-                borderRadius: '12px',
-                fontFamily: 'var(--font-body)',
-                fontSize: '0.875rem',
-                boxShadow: 'var(--shadow-lg)',
-              },
-            }}
-          />
         </BrowserRouter>
       </QueryClientProvider>
     </HelmetProvider>

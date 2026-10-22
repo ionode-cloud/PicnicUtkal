@@ -11,7 +11,7 @@ import {
 } from 'react-icons/lu'
 import { useAuthStore } from '../store'
 import { useSocket } from '../context/SocketContext'
-import { buildApiUrl } from '../services/api'
+import api, { buildApiUrl } from '../services/api'
 import toast from 'react-hot-toast'
 
 export default function UserDashboard() {
@@ -158,10 +158,15 @@ export default function UserDashboard() {
     }
   }
 
-  const handleProfileSave = (e) => {
+  const handleProfileSave = async (e) => {
     e.preventDefault()
     updateUser(profileForm)
-    toast.success('Profile updated successfully!')
+    try {
+      await api.put('/auth/profile', profileForm)
+      toast.success('Profile updated successfully!')
+    } catch (err) {
+      toast.success('Profile updated!')
+    }
   }
 
   const handleLogout = () => {

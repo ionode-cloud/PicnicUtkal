@@ -118,6 +118,7 @@ export default function App() {
               <Route path="spots"     element={<AdminSpots />} />
               <Route path="spots/addons" element={<EventAddons />} />
               <Route path="spots/guidelines" element={<GuidelinesRules />} />
+              <Route path="guidelines-rules" element={<Navigate to="/admin/spots/guidelines" replace />} />
               <Route path="zones"     element={<AdminZones />} />
               <Route path="bookings"  element={<Bookings />} />
               <Route path="bookings/history" element={<BookingHistory />} />

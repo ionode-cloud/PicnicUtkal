@@ -21,6 +21,7 @@ import {
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
 import { buildApiUrl } from '../../services/api'
+import { uploadImageToCloudinary } from '../../services/uploadService'
 
 const INITIAL_SPOTS = []
 
@@ -207,7 +208,7 @@ export default function Spots() {
   })
 
   // Multi-image upload handlers (up to 10 photos)
-  const handlePlotFileUpload = (e) => {
+  const handlePlotFileUpload = async (e) => {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
 
@@ -219,33 +220,28 @@ export default function Spots() {
     }
 
     const filesToUpload = files.slice(0, remainingSlots)
-    let processed = 0
-    const newBase64s = []
+    const toastId = toast.loading(`Uploading ${filesToUpload.length} photo(s) to Cloudinary...`)
 
-    filesToUpload.forEach(file => {
-      if (file.size > 8 * 1024 * 1024) {
-        toast.error(`File "${file.name}" exceeds 8MB limit`)
-        return
+    try {
+      const uploadPromises = filesToUpload.map(f => uploadImageToCloudinary(f, 'picnicutkal/spots'))
+      const cdnUrls = await Promise.all(uploadPromises)
+      const validUrls = cdnUrls.filter(Boolean)
+
+      if (validUrls.length > 0) {
+        setFormData(f => {
+          const existing = Array.isArray(f.images) ? f.images : (f.image ? [f.image] : [])
+          const updated = [...existing, ...validUrls].slice(0, 10)
+          return {
+            ...f,
+            images: updated,
+            image: updated[0] || ''
+          }
+        })
+        toast.success(`✅ Added ${validUrls.length} photo(s) to Cloudinary!`, { id: toastId })
       }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        newBase64s.push(reader.result)
-        processed++
-        if (processed === filesToUpload.length) {
-          setFormData(f => {
-            const existing = Array.isArray(f.images) ? f.images : (f.image ? [f.image] : [])
-            const updated = [...existing, ...newBase64s].slice(0, 10)
-            return {
-              ...f,
-              images: updated,
-              image: updated[0] || ''
-            }
-          })
-          toast.success(`Added ${newBase64s.length} photo(s)! (${Math.min(currentImages.length + newBase64s.length, 10)}/10)`)
-        }
-      }
-      reader.readAsDataURL(file)
-    })
+    } catch (err) {
+      toast.error(err.message || 'Photo upload failed', { id: toastId })
+    }
   }
 
   const handleAddImageUrl = () => {
@@ -319,7 +315,27 @@ export default function Spots() {
       try {
         await fetch(buildApiUrl(`/api/map/plots/${id}`), { method: 'DELETE' })
       } catch (e) {}
-      setSpots(prev => prev.filter(s => s.id !== id))
+      
+      const updatedSpots = spots.filter(s => s.id !== id && s._id !== id)
+      setSpots(updatedSpots)
+
+      // Sync localStorage and map_plots_config so deleted spot never resurrects
+      try {
+        const savedPlots = localStorage.getItem('picnicutkal_admin_plots')
+        if (savedPlots) {
+          const parsed = JSON.parse(savedPlots)
+          if (Array.isArray(parsed)) {
+            const updatedRaw = parsed.filter(p => p._id !== id && p.id !== id)
+            localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(updatedRaw))
+            fetch(buildApiUrl('/api/site-config/map_plots_config'), {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ key: 'map_plots_config', value: updatedRaw })
+            }).catch(() => {})
+          }
+        }
+      } catch (e) {}
+
       if (socket) socket.emit('plots_update', { plotId: id, action: 'deleted' })
       toast.success('Spot removed successfully!')
     }
@@ -360,6 +376,24 @@ export default function Spots() {
           body: JSON.stringify(payload)
         })
         setSpots(prev => prev.map(s => s.id === editingSpot.id ? { ...s, ...payload, id: editingSpot.id } : s))
+        
+        // Sync cache and map_plots_config
+        try {
+          const savedPlots = localStorage.getItem('picnicutkal_admin_plots')
+          if (savedPlots) {
+            const parsed = JSON.parse(savedPlots)
+            if (Array.isArray(parsed)) {
+              const updatedRaw = parsed.map(p => (p._id === editingSpot.id || p.id === editingSpot.id) ? { ...p, ...payload } : p)
+              localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(updatedRaw))
+              fetch(buildApiUrl('/api/site-config/map_plots_config'), {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ key: 'map_plots_config', value: updatedRaw })
+              }).catch(() => {})
+            }
+          }
+        } catch (e) {}
+
         if (socket) socket.emit('plots_update', { plotId: editingSpot.id, action: 'updated' })
         toast.success('Plot / Zone updated!')
       } else {
@@ -371,6 +405,21 @@ export default function Spots() {
           body: JSON.stringify({ ...payload, _id: newId })
         })
         setSpots(prev => [newSpot, ...prev])
+
+        // Sync cache and map_plots_config
+        try {
+          const savedPlots = localStorage.getItem('picnicutkal_admin_plots')
+          let rawList = savedPlots ? JSON.parse(savedPlots) : []
+          if (!Array.isArray(rawList)) rawList = []
+          rawList = [{ _id: newId, id: newId, ...payload }, ...rawList]
+          localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(rawList))
+          fetch(buildApiUrl('/api/site-config/map_plots_config'), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: 'map_plots_config', value: rawList })
+          }).catch(() => {})
+        } catch (e) {}
+
         if (socket) socket.emit('plots_update', { plotId: newId, action: 'created' })
         toast.success('New Plot / Zone created!')
       }

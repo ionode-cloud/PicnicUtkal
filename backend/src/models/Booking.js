@@ -22,14 +22,24 @@ const bookingSchema = new mongoose.Schema({
     aadhaar: { type: String, default: '' }
   }],
 
+  durationDays:  { type: Number, default: 1, min: 1 },
+
+  // Selected add-ons
+  selectedAddons: [{
+    name:       { type: String },
+    priceAddon: { type: Number },
+    price:      { type: Number }
+  }],
+
   // Payment
-  paymentMethod: { type: String, enum: ['upi', 'card', 'cash', 'razorpay'], default: 'upi' },
-  totalAmount:   { type: Number, required: true },
-  paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
+  paymentMethod:  { type: String, enum: ['upi', 'card', 'cash', 'razorpay'], default: 'upi' },
+  transactionRef: { type: String, default: '' },
+  totalAmount:    { type: Number, required: true },
+  paymentStatus:  { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
 
   // Booking meta
-  bookingId:     { type: String, unique: true },
-  status:        { type: String, enum: ['confirmed', 'cancelled', 'pending'], default: 'confirmed' }
+  bookingId:      { type: String, unique: true },
+  status:         { type: String, enum: ['confirmed', 'cancelled', 'pending', 'completed'], default: 'confirmed' }
 }, { timestamps: true })
 
 // Auto-generate a human-readable booking ID before saving

@@ -12,6 +12,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import api from '../../services/api'
 
 const DEFAULT_MESSAGES = [
   {
@@ -67,11 +68,9 @@ export default function SupportContact() {
   const fetchMessages = async () => {
     setLoading(true)
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5300'
-      const res = await fetch(`${backendUrl}/api/contact`)
-      const data = await res.json()
-      if (res.ok && data.success && Array.isArray(data.data)) {
-        setMessages(data.data)
+      const res = await api.get('/contact')
+      if (res.data && res.data.success && Array.isArray(res.data.data)) {
+        setMessages(res.data.data)
       }
     } catch (err) {
       console.warn('Backend API connection offline, using cached messages.', err)
@@ -119,28 +118,24 @@ export default function SupportContact() {
   // Update status (Pending, Replied, Resolved)
   const handleUpdateStatus = async (id, newStatus) => {
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5300'
-      await fetch(`${backendUrl}/api/contact/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
-      })
-    } catch (e) {}
-
-    setMessages(prev => prev.map(m => m._id === id ? { ...m, status: newStatus } : m))
-    toast.success(`Message status updated to ${newStatus}`)
+      await api.put(`/contact/${id}`, { status: newStatus })
+      setMessages(prev => prev.map(m => m._id === id ? { ...m, status: newStatus } : m))
+      toast.success(`Message status updated to ${newStatus}`)
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to update message status')
+    }
   }
 
   // Delete message
   const handleDeleteMessage = async (id, name) => {
     if (!window.confirm(`Delete inquiry message from "${name}"?`)) return
     try {
-      const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5300'
-      await fetch(`${backendUrl}/api/contact/${id}`, { method: 'DELETE' })
-    } catch (e) {}
-
-    setMessages(prev => prev.filter(m => m._id !== id))
-    toast.success('Message deleted')
+      await api.delete(`/contact/${id}`)
+      setMessages(prev => prev.filter(m => m._id !== id))
+      toast.success('Message deleted')
+    } catch (e) {
+      toast.error(e?.response?.data?.message || 'Failed to delete message')
+    }
   }
 
   // Filter messages

@@ -33,6 +33,7 @@ import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
 import { useBookings, useInvalidators } from '../../hooks/useQueryHooks'
 import { buildApiUrl } from '../../services/api'
+import { uploadImageToCloudinary } from '../../services/uploadService'
 
 // Derive a payment row from a DB booking document
 const toPayment = (b, idx) => ({
@@ -165,26 +166,24 @@ export default function Payments() {
   }
 
   // Handle Local QR Code Image Upload
-  const processUploadedFile = (file) => {
+  const processUploadedFile = async (file) => {
     if (!file) return
     if (!file.type.startsWith('image/')) {
       toast.error('Please upload an image file (PNG, JPG, JPEG, WEBP)')
       return
     }
-    if (file.size > 8 * 1024 * 1024) {
-      toast.error('Image size exceeds 8MB limit')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = () => {
+    const toastId = toast.loading('Uploading QR code to Cloudinary...')
+    try {
+      const cdnUrl = await uploadImageToCloudinary(file, 'picnicutkal/payments')
       setUpiConfig(prev => ({
         ...prev,
-        customQrImage: reader.result,
+        customQrImage: cdnUrl,
         useCustomQrImage: true
       }))
-      toast.success('New QR Code image loaded! Click "Save Changes" to publish.')
+      toast.success('✅ QR Code uploaded to Cloudinary! Click "Save Changes" to publish.', { id: toastId })
+    } catch (err) {
+      toast.error(err.message || 'QR Code upload failed', { id: toastId })
     }
-    reader.readAsDataURL(file)
   }
 
   const handleImageUpload = (e) => {
@@ -213,7 +212,8 @@ export default function Payments() {
         const res = await fetch(buildApiUrl(`/api/bookings/${bookingId}`), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
-          setPayments(prev => prev.filter(p => p.bookingId !== bookingId && p.txnId !== bookingId))
+          invalidateBookings()
+          if (socket) socket.emit('plots_update')
           toast.success(`Payment & booking #${bookingId} deleted!`)
         } else {
           toast.error(data.message || 'Failed to delete payment record')
@@ -237,30 +237,51 @@ export default function Payments() {
 
   // Filter payments
   const filteredPayments = payments.filter(p => {
-    const matchesSearch = 
-      p.txnId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.bookingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.spotTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.method.toLowerCase().includes(searchQuery.toLowerCase())
+    const q = searchQuery.trim().toLowerCase()
+    const matchesSearch = !q ||
+      (p.txnId ? String(p.txnId).toLowerCase() : '').includes(q) ||
+      (p.bookingId ? String(p.bookingId).toLowerCase() : '').includes(q) ||
+      (p.customerName ? String(p.customerName).toLowerCase() : '').includes(q) ||
+      (p.spotTitle ? String(p.spotTitle).toLowerCase() : '').includes(q) ||
+      (p.method ? String(p.method).toLowerCase() : '').includes(q)
 
-    const matchesStatus = statusFilter === 'All' || p.status.toLowerCase() === statusFilter.toLowerCase()
+    const matchesStatus = statusFilter === 'All' || (p.status ? p.status.toLowerCase() : '') === statusFilter.toLowerCase()
 
     return matchesSearch && matchesStatus
   })
 
-  // Issue Refund
-  const handleProcessRefund = (txnId, amount, customerName) => {
+  // Issue Refund (Persists to database)
+  const handleProcessRefund = async (txnId, amount, customerName) => {
     if (window.confirm(`Are you sure you want to process refund of ₹${amount} for ${customerName} (#${txnId})?`)) {
-      setPayments(prev => prev.map(p => p.txnId === txnId ? { ...p, status: 'Refunded', type: 'Refund' } : p))
-      toast.success(`Refund of ₹${amount} processed successfully.`, { icon: '💸' })
+      try {
+        await fetch(buildApiUrl(`/api/bookings/${txnId}`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ paymentStatus: 'refunded', status: 'cancelled' })
+        })
+        invalidateBookings()
+        if (socket) socket.emit('plots_update')
+        toast.success(`Refund of ₹${amount} processed successfully.`, { icon: '💸' })
+      } catch (e) {
+        toast.error('Failed to process refund on server')
+      }
     }
   }
 
-  // Mark Pending as Paid
-  const handleMarkPaid = (txnId) => {
-    setPayments(prev => prev.map(p => p.txnId === txnId ? { ...p, status: 'Paid', type: 'Payment' } : p))
-    toast.success(`Payment #${txnId} marked as PAID.`)
+  // Mark Pending as Paid (Persists to database)
+  const handleMarkPaid = async (txnId) => {
+    try {
+      await fetch(buildApiUrl(`/api/bookings/${txnId}`), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentStatus: 'paid' })
+      })
+      invalidateBookings()
+      if (socket) socket.emit('plots_update')
+      toast.success(`Payment #${txnId} marked as PAID.`)
+    } catch (e) {
+      toast.error('Failed to update payment status on server')
+    }
   }
 
   const getStatusBadgeClass = (status) => {

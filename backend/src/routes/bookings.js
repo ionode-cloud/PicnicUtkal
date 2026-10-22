@@ -28,7 +28,7 @@ router.post('/', async (req, res) => {
       plotId, plotTitle, plotPrice,
       name, email, phone,
       visitDate, persons, durationDays, specialNote,
-      paymentMethod, visitors, selectedAddons
+      paymentMethod, transactionRef, visitors, selectedAddons
     } = req.body
 
     if (!plotId || !name || !email || !phone || !visitDate || !persons) {
@@ -81,21 +81,32 @@ router.post('/', async (req, res) => {
     endOfRange.setDate(endOfRange.getDate() + validDuration - 1)
     endOfRange.setHours(23, 59, 59, 999)
 
-    // Check if plot is already booked for any date within the requested range
-    const existingBooking = await Booking.findOne({
+    // Authoritative multi-day conflict check: inspect all active bookings ending on/after requested start
+    const existingCandidates = await Booking.find({
       $or: [
         { plotId: authoritativePlotId },
         { plotId: String(plotId) },
         { plotTitle: authoritativePlotTitle }
       ],
       status: { $ne: 'cancelled' },
-      visitDate: { $gte: startOfRange, $lte: endOfRange }
+      visitDate: { $lte: endOfRange }
     })
 
-    if (existingBooking) {
+    const hasConflict = existingCandidates.some(b => {
+      if (!b.visitDate) return false
+      const bStart = new Date(b.visitDate)
+      if (isNaN(bStart.getTime())) return false
+      const bDays = Math.max(1, Number(b.durationDays) || 1)
+      const bEnd = new Date(bStart)
+      bEnd.setDate(bEnd.getDate() + bDays - 1)
+      bEnd.setHours(23, 59, 59, 999)
+      return bStart <= endOfRange && bEnd >= startOfRange
+    })
+
+    if (hasConflict) {
       return res.status(409).json({
         success: false,
-        message: 'This spot is already booked for the selected date. Please select another date.'
+        message: 'This spot is already booked for the selected date range. Please select another date.'
       })
     }
 
@@ -114,6 +125,7 @@ router.post('/', async (req, res) => {
       visitors: visitors || [],
       selectedAddons: selectedAddons || [],
       paymentMethod: paymentMethod || 'upi',
+      transactionRef: transactionRef ? String(transactionRef).trim() : '',
       totalAmount: authoritativeTotalAmount,
       paymentStatus: paymentMethod === 'cash' ? 'pending' : 'paid',
       status: 'confirmed'
@@ -205,14 +217,8 @@ router.get('/availability', async (req, res) => {
 // GET — single booking by bookingId
 router.get('/:bookingId', async (req, res) => {
   try {
-    let booking = await Booking.findOne(makeBookingQuery(req.params.bookingId))
+    const booking = await Booking.findOne(makeBookingQuery(req.params.bookingId))
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' })
-
-    // Auto-correct legacy inflated totalAmount if needed
-    if (booking.persons > 1 && booking.totalAmount === booking.plotPrice * booking.persons) {
-      booking.totalAmount = booking.plotPrice
-      await Booking.updateOne({ _id: booking._id }, { totalAmount: booking.plotPrice }).catch(() => {})
-    }
 
     res.status(200).json({ success: true, data: booking })
   } catch (err) {
@@ -250,9 +256,14 @@ router.delete('/:bookingId', async (req, res) => {
 // PUT — update booking status (e.g. cancelled/completed/confirmed)
 router.put('/:bookingId', async (req, res) => {
   try {
+    // Whitelist safe fields to prevent mass-assignment attacks
+    const ALLOWED_FIELDS = ['status', 'specialNote', 'paymentStatus', 'paymentMethod', 'transactionRef']
+    const safeUpdate = {}
+    ALLOWED_FIELDS.forEach(f => { if (req.body[f] !== undefined) safeUpdate[f] = req.body[f] })
+
     const booking = await Booking.findOneAndUpdate(
       makeBookingQuery(req.params.bookingId),
-      req.body,
+      safeUpdate,
       { new: true }
     )
     if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' })

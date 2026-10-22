@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const ContactMessage = require('../models/ContactMessage')
+const { protect, adminOrStaff } = require('../middleware/auth')
 
 // POST /api/contact - Submit new user contact form message
 router.post('/', async (req, res) => {
@@ -37,7 +38,7 @@ router.post('/', async (req, res) => {
 })
 
 // GET /api/contact - Retrieve all contact messages for admin
-router.get('/', async (req, res) => {
+router.get('/', protect, adminOrStaff, async (req, res) => {
   try {
     const messages = await ContactMessage.find().sort({ createdAt: -1 })
     res.json({ success: true, count: messages.length, data: messages })
@@ -48,7 +49,7 @@ router.get('/', async (req, res) => {
 })
 
 // PUT /api/contact/:id - Update message status
-router.put('/:id', async (req, res) => {
+router.put('/:id', protect, adminOrStaff, async (req, res) => {
   try {
     const { status } = req.body
     if (!['Pending', 'Replied', 'Resolved'].includes(status)) {
@@ -77,7 +78,7 @@ router.put('/:id', async (req, res) => {
 })
 
 // DELETE /api/contact/:id - Delete message
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', protect, adminOrStaff, async (req, res) => {
   try {
     const deleted = await ContactMessage.findByIdAndDelete(req.params.id)
     if (!deleted) {

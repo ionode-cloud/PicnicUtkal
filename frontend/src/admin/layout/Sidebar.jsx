@@ -64,8 +64,8 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
       <aside className={`admin-sidebar-nav-container ${isOpen ? 'show-mobile' : ''}`}>
         {/* Brand */}
         <div className="admin-sidebar-brand-section">
-          <div className="admin-sidebar-logo-box">
-            <Leaf size={18} />
+          <div className="admin-sidebar-logo-box" style={{ overflow: 'hidden', padding: '2px', background: 'transparent' }}>
+            <img src="/logo.png" alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={(e) => { e.target.onerror = null; e.target.style.display = 'none'; }} />
           </div>
           <span>Picnic<span className="text-gradient">Admin</span></span>
         </div>

@@ -4,6 +4,7 @@ import { LuLeaf as Leaf, LuPhone as Phone, LuMail as Mail, LuMapPin as MapPin } 
 import { FaInstagram, FaFacebookF, FaYoutube, FaXTwitter } from 'react-icons/fa6'
 import { useLogo } from '../../context/LogoContext'
 import { useSocket } from '../../context/SocketContext'
+import logoImg from '../../assets/logo.png'
 import { useSiteConfig, useInvalidators } from '../../hooks/useQueryHooks'
 
 const DEFAULT_FOOTER = {
@@ -77,27 +78,20 @@ export default function Footer() {
             <div className="footer__brand">
               <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
                 <Link to="/" className="footer__logo" style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                  {logoConfig?.type === 'image' && logoConfig?.url ? (
-                    <img 
-                      src={logoConfig.url} 
-                      alt="Logo" 
-                      style={{ 
-                        height: `${logoConfig?.height ? Math.max(logoConfig.height, 65) : 110}px`, 
-                        width: 'auto', 
-                        maxWidth: '280px', 
-                        objectFit: 'contain', 
-                        borderRadius: '12px' 
-                      }}
-                      onError={(e) => {
-                        e.target.onerror = null
-                        e.target.style.display = 'none'
-                      }}
-                    />
-                  ) : (
-                    <div className="footer__logo-icon" style={{ width: '68px', height: '68px', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Leaf size={36} />
-                    </div>
-                  )}
+                  <img 
+                    src={logoConfig?.url || logoImg} 
+                    alt="PicnicUtkal Logo" 
+                    style={{ 
+                      height: `${logoConfig?.height ? Math.min(Math.max(logoConfig.height, 45), 70) : 58}px`, 
+                      width: 'auto', 
+                      maxWidth: '220px', 
+                      objectFit: 'contain'
+                    }}
+                    onError={(e) => {
+                      e.target.onerror = null
+                      e.target.src = '/logo.png'
+                    }}
+                  />
                 </Link>
                 <p className="footer__tagline" style={{ margin: 0, flex: 1, minWidth: '220px', fontSize: '0.95rem', lineHeight: '1.6', color: 'rgba(255, 255, 255, 0.75)' }}>
                   {footer.tagline || DEFAULT_FOOTER.tagline}

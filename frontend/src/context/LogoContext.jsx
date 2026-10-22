@@ -3,9 +3,9 @@ import { useSocket } from './SocketContext'
 import { buildApiUrl } from '../services/api'
 
 const DEFAULT_LOGO_CONFIG = {
-  type: 'icon', // 'icon' | 'image'
-  url: '',
-  height: 50,
+  type: 'image', // 'icon' | 'image'
+  url: '/logo.png',
+  height: 52,
   textMain: 'Picnic',
   textAccent: 'Utkal'
 }

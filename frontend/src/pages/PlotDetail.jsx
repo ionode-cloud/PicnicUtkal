@@ -107,6 +107,18 @@ function PlotDetail() {
   const [activeRules, setActiveRules] = useState(getStoredRules)
 
   useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/guidelines_rules'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && Array.isArray(d.data)) {
+          setActiveRules(d.data.filter(r => r.status === 'Active'))
+          try { localStorage.setItem('picnicutkal_guidelines_rules', JSON.stringify(d.data)) } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
     if (!socket) return
     const handler = (data) => {
       if (data && Array.isArray(data.rules)) {

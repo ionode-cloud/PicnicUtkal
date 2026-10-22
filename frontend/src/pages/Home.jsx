@@ -24,6 +24,7 @@ function getZoneIcon(label = '') {
   if (l.includes('camp') || l.includes('tent')) return Tent
   if (l.includes('adventur') || l.includes('sport') || l.includes('target')) return Target
   if (l.includes('photo') || l.includes('camera') || l.includes('selfie')) return Camera
+  if (l.includes('family') || l.includes('garden') || l.includes('user')) return Users
   return Trees
 }
 
@@ -37,6 +38,70 @@ function resolvePlotImage(imgSrc) {
   }
   return imgSrc
 }
+
+const DEFAULT_HERO_IMAGES = [
+  'https://images.unsplash.com/photo-1448375240586-882707db888b?w=1920&q=85',
+  'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=1920&q=85',
+  'https://images.unsplash.com/photo-1475924156734-496f6cac6ec1?w=1920&q=85',
+  'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=1920&q=85'
+]
+
+const DEFAULT_HOMEPAGE_ZONES = [
+  {
+    id: 'z1',
+    label: 'Swimming Zone',
+    count: '12 spots',
+    color: '#228BE6',
+    href: '/spots?zone=swimming',
+    status: 'Active',
+    order: 1
+  },
+  {
+    id: 'z2',
+    label: 'BBQ & Cooking Zone',
+    count: '18 spots',
+    color: '#FA5252',
+    href: '/spots?zone=cooking',
+    status: 'Active',
+    order: 2
+  },
+  {
+    id: 'z3',
+    label: 'Music & Stage Zone',
+    count: '8 spots',
+    color: '#BE4BDB',
+    href: '/spots?zone=music',
+    status: 'Active',
+    order: 3
+  },
+  {
+    id: 'z4',
+    label: 'Camping & Tent Zone',
+    count: '15 spots',
+    color: '#F76707',
+    href: '/spots?zone=camping',
+    status: 'Active',
+    order: 4
+  },
+  {
+    id: 'z5',
+    label: 'Adventure Zone',
+    count: '10 spots',
+    color: '#E8590C',
+    href: '/spots?zone=adventure',
+    status: 'Active',
+    order: 5
+  },
+  {
+    id: 'z6',
+    label: 'Family & Garden Zone',
+    count: '22 spots',
+    color: '#2F9E44',
+    href: '/spots?zone=family',
+    status: 'Active',
+    order: 6
+  }
+]
 
 function normalizePlot(p) {
   const facilities = Array.isArray(p.facilities)
@@ -269,10 +334,11 @@ export default function Home() {
 
   const zonesList = useMemo(() => {
     const raw = siteConfigData?.admin_zones
-    if (Array.isArray(raw)) {
-      return raw.filter(z => z.status !== 'Inactive')
+    if (Array.isArray(raw) && raw.length > 0) {
+      const active = raw.filter(z => z.status !== 'Inactive')
+      return active.length > 0 ? active : DEFAULT_HOMEPAGE_ZONES
     }
-    return []
+    return DEFAULT_HOMEPAGE_ZONES
   }, [siteConfigData])
 
   const maps = useMemo(() => {
@@ -397,8 +463,11 @@ export default function Home() {
   }, [])
 
   const heroSlides = useMemo(() => {
-    if (!homeConfig.heroImages || !Array.isArray(homeConfig.heroImages)) return []
-    return homeConfig.heroImages.filter(img => img && !String(img).includes('photo-1506905925346-21bda4d32df4'))
+    const rawImages = (Array.isArray(homeConfig.heroImages) && homeConfig.heroImages.length > 0)
+      ? homeConfig.heroImages
+      : DEFAULT_HERO_IMAGES
+    const filtered = rawImages.filter(Boolean)
+    return filtered.length > 0 ? filtered : DEFAULT_HERO_IMAGES
   }, [homeConfig.heroImages])
 
   if (siteConfigLoading || minLoading) {
@@ -444,16 +513,14 @@ export default function Home() {
         </motion.div>
 
         <div className="hero__content container-fluid">
-          {homeConfig.eyebrowText && (
-            <motion.span
-              className="hero__eyebrow"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              {homeConfig.eyebrowText}
-            </motion.span>
-          )}
+          <motion.span
+            className="hero__eyebrow"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            {homeConfig.eyebrowText || "🌿 Welcome to Odisha's Nature Paradise"}
+          </motion.span>
 
           <motion.h1
             className="hero__title heading-hero"
@@ -559,24 +626,27 @@ export default function Home() {
             {zonesList.map((zone, i) => {
               const ZoneIcon = zone.icon || getZoneIcon(zone.label)
               return (
-                <motion.a
+                <motion.div
                   key={zone.id || zone.label || i}
-                  href={zone.href || '/spots'}
-                  className="zone-pill"
                   custom={i}
                   variants={fadeUp}
                   whileHover={{ scale: 1.05, y: -4 }}
                   whileTap={{ scale: 0.98 }}
-                  id={`zone-${(zone.label || '').toLowerCase().replace(/\s+/g,'-')}`}
                 >
-                  <div className="zone-pill__icon" style={{ background: `${zone.color || '#228BE6'}18`, color: zone.color || '#228BE6' }}>
-                    <ZoneIcon size={24} />
-                  </div>
-                  <div>
-                    <div className="zone-pill__label">{zone.label}</div>
-                    <div className="zone-pill__count">{zone.count}</div>
-                  </div>
-                </motion.a>
+                  <Link
+                    to={zone.href || '/spots'}
+                    className="zone-pill"
+                    id={`zone-${(zone.label || '').toLowerCase().replace(/\s+/g,'-')}`}
+                  >
+                    <div className="zone-pill__icon" style={{ background: `${zone.color || '#228BE6'}18`, color: zone.color || '#228BE6' }}>
+                      <ZoneIcon size={24} />
+                    </div>
+                    <div>
+                      <div className="zone-pill__label">{zone.label}</div>
+                      <div className="zone-pill__count">{zone.count}</div>
+                    </div>
+                  </Link>
+                </motion.div>
               )
             })}
           </motion.div>

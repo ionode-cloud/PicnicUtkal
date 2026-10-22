@@ -11,6 +11,7 @@ import toast from 'react-hot-toast'
 import masterPlanImg from '../../assets/master-plan.png'
 import { useSocket } from '../../context/SocketContext'
 import { buildApiUrl } from '../../services/api'
+import { uploadImageToCloudinary } from '../../services/uploadService'
 
 function resolveMapImage(imgSrc) {
   if (!imgSrc) return masterPlanImg
@@ -204,7 +205,7 @@ export default function AdminMapManagement() {
   const [plotImgInputType, setPlotImgInputType] = useState('file') // 'url' | 'file'
   const [tempImgUrl, setTempImgUrl] = useState('')
 
-  const handlePlotFileUpload = (e) => {
+  const handlePlotFileUpload = async (e) => {
     const files = Array.from(e.target.files)
     if (files.length === 0) return
 
@@ -216,38 +217,28 @@ export default function AdminMapManagement() {
     }
 
     const filesToUpload = files.slice(0, remainingSlots)
-    let processed = 0
-    const newBase64s = []
+    const toastId = toast.loading(`Uploading ${filesToUpload.length} plot photo(s) to Cloudinary...`)
 
-    filesToUpload.forEach(file => {
-      if (file.size > 15 * 1024 * 1024) {
-        toast.error(`File "${file.name}" exceeds 15MB limit`)
-        return
+    try {
+      const uploadPromises = filesToUpload.map(f => uploadImageToCloudinary(f, 'picnicutkal/plots'))
+      const cdnUrls = await Promise.all(uploadPromises)
+      const validUrls = cdnUrls.filter(Boolean)
+
+      if (validUrls.length > 0) {
+        setForm(f => {
+          const existing = Array.isArray(f.images) ? f.images : (f.image ? [f.image] : [])
+          const updated = [...existing, ...validUrls].slice(0, 10)
+          return {
+            ...f,
+            images: updated,
+            image: updated[0] || ''
+          }
+        })
+        toast.success(`✅ Added ${validUrls.length} photo(s) to Cloudinary!`, { id: toastId })
       }
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        try {
-          const compressed = await compressImage(reader.result, 1200, 0.8)
-          newBase64s.push(compressed)
-        } catch {
-          newBase64s.push(reader.result)
-        }
-        processed++
-        if (processed === filesToUpload.length) {
-          setForm(f => {
-            const existing = Array.isArray(f.images) ? f.images : (f.image ? [f.image] : [])
-            const updated = [...existing, ...newBase64s].slice(0, 10)
-            return {
-              ...f,
-              images: updated,
-              image: updated[0] || ''
-            }
-          })
-          toast.success(`Added ${newBase64s.length} photo(s)! (${Math.min(currentImages.length + newBase64s.length, 10)}/10)`)
-        }
-      }
-      reader.readAsDataURL(file)
-    })
+    } catch (err) {
+      toast.error(err.message || 'Plot photo upload failed', { id: toastId })
+    }
   }
 
   const handleAddImageUrl = () => {
@@ -584,25 +575,17 @@ export default function AdminMapManagement() {
     setShowMapModal(true)
   }
 
-  const handleMapFileUpload = (e) => {
+  const handleMapFileUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 20 * 1024 * 1024) {
-        toast.error('File size must be under 20MB')
-        return
+      const toastId = toast.loading('Uploading map layout to Cloudinary...')
+      try {
+        const cdnUrl = await uploadImageToCloudinary(file, 'picnicutkal/maps')
+        setMapForm(m => ({ ...m, image: cdnUrl }))
+        toast.success('✅ Map image uploaded to Cloudinary!', { id: toastId })
+      } catch (err) {
+        toast.error(err.message || 'Map upload failed', { id: toastId })
       }
-      const reader = new FileReader()
-      reader.onloadend = async () => {
-        try {
-          const optimized = await compressImage(reader.result, 1600, 0.85)
-          setMapForm(m => ({ ...m, image: optimized }))
-          toast.success('Map image uploaded & optimized!')
-        } catch {
-          setMapForm(m => ({ ...m, image: reader.result }))
-          toast.success('Map image selected!')
-        }
-      }
-      reader.readAsDataURL(file)
     }
   }
 

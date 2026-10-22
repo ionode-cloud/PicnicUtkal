@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken')
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'jwt_secret_key_12345678', {
-    expiresIn: '30d'
+    expiresIn: process.env.JWT_EXPIRES_IN || '30d'
   })
 }
 
@@ -14,7 +14,7 @@ exports.register = async (req, res) => {
 
     const userExists = await User.findOne({ email: normalizedEmail })
     if (userExists) {
-      return res.status(400).json({ success: false, message: 'Gmail already exists!' })
+      return res.status(400).json({ success: false, message: 'Email already registered!' })
     }
 
     const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase()
@@ -87,10 +87,11 @@ exports.getUsers = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body
-
-    const user = await User.findOne({ email })
+    const normalizedLoginEmail = email ? email.trim().toLowerCase() : ''
+    const user = await User.findOne({ email: normalizedLoginEmail })
     if (user && (await user.comparePassword(password))) {
       res.json({
+        success: true,
         _id: user._id,
         name: user.name,
         email: user.email,
@@ -117,5 +118,33 @@ exports.getMe = async (req, res) => {
     }
   } catch (error) {
     res.status(500).json({ message: error.message })
+  }
+}
+
+exports.updateProfile = async (req, res) => {
+  try {
+    const { name, phone } = req.body
+    const updateData = {}
+    if (name) updateData.name = name.trim()
+    if (phone) updateData.phone = phone.trim()
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateData },
+      { new: true }
+    ).select('-password')
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' })
+    }
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: user,
+      user
+    })
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message })
   }
 }

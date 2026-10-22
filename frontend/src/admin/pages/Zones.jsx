@@ -78,7 +78,7 @@ export const getStoredZones = () => {
     const saved = localStorage.getItem('picnicutkal_admin_zones')
     if (saved) {
       const parsed = JSON.parse(saved)
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      if (Array.isArray(parsed)) return parsed
     }
   } catch (e) {}
   return INITIAL_HOMEPAGE_ZONES
@@ -106,7 +106,7 @@ export default function Zones() {
     fetch(buildApiUrl('/api/site-config/admin_zones'))
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (d && d.success && Array.isArray(d.data) && d.data.length > 0) {
+        if (d && d.success && Array.isArray(d.data)) {
           setZones(d.data)
           try {
             localStorage.setItem('picnicutkal_admin_zones', JSON.stringify(d.data))

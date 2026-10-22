@@ -171,6 +171,7 @@ const mapRoutes     = require('./src/routes/map')
 const bookingRoutes = require('./src/routes/bookings')
 const contactRoutes = require('./src/routes/contact')
 const configRoutes  = require('./src/routes/config')
+const uploadRoutes  = require('./src/routes/upload')
 
 // Mount routes (both /api and root paths supported for production domain routing)
 app.use(['/api/auth',        '/auth'],        authRoutes)
@@ -179,6 +180,7 @@ app.use(['/api/map',         '/map'],         mapRoutes)
 app.use(['/api/bookings',    '/bookings'],    bookingRoutes)
 app.use(['/api/contact',     '/contact'],     contactRoutes)
 app.use(['/api/site-config', '/site-config'], configRoutes)
+app.use(['/api/upload',      '/upload'],      uploadRoutes)
 
 // Health Check
 app.get(['/api/health', '/health'], (req, res) => {

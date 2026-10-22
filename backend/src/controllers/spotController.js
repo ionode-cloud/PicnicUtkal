@@ -1,5 +1,6 @@
 const PicnicSpot = require('../models/PicnicSpot')
 const Zone = require('../models/Zone')
+const { processObjectForCloudinary } = require('../utils/cloudinaryHelper')
 
 exports.getSpots = async (req, res) => {
   try {
@@ -44,7 +45,8 @@ exports.getSpotById = async (req, res) => {
 
 exports.createSpot = async (req, res) => {
   try {
-    const spot = new PicnicSpot(req.body)
+    const processedBody = await processObjectForCloudinary(req.body, 'picnicutkal/spots')
+    const spot = new PicnicSpot(processedBody)
     const createdSpot = await spot.save()
     res.status(201).json(createdSpot)
   } catch (error) {

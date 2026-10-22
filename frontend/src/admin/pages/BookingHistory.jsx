@@ -93,14 +93,15 @@ export default function BookingHistory() {
     const bkDate = bk.bookingDate || bk.visitDate
     const matchesDateRange = (!fromDate || bkDate >= fromDate) && (!toDate || bkDate <= toDate)
     
-    const matchesSearch = 
-      bk.bookingId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.plotTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bk.phone.includes(searchQuery)
+    const q = searchQuery.trim().toLowerCase()
+    const matchesSearch = !q ||
+      (bk.bookingId ? String(bk.bookingId).toLowerCase() : '').includes(q) ||
+      (bk.name ? String(bk.name).toLowerCase() : '').includes(q) ||
+      (bk.email ? String(bk.email).toLowerCase() : '').includes(q) ||
+      (bk.plotTitle ? String(bk.plotTitle).toLowerCase() : '').includes(q) ||
+      (bk.phone ? String(bk.phone) : '').includes(q)
 
-    const matchesStatus = statusFilter === 'All' || bk.bookingStatus.toLowerCase() === statusFilter.toLowerCase()
+    const matchesStatus = statusFilter === 'All' || (bk.bookingStatus ? String(bk.bookingStatus).toLowerCase() : '') === statusFilter.toLowerCase()
 
     return matchesDateRange && matchesSearch && matchesStatus
   })

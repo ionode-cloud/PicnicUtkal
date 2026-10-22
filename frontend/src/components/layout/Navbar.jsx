@@ -9,6 +9,7 @@ import {
 import { useTheme } from '../../context/ThemeContext'
 import { useAuthStore, useUIStore } from '../../store'
 import { useLogo } from '../../context/LogoContext'
+import logoImg from '../../assets/logo.png'
 
 const NAV_LINKS = [
   { label: 'Home',     href: '/' },
@@ -51,27 +52,20 @@ export default function Navbar() {
         <div className="navbar__inner container-fluid">
           {/* Logo */}
           <Link to="/" className="navbar__logo" style={{ display: 'flex', alignItems: 'center' }}>
-            {logoConfig?.type === 'image' && logoConfig?.url ? (
-              <img 
-                src={logoConfig.url} 
-                alt="Logo" 
-                style={{ 
-                  height: `${Math.min(logoConfig?.height || 150, 150)}px`, 
-                  width: 'auto', 
-                  maxWidth: '320px', 
-                  objectFit: 'contain', 
-                  borderRadius: '10px' 
-                }}
-                onError={(e) => {
-                  e.target.onerror = null
-                  e.target.style.display = 'none'
-                }}
-              />
-            ) : (
-              <div className="navbar__logo-icon" style={{ width: '110px', height: '110px', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Leaf size={32} />
-              </div>
-            )}
+            <img 
+              src={logoConfig?.url || logoImg} 
+              alt="PicnicUtkal Logo" 
+              style={{ 
+                height: `${logoConfig?.height ? Math.min(Math.max(logoConfig.height, 42), 65) : 52}px`, 
+                width: 'auto', 
+                maxWidth: '220px', 
+                objectFit: 'contain'
+              }}
+              onError={(e) => {
+                e.target.onerror = null
+                e.target.src = '/logo.png'
+              }}
+            />
           </Link>
 
           {/* Desktop Nav */}

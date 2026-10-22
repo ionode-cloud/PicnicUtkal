@@ -12,6 +12,7 @@ import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
 import { useLogo } from '../../context/LogoContext'
 import { buildApiUrl } from '../../services/api'
+import { uploadImageToCloudinary } from '../../services/uploadService'
 
 function resolvePlotImage(imgSrc) {
   if (!imgSrc) return ''
@@ -208,22 +209,19 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
     toast.success('✅ Site Logo updated & broadcasted live across the website!')
   }
 
-  const handleLogoFileUpload = (e) => {
+  const handleLogoFileUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('File size exceeds 5MB limit')
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = (evt) => {
-      const dataUrl = evt.target.result
-      const updated = { ...logoForm, type: 'image', url: dataUrl }
+    const toastId = toast.loading('Uploading logo to Cloudinary...')
+    try {
+      const cdnUrl = await uploadImageToCloudinary(file, 'picnicutkal/logo')
+      const updated = { ...logoForm, type: 'image', url: cdnUrl }
       setLogoForm(updated)
       updateLogo(updated)
-      toast.success('✅ Local logo uploaded & applied live!')
+      toast.success('✅ Logo uploaded to Cloudinary & applied live!', { id: toastId })
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload logo', { id: toastId })
     }
-    reader.readAsDataURL(file)
   }
 
   // Socket.io real-time
@@ -239,58 +237,10 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   const [whyMainImgInputMode, setWhyMainImgInputMode] = useState('file') // 'file' | 'url'
   const [whySecImgInputMode, setWhySecImgInputMode] = useState('file')   // 'file' | 'url'
 
-  const handleWhyMainImgFileUpload = (e) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size should be under 5MB!')
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setHomeData(p => ({ ...p, whyImgMain: reader.result }))
-        toast.success('Local image selected for Why Section (Main)!')
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleWhySecImgFileUpload = (e) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size should be under 5MB!')
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setHomeData(p => ({ ...p, whyImgSecondary: reader.result }))
-        toast.success('Local image selected for Why Section (Secondary)!')
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   // About Form state
   const [aboutData, setAboutData] = useState(config.about || DEFAULT_CONFIG.about)
   const [newFeatureText, setNewFeatureText] = useState('')
   const [aboutImgInputMode, setAboutImgInputMode] = useState('file') // 'file' | 'url'
-
-  const handleAboutHeroFileUpload = (e) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size should be under 5MB!')
-        return
-      }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setAboutData(p => ({ ...p, heroImage: reader.result }))
-        toast.success('Local image selected for About Page!')
-      }
-      reader.readAsDataURL(file)
-    }
-  }
 
   // Gallery Form state
   const [galleryItems, setGalleryItems] = useState(config.gallery || DEFAULT_CONFIG.gallery)
@@ -308,12 +258,90 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   // Save config persistently to MongoDB database
   const saveConfigToDb = async (updatedConfig) => {
     try {
-      await fetch(buildApiUrl('/api/site-config/user_view_config'), {
+      const res = await fetch(buildApiUrl('/api/site-config/user_view_config'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ data: updatedConfig })
       })
-    } catch (e) {}
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        console.error('Save failed:', err)
+        toast.error(err?.message || `Save failed with status ${res.status}`)
+        return false
+      }
+      return true
+    } catch (e) {
+      console.error('Network error during saveConfigToDb:', e)
+      toast.error('Network error while saving settings')
+      return false
+    }
+  }
+
+  // Persist full config to DB with any overrides and keep React state synchronized
+  const persistConfig = async (overrides = {}) => {
+    const full = {
+      ...config,
+      home: homeData,
+      about: aboutData,
+      gallery: galleryItems,
+      contact: contactData,
+      footer: footerData,
+      ...overrides
+    }
+    setConfig(full)
+    await saveConfigToDb(full)
+    return full
+  }
+
+  const handleWhyMainImgFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const toastId = toast.loading('Uploading Why Section image to Cloudinary...')
+      try {
+        const cdnUrl = await uploadImageToCloudinary(file, 'picnicutkal/why_section')
+        const updatedHome = { ...homeData, whyImgMain: cdnUrl }
+        setHomeData(updatedHome)
+        await persistConfig({ home: updatedHome })
+        emitHomeConfigUpdate(updatedHome)
+        toast.success('✅ Why Section image uploaded to Cloudinary!', { id: toastId })
+      } catch (err) {
+        toast.error(err.message || 'Upload failed', { id: toastId })
+      }
+    }
+  }
+
+  const handleWhySecImgFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const toastId = toast.loading('Uploading Secondary image to Cloudinary...')
+      try {
+        const cdnUrl = await uploadImageToCloudinary(file, 'picnicutkal/why_section')
+        const updatedHome = { ...homeData, whyImgSecondary: cdnUrl }
+        setHomeData(updatedHome)
+        await persistConfig({ home: updatedHome })
+        emitHomeConfigUpdate(updatedHome)
+        toast.success('✅ Secondary image uploaded to Cloudinary!', { id: toastId })
+      } catch (err) {
+        toast.error(err.message || 'Upload failed', { id: toastId })
+      }
+    }
+  }
+
+  const handleAboutHeroFileUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const toastId = toast.loading('Uploading About Hero image to Cloudinary...')
+      try {
+        const cdnUrl = await uploadImageToCloudinary(file, 'picnicutkal/about')
+        const updatedAbout = { ...aboutData, heroImage: cdnUrl }
+        setAboutData(updatedAbout)
+        await persistConfig({ about: updatedAbout })
+        emitAboutConfigUpdate(updatedAbout)
+        toast.success('✅ About image uploaded to Cloudinary!', { id: toastId })
+      } catch (err) {
+        toast.error(err.message || 'Upload failed', { id: toastId })
+      }
+    }
   }
 
   // Load config from MongoDB database on mount and clean up any bloated localStorage
@@ -327,81 +355,112 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
       .then(d => {
         if (d && d.success && d.data) {
           setConfig(prev => ({ ...prev, ...d.data }))
-          if (d.data.home) setHomeData(d.data.home)
-          if (d.data.about) setAboutData(d.data.about)
-          if (d.data.gallery) setGalleryItems(d.data.gallery)
-          if (d.data.contact) setContactData(d.data.contact)
-          if (d.data.footer) setFooterData(d.data.footer)
+          if (d.data.home) {
+            setHomeData(prev => ({
+              ...DEFAULT_CONFIG.home,
+              ...d.data.home,
+              heroImages: Array.isArray(d.data.home.heroImages)
+                ? d.data.home.heroImages
+                : (Array.isArray(prev.heroImages) ? prev.heroImages : DEFAULT_CONFIG.home.heroImages)
+            }))
+          }
+          if (d.data.about) {
+            setAboutData(prev => ({
+              ...DEFAULT_CONFIG.about,
+              ...d.data.about,
+              features: Array.isArray(d.data.about.features) ? d.data.about.features : (prev.features || DEFAULT_CONFIG.about.features),
+              featureCards: Array.isArray(d.data.about.featureCards) ? d.data.about.featureCards : (prev.featureCards || DEFAULT_CONFIG.about.featureCards),
+              partnerships: Array.isArray(d.data.about.partnerships) ? d.data.about.partnerships : (prev.partnerships || DEFAULT_CONFIG.about.partnerships)
+            }))
+          }
+          if (d.data.gallery) {
+            setGalleryItems(Array.isArray(d.data.gallery) ? d.data.gallery : DEFAULT_CONFIG.gallery)
+          }
+          if (d.data.contact) {
+            setContactData(prev => ({ ...DEFAULT_CONFIG.contact, ...d.data.contact }))
+          }
+          if (d.data.footer) {
+            setFooterData(prev => ({
+              ...DEFAULT_CONFIG.footer,
+              ...d.data.footer,
+              quickLinks: Array.isArray(d.data.footer.quickLinks) ? d.data.footer.quickLinks : (prev.quickLinks || DEFAULT_CONFIG.footer.quickLinks),
+              zonesLinks: Array.isArray(d.data.footer.zonesLinks) ? d.data.footer.zonesLinks : (prev.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks),
+              supportLinks: Array.isArray(d.data.footer.supportLinks) ? d.data.footer.supportLinks : (prev.supportLinks || DEFAULT_CONFIG.footer.supportLinks)
+            }))
+          }
         }
       })
       .catch(() => {})
   }, [])
 
-  const handleSaveFooter = (e) => {
-    e.preventDefault()
-    const updated = { ...config, footer: footerData }
-    setConfig(updated)
-    saveConfigToDb(updated)
+  // Save Footer Tab Content
+  const handleSaveFooter = async (e) => {
+    if (e) e.preventDefault()
+    await persistConfig({ footer: footerData })
     emitFooterConfigUpdate(footerData)
     toast.success('✅ Footer details saved & persisted to database!')
   }
 
   // Save Home Tab Content
-  const handleSaveHome = (e) => {
-    e.preventDefault()
-    const updated = { ...config, home: homeData }
-    setConfig(updated)
-    saveConfigToDb(updated)
+  const handleSaveHome = async (e) => {
+    if (e) e.preventDefault()
+    await persistConfig({ home: homeData })
     emitHomeConfigUpdate(homeData)
     toast.success('✅ Home page content saved & persisted to database!')
   }
 
   // Hero Banner Images handlers
-  const handleAddHeroImage = () => {
+  const handleAddHeroImage = async () => {
     if (!newHeroImgUrl.trim()) return
-    setHomeData(prev => ({
-      ...prev,
-      heroImages: [...(prev.heroImages || []), newHeroImgUrl.trim()]
-    }))
+    const currentImgs = homeData.heroImages || []
+    const updatedImages = [...currentImgs, newHeroImgUrl.trim()]
+    const updatedHome = { ...homeData, heroImages: updatedImages }
+    setHomeData(updatedHome)
     setNewHeroImgUrl('')
-    toast.success('Hero slider background image added!')
+    await persistConfig({ home: updatedHome })
+    emitHomeConfigUpdate(updatedHome)
+    toast.success('Hero slider background image added & saved!')
   }
 
-  const handleAddHeroLocalFile = (e) => {
+  const handleAddHeroLocalFile = async (e) => {
     const files = Array.from(e.target.files || [])
     if (!files.length) return
-    const remaining = 10 - (homeData.heroImages?.length || 0)
+    const currentImgs = homeData.heroImages || []
+    const remaining = 10 - currentImgs.length
     if (remaining <= 0) {
       toast.error('Maximum 10 hero slider images allowed.')
       return
     }
     const toLoad = files.slice(0, remaining)
-    let loaded = 0
-    toLoad.forEach(file => {
-      if (file.size > 8 * 1024 * 1024) {
-        toast.error(`${file.name} exceeds 8MB limit.`)
-        return
+    const toastId = toast.loading(`Uploading ${toLoad.length} hero image(s) to Cloudinary...`)
+
+    try {
+      const uploadPromises = toLoad.map(f => uploadImageToCloudinary(f, 'picnicutkal/hero_slides'))
+      const cdnUrls = await Promise.all(uploadPromises)
+      const validUrls = cdnUrls.filter(Boolean)
+
+      if (validUrls.length > 0) {
+        const updatedImages = [...(homeData.heroImages || []), ...validUrls]
+        const updatedHome = { ...homeData, heroImages: updatedImages }
+        setHomeData(updatedHome)
+        await persistConfig({ home: updatedHome })
+        emitHomeConfigUpdate(updatedHome)
+        toast.success(`✅ ${validUrls.length} hero image(s) uploaded to Cloudinary & saved!`, { id: toastId })
       }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setHomeData(prev => ({
-          ...prev,
-          heroImages: [...(prev.heroImages || []), reader.result]
-        }))
-        loaded++
-        if (loaded === toLoad.length) toast.success(`${loaded} hero image(s) added!`)
-      }
-      reader.readAsDataURL(file)
-    })
+    } catch (err) {
+      toast.error(err.message || 'Hero images upload failed', { id: toastId })
+    }
     e.target.value = ''
   }
 
-  const handleRemoveHeroImage = (idx) => {
-    setHomeData(prev => ({
-      ...prev,
-      heroImages: prev.heroImages.filter((_, i) => i !== idx)
-    }))
-    toast.success('Hero image removed')
+  const handleRemoveHeroImage = async (idx) => {
+    const currentImgs = homeData.heroImages || []
+    const updatedImages = currentImgs.filter((_, i) => i !== idx)
+    const updatedHome = { ...homeData, heroImages: updatedImages }
+    setHomeData(updatedHome)
+    await persistConfig({ home: updatedHome })
+    emitHomeConfigUpdate(updatedHome)
+    toast.success('Hero image removed & saved!')
   }
 
   // Why Feature Card edit handler
@@ -414,46 +473,151 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
   }
 
   // Save About Tab Content
-  const handleSaveAbout = (e) => {
-    e.preventDefault()
-    const updated = { ...config, about: aboutData }
-    setConfig(updated)
-    saveConfigToDb(updated)
+  const handleSaveAbout = async (e) => {
+    if (e) e.preventDefault()
+    await persistConfig({ about: aboutData })
     emitAboutConfigUpdate(aboutData)
     toast.success('✅ About page content saved & persisted to database!')
   }
 
-  const handleAddFeature = () => {
+  const handleAddFeature = async () => {
     if (!newFeatureText.trim()) return
-    setAboutData(prev => ({ ...prev, features: [...prev.features, newFeatureText.trim()] }))
+    const updatedFeatures = [...(aboutData.features || []), newFeatureText.trim()]
+    const updatedAbout = { ...aboutData, features: updatedFeatures }
+    setAboutData(updatedAbout)
     setNewFeatureText('')
-    toast.success('Highlight feature added')
+    await persistConfig({ about: updatedAbout })
+    emitAboutConfigUpdate(updatedAbout)
+    toast.success('Highlight feature added & saved!')
   }
 
-  const handleRemoveFeature = (idx) => {
-    setAboutData(prev => ({ ...prev, features: prev.features.filter((_, i) => i !== idx) }))
-    toast.success('Feature removed')
+  const handleRemoveFeature = async (idx) => {
+    const updatedFeatures = (aboutData.features || []).filter((_, i) => i !== idx)
+    const updatedAbout = { ...aboutData, features: updatedFeatures }
+    setAboutData(updatedAbout)
+    await persistConfig({ about: updatedAbout })
+    emitAboutConfigUpdate(updatedAbout)
+    toast.success('Feature removed & saved!')
+  }
+
+  const handleAddFeatureCard = async () => {
+    const currentCards = aboutData.featureCards || DEFAULT_CONFIG.about.featureCards
+    const updatedCards = [...currentCards, { icon: '✨', title: '', desc: '' }]
+    const updatedAbout = { ...aboutData, featureCards: updatedCards }
+    setAboutData(updatedAbout)
+    await persistConfig({ about: updatedAbout })
+    emitAboutConfigUpdate(updatedAbout)
+    toast.success('Feature card added & saved!')
+  }
+
+  const handleRemoveFeatureCard = async (idx) => {
+    const currentCards = aboutData.featureCards || DEFAULT_CONFIG.about.featureCards
+    const updatedCards = currentCards.filter((_, i) => i !== idx)
+    const updatedAbout = { ...aboutData, featureCards: updatedCards }
+    setAboutData(updatedAbout)
+    await persistConfig({ about: updatedAbout })
+    emitAboutConfigUpdate(updatedAbout)
+    toast.success('Feature card removed & saved!')
+  }
+
+  const handleAddPartner = async () => {
+    const currentPartners = aboutData.partnerships || DEFAULT_CONFIG.about.partnerships
+    const updatedPartners = [...currentPartners, '']
+    const updatedAbout = { ...aboutData, partnerships: updatedPartners }
+    setAboutData(updatedAbout)
+    await persistConfig({ about: updatedAbout })
+    emitAboutConfigUpdate(updatedAbout)
+    toast.success('Partner item added & saved!')
+  }
+
+  const handleRemovePartner = async (idx) => {
+    const currentPartners = aboutData.partnerships || DEFAULT_CONFIG.about.partnerships
+    const updatedPartners = currentPartners.filter((_, i) => i !== idx)
+    const updatedAbout = { ...aboutData, partnerships: updatedPartners }
+    setAboutData(updatedAbout)
+    await persistConfig({ about: updatedAbout })
+    emitAboutConfigUpdate(updatedAbout)
+    toast.success('Partner removed & saved!')
+  }
+
+  // Footer Link Handlers
+  const handleAddQuickLink = async () => {
+    const current = footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks
+    const updated = [...current, { label: '', href: '/' }]
+    const updatedFooter = { ...footerData, quickLinks: updated }
+    setFooterData(updatedFooter)
+    await persistConfig({ footer: updatedFooter })
+    emitFooterConfigUpdate(updatedFooter)
+    toast.success('Quick link item added & saved!')
+  }
+
+  const handleRemoveQuickLink = async (idx) => {
+    const current = footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks
+    const updated = current.filter((_, i) => i !== idx)
+    const updatedFooter = { ...footerData, quickLinks: updated }
+    setFooterData(updatedFooter)
+    await persistConfig({ footer: updatedFooter })
+    emitFooterConfigUpdate(updatedFooter)
+    toast.success('Quick link removed & saved!')
+  }
+
+  const handleAddZoneLink = async () => {
+    const current = footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks
+    const updated = [...current, { label: '', href: '/spots' }]
+    const updatedFooter = { ...footerData, zonesLinks: updated }
+    setFooterData(updatedFooter)
+    await persistConfig({ footer: updatedFooter })
+    emitFooterConfigUpdate(updatedFooter)
+    toast.success('Zone link item added & saved!')
+  }
+
+  const handleRemoveZoneLink = async (idx) => {
+    const current = footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks
+    const updated = current.filter((_, i) => i !== idx)
+    const updatedFooter = { ...footerData, zonesLinks: updated }
+    setFooterData(updatedFooter)
+    await persistConfig({ footer: updatedFooter })
+    emitFooterConfigUpdate(updatedFooter)
+    toast.success('Zone link removed & saved!')
+  }
+
+  const handleAddSupportLink = async () => {
+    const current = footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks
+    const updated = [...current, { label: '', href: '/contact' }]
+    const updatedFooter = { ...footerData, supportLinks: updated }
+    setFooterData(updatedFooter)
+    await persistConfig({ footer: updatedFooter })
+    emitFooterConfigUpdate(updatedFooter)
+    toast.success('Support link item added & saved!')
+  }
+
+  const handleRemoveSupportLink = async (idx) => {
+    const current = footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks
+    const updated = current.filter((_, i) => i !== idx)
+    const updatedFooter = { ...footerData, supportLinks: updated }
+    setFooterData(updatedFooter)
+    await persistConfig({ footer: updatedFooter })
+    emitFooterConfigUpdate(updatedFooter)
+    toast.success('Support link removed & saved!')
   }
 
   // Handle Local Image File Upload
-  const handleLocalFileUpload = (e) => {
+  const handleLocalFileUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error('File size should be under 5MB!')
-        return
+      const toastId = toast.loading('Uploading photo to Cloudinary...')
+      try {
+        const cdnUrl = await uploadImageToCloudinary(file, 'picnicutkal/gallery')
+        setNewImgSrc(cdnUrl)
+        toast.success('✅ Photo uploaded to Cloudinary!', { id: toastId })
+      } catch (err) {
+        toast.error(err.message || 'Upload failed', { id: toastId })
       }
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setNewImgSrc(reader.result)
-        toast.success('Local photo selected!')
-      }
-      reader.readAsDataURL(file)
     }
   }
 
   // Save Gallery Tab Item
-  const handleAddGalleryItem = (e) => {
+  const handleAddGalleryItem = async (e) => {
     e.preventDefault()
     if (!newImgSrc || !newImgTitle.trim()) {
       toast.error('Image and Photo Title are required!')
@@ -466,33 +630,27 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
     }
     const updatedGallery = [newItem, ...galleryItems]
     setGalleryItems(updatedGallery)
-    const updatedConfig = { ...config, gallery: updatedGallery }
-    setConfig(updatedConfig)
-    saveConfigToDb(updatedConfig)
+    await persistConfig({ gallery: updatedGallery })
     emitGalleryConfigUpdate(updatedGallery)
     setNewImgSrc('')
     setNewImgTitle('')
     toast.success('✅ Gallery photo added & persisted to database!')
   }
 
-  const handleDeleteGalleryItem = (id, title) => {
+  const handleDeleteGalleryItem = async (id, title) => {
     if (window.confirm(`Delete photo "${title}" from Gallery?`)) {
       const updatedGallery = galleryItems.filter(item => item.id !== id)
       setGalleryItems(updatedGallery)
-      const updatedConfig = { ...config, gallery: updatedGallery }
-      setConfig(updatedConfig)
-      saveConfigToDb(updatedConfig)
+      await persistConfig({ gallery: updatedGallery })
       emitGalleryConfigUpdate(updatedGallery)
       toast.success('✅ Gallery photo removed & persisted to database!')
     }
   }
 
   // Save Contact Tab Content
-  const handleSaveContact = (e) => {
-    e.preventDefault()
-    const updated = { ...config, contact: contactData }
-    setConfig(updated)
-    saveConfigToDb(updated)
+  const handleSaveContact = async (e) => {
+    if (e) e.preventDefault()
+    await persistConfig({ contact: contactData })
     emitContactConfigUpdate(contactData)
     toast.success('✅ Contact details saved & persisted to database!')
   }
@@ -1114,7 +1272,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                     type="button"
                     className="btn btn-outline btn-sm"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    onClick={() => setAboutData(p => ({ ...p, featureCards: [...(p.featureCards || []), { icon: '✨', title: '', desc: '' }] }))}
+                    onClick={handleAddFeatureCard}
                   >
                     <Plus size={14} /> Add Card
                   </button>
@@ -1128,7 +1286,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                           type="button"
                           className="btn btn-ghost btn-xs"
                           style={{ color: 'var(--error)' }}
-                          onClick={() => setAboutData(p => ({ ...p, featureCards: (p.featureCards || []).filter((_, i) => i !== idx) }))}
+                          onClick={() => handleRemoveFeatureCard(idx)}
                         >
                           <Trash2 size={13} />
                         </button>
@@ -1193,7 +1351,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                     type="button"
                     className="btn btn-outline btn-sm"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    onClick={() => setAboutData(p => ({ ...p, partnerships: [...(p.partnerships || []), ''] }))}
+                    onClick={handleAddPartner}
                   >
                     <Plus size={14} /> Add Partner
                   </button>
@@ -1217,7 +1375,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                         type="button"
                         className="btn btn-ghost btn-xs"
                         style={{ color: 'var(--error)', flexShrink: 0 }}
-                        onClick={() => setAboutData(p => ({ ...p, partnerships: (p.partnerships || []).filter((_, i) => i !== idx) }))}
+                        onClick={() => handleRemovePartner(idx)}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -1533,74 +1691,8 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                         Select logo file from your computer (PNG, JPG, SVG, WebP). Recommended height: 40px–60px.
                       </span>
                     </div>
-
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px' }}>
-                      <label className="input-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
-                        <LinkIcon size={16} /> Or Enter Logo Image URL:
-                      </label>
-                      <input
-                        type="url"
-                        className="input"
-                        placeholder="https://domain.com/logo.png"
-                        value={logoForm?.url || ''}
-                        onChange={(e) => {
-                          const updated = { ...logoForm, url: e.target.value }
-                          setLogoForm(updated)
-                          updateLogo(updated)
-                        }}
-                        style={{ width: '100%', padding: '10px 14px' }}
-                      />
-                    </div>
                   </div>
                 )}
-
-                {/* Logo Height / Size Control */}
-                <div style={{ padding: '16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                    <label className="input-label" style={{ fontWeight: 600, margin: 0 }}>
-                      📏 Logo Display Height (Size):
-                    </label>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--gold)', background: 'rgba(201,168,76,0.15)', padding: '2px 10px', borderRadius: '12px' }}>
-                      {logoForm?.height || 50}px
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="30"
-                    max="140"
-                    step="2"
-                    value={logoForm?.height || 65}
-                    onChange={(e) => {
-                      const updated = { ...logoForm, height: Number(e.target.value) }
-                      setLogoForm(updated)
-                      updateLogo(updated)
-                    }}
-                    style={{ width: '100%', accentColor: 'var(--gold)', cursor: 'pointer' }}
-                  />
-                  <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
-                    {[
-                      { label: 'Medium (55px)', val: 55 },
-                      { label: 'Large (75px)', val: 75 },
-                      { label: 'XL (95px)', val: 95 },
-                      { label: 'Jumbo (120px)', val: 120 }
-                    ].map(preset => (
-                      <button
-                        key={preset.val}
-                        type="button"
-                        className="btn btn-ghost"
-                        onClick={() => {
-                          const updated = { ...logoForm, height: preset.val }
-                          setLogoForm(updated)
-                          updateLogo(updated)
-                        }}
-                        style={{ flex: 1, padding: '4px 8px', fontSize: '11px', borderRadius: '4px' }}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
               </div>
 
               {/* Live Preview Box */}
@@ -1814,10 +1906,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                           type="button"
                           className="btn btn-ghost btn-xs"
                           style={{ color: 'var(--error)' }}
-                          onClick={() => {
-                            const updated = (footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks).filter((_, i) => i !== idx)
-                            setFooterData(p => ({ ...p, quickLinks: updated }))
-                          }}
+                          onClick={() => handleRemoveQuickLink(idx)}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1828,10 +1917,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                     type="button"
                     className="btn btn-outline btn-xs"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    onClick={() => {
-                      const updated = [...(footerData.quickLinks || DEFAULT_CONFIG.footer.quickLinks), { label: '', href: '/' }]
-                      setFooterData(p => ({ ...p, quickLinks: updated }))
-                    }}
+                    onClick={handleAddQuickLink}
                   >
                     <Plus size={13} /> Add Quick Link Item
                   </button>
@@ -1878,10 +1964,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                           type="button"
                           className="btn btn-ghost btn-xs"
                           style={{ color: 'var(--error)' }}
-                          onClick={() => {
-                            const updated = (footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks).filter((_, i) => i !== idx)
-                            setFooterData(p => ({ ...p, zonesLinks: updated }))
-                          }}
+                          onClick={() => handleRemoveZoneLink(idx)}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1892,10 +1975,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                     type="button"
                     className="btn btn-outline btn-xs"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    onClick={() => {
-                      const updated = [...(footerData.zonesLinks || DEFAULT_CONFIG.footer.zonesLinks), { label: '', href: '/spots' }]
-                      setFooterData(p => ({ ...p, zonesLinks: updated }))
-                    }}
+                    onClick={handleAddZoneLink}
                   >
                     <Plus size={13} /> Add Zone Link Item
                   </button>
@@ -1942,10 +2022,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                           type="button"
                           className="btn btn-ghost btn-xs"
                           style={{ color: 'var(--error)' }}
-                          onClick={() => {
-                            const updated = (footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks).filter((_, i) => i !== idx)
-                            setFooterData(p => ({ ...p, supportLinks: updated }))
-                          }}
+                          onClick={() => handleRemoveSupportLink(idx)}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -1956,10 +2033,7 @@ export default function UserViewMgmt({ defaultTab = 'home' }) {
                     type="button"
                     className="btn btn-outline btn-xs"
                     style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                    onClick={() => {
-                      const updated = [...(footerData.supportLinks || DEFAULT_CONFIG.footer.supportLinks), { label: '', href: '/contact' }]
-                      setFooterData(p => ({ ...p, supportLinks: updated }))
-                    }}
+                    onClick={handleAddSupportLink}
                   >
                     <Plus size={13} /> Add Support Link Item
                   </button>

@@ -2,7 +2,7 @@ const express = require('express')
 const router = express.Router()
 const Booking = require('../models/Booking')
 const { getSpots, getSpotById, createSpot } = require('../controllers/spotController')
-const { protect, adminOnly } = require('../middleware/auth')
+const { protect, adminOrStaff } = require('../middleware/auth')
 
 // GET /api/spots/:spotId/availability
 router.get('/:spotId/availability', async (req, res) => {
@@ -52,6 +52,6 @@ router.get('/:spotId/availability', async (req, res) => {
 
 router.get('/', getSpots)
 router.get('/:id', getSpotById)
-router.post('/', protect, adminOnly, createSpot)
+router.post('/', protect, adminOrStaff, createSpot)
 
 module.exports = router

@@ -134,11 +134,8 @@ export default function Bookings() {
       if (socket) socket.emit('plots_update')
     } catch (e) {}
 
-    if (apiStatus === 'cancelled') {
-      setBookings(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
-    } else {
-      setBookings(prev => prev.map(b => (b.bookingId === bookingId || b._id === bookingId) ? { ...b, bookingStatus: newStatus, status: apiStatus } : b))
-    }
+    invalidateBookings()
+    refetchBookings()
     toast.success(`Booking ${bookingId} status updated to ${newStatus}`)
     if (selectedBillDrawer && (selectedBillDrawer.bookingId === bookingId || selectedBillDrawer._id === bookingId)) {
       setSelectedBillDrawer(prev => ({ ...prev, bookingStatus: newStatus, status: apiStatus }))
@@ -153,7 +150,8 @@ export default function Bookings() {
         const res = await fetch(buildApiUrl(`/api/bookings/${bookingId}`), { method: 'DELETE' })
         const data = await res.json()
         if (data.success) {
-          setBookings(prev => prev.filter(b => b.bookingId !== bookingId && b._id !== bookingId))
+          invalidateBookings()
+          refetchBookings()
           if (socket) socket.emit('plots_update')
           toast.success(`Booking #${bookingId} deleted from All Bookings! Date freed on calendar.`)
         } else {
@@ -176,7 +174,8 @@ export default function Bookings() {
       })
       const data = await res.json()
       if (data.success) {
-        setBookings(prev => prev.filter(b => b.bookingId !== id && b._id !== id))
+        invalidateBookings()
+        refetchBookings()
         if (socket) socket.emit('plots_update')
         toast.success(`Spot "${booking.plotTitle}" reset! Removed from All Bookings and saved in Booking History.`, {
           icon: '🔄',
@@ -205,7 +204,8 @@ export default function Bookings() {
       }
     }
     if (socket) socket.emit('plots_update')
-    setBookings([])
+    invalidateBookings()
+    refetchBookings()
     toast.success(`Reset complete! ${count || 'All'} spots updated & moved to Booking History.`, { icon: '✨' })
   }
 

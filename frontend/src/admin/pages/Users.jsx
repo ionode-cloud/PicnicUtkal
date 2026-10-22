@@ -49,30 +49,25 @@ export default function Users() {
       return false
     }
 
+    const q = searchQuery.trim().toLowerCase()
     return (
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.phone.includes(searchQuery) ||
-      u.id.toLowerCase().includes(searchQuery.toLowerCase())
+      (u.name ? u.name.toLowerCase() : '').includes(q) ||
+      (u.email ? u.email.toLowerCase() : '').includes(q) ||
+      (u.phone ? String(u.phone) : '').includes(q) ||
+      (u.id ? String(u.id).toLowerCase() : '').includes(q)
     )
   })
 
   // Toggle user account status
   const handleToggleStatus = (userId) => {
-    setUsersList(prev => prev.map(u => {
-      if (u.id === userId) {
-        const newStatus = u.status === 'Active' ? 'Suspended' : 'Active'
-        toast.success(`User #${userId} status updated to ${newStatus}`)
-        return { ...u, status: newStatus }
-      }
-      return u
-    }))
+    invalidateUsers()
+    toast.success(`User #${userId} status updated!`)
   }
 
   // Delete user account
   const handleDeleteUser = (userId, name) => {
     if (window.confirm(`Are you sure you want to delete user account "${name}"?`)) {
-      setUsersList(prev => prev.filter(u => u.id !== userId))
+      invalidateUsers()
       toast.success(`User "${name}" removed successfully.`)
     }
   }

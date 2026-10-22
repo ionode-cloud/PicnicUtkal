@@ -2,8 +2,20 @@ import { useState, useMemo, useEffect } from 'react'
 import { Helmet } from 'react-helmet-async'
 import Lightbox from 'yet-another-react-lightbox'
 import 'yet-another-react-lightbox/styles.css'
+import { LuImage as ImageIcon } from 'react-icons/lu'
 import { useSocket } from '../context/SocketContext'
 import { useSiteConfig, useInvalidators } from '../hooks/useQueryHooks'
+
+function resolvePlotImage(imgSrc) {
+  if (!imgSrc) return ''
+  if (typeof imgSrc === 'string' && imgSrc.startsWith('/uploads')) {
+    const backendOrigin = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+      : 'http://localhost:5300'
+    return `${backendOrigin}${imgSrc}`
+  }
+  return imgSrc
+}
 
 function GallerySkeleton() {
   return (
@@ -32,6 +44,13 @@ export default function Gallery() {
     return []
   }, [siteConfigData])
 
+  const resolvedSlides = useMemo(() => {
+    return images.map(img => ({
+      ...img,
+      src: resolvePlotImage(img.src)
+    }))
+  }, [images])
+
   // Socket.io: live-reload when admin updates gallery
   const { socket } = useSocket()
   useEffect(() => {
@@ -59,42 +78,52 @@ export default function Gallery() {
           <p style={{ color: 'var(--text-muted)', marginTop: 'var(--space-2)' }}>Captures from our high-end picnic resorts, camping zones, and natural sanctuaries.</p>
         </div>
 
-        {/* Grid */}
-        <div className="gallery-grid-responsive" style={{ marginBlock: 'var(--space-8)' }}>
-          {images.map((img, i) => (
-            <div
-              key={img.id || i}
-              className="card"
-              style={{ overflow: 'hidden', cursor: 'pointer', position: 'relative', height: '240px' }}
-              onClick={() => setIndex(i)}
-            >
-              <img
-                src={img.src}
-                alt={img.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
-                onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-              />
-              <div style={{
-                position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
-                padding: '12px 14px', color: '#ffffff',
-                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
-                zIndex: 2
-              }}>
-                <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.9)', margin: 0, lineHeight: '1.3' }}>
-                  {img.title}
-                </h3>
+        {/* Empty State or Grid */}
+        {images.length === 0 ? (
+          <div className="card text-center" style={{ padding: '60px 20px', maxWidth: '480px', margin: '40px auto' }}>
+            <ImageIcon size={48} style={{ color: 'var(--gold)', margin: '0 auto 16px', opacity: 0.8 }} />
+            <h3 className="heading-3">No Gallery Photos Yet</h3>
+            <p style={{ color: 'var(--text-muted)', marginTop: '8px' }}>
+              Photos will appear here once uploaded from the Admin Panel.
+            </p>
+          </div>
+        ) : (
+          <div className="gallery-grid-responsive" style={{ marginBlock: 'var(--space-8)' }}>
+            {resolvedSlides.map((img, i) => (
+              <div
+                key={img.id || i}
+                className="card"
+                style={{ overflow: 'hidden', cursor: 'pointer', position: 'relative', height: '240px' }}
+                onClick={() => setIndex(i)}
+              >
+                <img
+                  src={img.src}
+                  alt={img.title || 'Picnic Gallery'}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.4s' }}
+                  onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                />
+                <div style={{
+                  position: 'absolute', inset: 0,
+                  background: 'linear-gradient(to top, rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.4) 50%, transparent 100%)',
+                  padding: '12px 14px', color: '#ffffff',
+                  display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                  zIndex: 2
+                }}>
+                  <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', textShadow: '0 1px 3px rgba(0,0,0,0.9), 0 2px 6px rgba(0,0,0,0.9)', margin: 0, lineHeight: '1.3' }}>
+                    {img.title}
+                  </h3>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <Lightbox
           index={index}
           open={index >= 0}
           close={() => setIndex(-1)}
-          slides={images}
+          slides={resolvedSlides}
         />
       </div>
     </>

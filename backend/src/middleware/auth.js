@@ -9,6 +9,9 @@ const protect = async (req, res, next) => {
       token = req.headers.authorization.split(' ')[1]
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'jwt_secret_key_12345678')
       req.user = await User.findById(decoded.id).select('-password')
+      if (!req.user) {
+        return res.status(401).json({ message: 'User not found or deleted' })
+      }
       return typeof next === 'function' ? next() : undefined
     } catch (error) {
       console.error(error)
@@ -29,5 +32,13 @@ const adminOnly = (req, res, next) => {
   }
 }
 
-module.exports = { protect, adminOnly }
+const adminOrStaff = (req, res, next) => {
+  if (req.user && ['admin', 'manager', 'staff'].includes(req.user.role)) {
+    next()
+  } else {
+    res.status(403).json({ message: 'Not authorized, staff or admin access required' })
+  }
+}
+
+module.exports = { protect, adminOnly, adminOrStaff }
 // End of file

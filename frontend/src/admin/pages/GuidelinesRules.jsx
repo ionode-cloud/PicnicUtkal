@@ -16,6 +16,7 @@ import {
 } from 'react-icons/lu'
 import toast from 'react-hot-toast'
 import { useSocket } from '../../context/SocketContext'
+import { buildApiUrl } from '../../services/api'
 
 export const DEFAULT_GUIDELINES = [
   {
@@ -75,11 +76,49 @@ export default function GuidelinesRules() {
 
   const { socket } = useSocket()
 
-  // Sync to localStorage and broadcast live Socket.io event on update
+  // Fetch guidelines from MongoDB database on mount
+  useEffect(() => {
+    fetch(buildApiUrl('/api/site-config/guidelines_rules'))
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d && d.success && Array.isArray(d.data)) {
+          setRules(d.data)
+          try {
+            localStorage.setItem('picnicutkal_guidelines_rules', JSON.stringify(d.data))
+          } catch (e) {}
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  // Listen for socket real-time sync across admin sessions
+  useEffect(() => {
+    if (!socket) return
+    const handleUpdate = (data) => {
+      if (data && Array.isArray(data.rules)) {
+        setRules(data.rules)
+        try {
+          localStorage.setItem('picnicutkal_guidelines_rules', JSON.stringify(data.rules))
+        } catch (e) {}
+      }
+    }
+    socket.on('guidelines_rules_update', handleUpdate)
+    return () => socket.off('guidelines_rules_update', handleUpdate)
+  }, [socket])
+
+  // Sync to localStorage, MongoDB & broadcast live Socket.io event on update
   const saveAndBroadcast = (updatedRules) => {
     setRules(updatedRules)
     try {
       localStorage.setItem('picnicutkal_guidelines_rules', JSON.stringify(updatedRules))
+    } catch (e) {}
+
+    try {
+      fetch(buildApiUrl('/api/site-config/guidelines_rules'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: updatedRules })
+      }).catch(() => {})
     } catch (e) {}
 
     if (socket) {

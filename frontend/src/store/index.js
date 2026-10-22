@@ -19,13 +19,10 @@ export const useAuthStore = create(
 )
 
 export const useUIStore = create(
-  persist(
-    (set) => ({
-      isMobileMenuOpen: false,
-      isSearchOpen: false,
-      setMobileMenu: (val) => set({ isMobileMenuOpen: val }),
-      setSearchOpen: (val) => set({ isSearchOpen: val }),
-    }),
-    { name: 'picnicutkal-ui' }
-  )
+  (set) => ({
+    isMobileMenuOpen: false,
+    isSearchOpen: false,
+    setMobileMenu: (val) => set({ isMobileMenuOpen: val }),
+    setSearchOpen: (val) => set({ isSearchOpen: val }),
+  })
 )

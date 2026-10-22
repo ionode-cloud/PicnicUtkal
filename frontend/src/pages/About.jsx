@@ -4,6 +4,17 @@ import { LuTrees as Trees, LuCompass as Compass, LuHeart as Heart } from 'react-
 import { useSocket } from '../context/SocketContext'
 import { useSiteConfig, useInvalidators } from '../hooks/useQueryHooks'
 
+function resolvePlotImage(imgSrc) {
+  if (!imgSrc) return ''
+  if (typeof imgSrc === 'string' && imgSrc.startsWith('/uploads')) {
+    const backendOrigin = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '') 
+      : 'http://localhost:5300'
+    return `${backendOrigin}${imgSrc}`
+  }
+  return imgSrc
+}
+
 function AboutSkeleton() {
   return (
     <div className="about-page container-fluid" style={{ padding: '40px 20px' }}>
@@ -86,7 +97,7 @@ export default function About() {
           {about.heroImage && (
             <div>
               <img 
-                src={about.heroImage} 
+                src={resolvePlotImage(about.heroImage)} 
                 alt="About PicnicUtkal" 
                 style={{ borderRadius: 'var(--radius-xl)', width: '100%', height: '400px', objectFit: 'cover', boxShadow: 'var(--shadow-lg)' }} 
               />

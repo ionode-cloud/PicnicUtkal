@@ -3,6 +3,8 @@ const router = express.Router()
 const mongoose = require('mongoose')
 const MapPlot = require('../models/MapPlot')
 const InteractiveMap = require('../models/InteractiveMap')
+const { protect, adminOnly, adminOrStaff } = require('../middleware/auth')
+const { processObjectForCloudinary } = require('../utils/cloudinaryHelper')
 
 // GET all maps
 router.get('/maps', async (req, res) => {
@@ -17,14 +19,15 @@ router.get('/maps', async (req, res) => {
 // POST create map
 router.post('/maps', async (req, res) => {
   try {
+    const processedBody = await processObjectForCloudinary(req.body, 'picnicutkal/maps')
     const payload = {
-      title: req.body.title,
-      image: req.body.image,
-      description: req.body.description || '',
-      spotId: req.body.spotId || '',
-      linkedSpot: req.body.linkedSpot || '',
-      googleMapUrl: req.body.googleMapUrl || '',
-      isDefault: Boolean(req.body.isDefault)
+      title: processedBody.title,
+      image: processedBody.image,
+      description: processedBody.description || '',
+      spotId: processedBody.spotId || '',
+      linkedSpot: processedBody.linkedSpot || '',
+      googleMapUrl: processedBody.googleMapUrl || '',
+      isDefault: Boolean(processedBody.isDefault)
     }
     const map = new InteractiveMap(payload)
     const saved = await map.save()
@@ -39,12 +42,13 @@ router.post('/maps', async (req, res) => {
 router.put('/maps/:id', async (req, res) => {
   try {
     const id = req.params.id
+    const processedBody = await processObjectForCloudinary(req.body, 'picnicutkal/maps')
     let map = null
     if (mongoose.Types.ObjectId.isValid(id)) {
-      map = await InteractiveMap.findByIdAndUpdate(id, req.body, { new: true })
+      map = await InteractiveMap.findByIdAndUpdate(id, processedBody, { new: true })
     }
     if (!map) {
-      map = await InteractiveMap.findOneAndUpdate({ title: req.body.title }, req.body, { new: true })
+      map = await InteractiveMap.findOneAndUpdate({ title: processedBody.title }, processedBody, { new: true })
     }
     if (!map) {
       return res.status(404).json({ success: false, message: 'Map not found' })
@@ -72,6 +76,110 @@ router.delete('/maps/:id', async (req, res) => {
   }
 })
 
+const DEFAULT_PLOTS = [
+  {
+    customId: 'barapita-riverside-gazebo',
+    title: 'Barapita Riverside Gazebo',
+    price: 799,
+    area: '3200 sq ft',
+    capacity: 50,
+    description: 'Scenic riverside gazebo spot situated along the Chandaka forest border with direct water canal breeze, private shade canopy, and BBQ grill facility.',
+    facilities: ['Riverside View', 'Private Shade', 'Water Tap', 'BBQ Grill', 'Dustbins'],
+    status: 'available',
+    coordinates: { x: 22, y: 35, width: 14, height: 12 },
+    color: '#228BE6',
+    mapId: 'default-master-plan',
+    image: 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1510798831971-661eb04b3739?w=800&q=80',
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80'
+    ],
+    distanceFromGate: '90 m',
+    distanceFromCanal: '10 m'
+  },
+  {
+    customId: 'forest-canopy-picnic-spot',
+    title: 'Forest Canopy Picnic Spot',
+    price: 649,
+    area: '2800 sq ft',
+    capacity: 40,
+    description: 'Enchanting woodland clearing under dense Sal and Teak trees. Ideal for family gatherings and peaceful nature escapes with wooden dining benches.',
+    facilities: ['Forest Shade', 'Wooden Benches', 'Handwash Counter', 'Lighting', 'Parking Nearby'],
+    status: 'available',
+    coordinates: { x: 42, y: 28, width: 14, height: 12 },
+    color: '#2F9E44',
+    mapId: 'default-master-plan',
+    image: 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800&q=80',
+      'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=800&q=80'
+    ],
+    distanceFromGate: '130 m',
+    distanceFromCanal: '40 m'
+  },
+  {
+    customId: 'deras-adventure-ground',
+    title: 'Deras Adventure Ground & Pandal',
+    price: 1199,
+    area: '5000 sq ft',
+    capacity: 80,
+    description: 'Expansive premium event pandal with concrete stage platform, multi-point power plugs, and spacious open lawn for team sports and group celebrations.',
+    facilities: ['Stage Area', 'Power Supply', 'Drinking Water', 'Restrooms', 'Sports Ground'],
+    status: 'available',
+    coordinates: { x: 62, y: 40, width: 16, height: 14 },
+    color: '#E8590C',
+    mapId: 'default-master-plan',
+    image: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80',
+      'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?w=800&q=80'
+    ],
+    distanceFromGate: '180 m',
+    distanceFromCanal: '60 m'
+  },
+  {
+    customId: 'sunset-lawn-family-zone',
+    title: 'Sunset Lawn & Family Zone',
+    price: 899,
+    area: '4000 sq ft',
+    capacity: 60,
+    description: 'Manicured green lawn facing the sunset horizon. Features kid-safe open spaces, floral pergolas, and convenient proximity to fresh drinking water.',
+    facilities: ['Lawn Grass', 'Play Area for Kids', 'Dustbins', 'Handwash Counter', 'Pergola Shade'],
+    status: 'available',
+    coordinates: { x: 38, y: 55, width: 15, height: 13 },
+    color: '#C9A84C',
+    mapId: 'default-master-plan',
+    image: 'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1502472584811-0a2f2feb8968?w=800&q=80',
+      'https://images.unsplash.com/photo-1539635278303-d4002c07eae3?w=800&q=80'
+    ],
+    distanceFromGate: '110 m',
+    distanceFromCanal: '25 m'
+  },
+  {
+    customId: 'cottage-rooms',
+    title: 'Cottage Rooms & AC Suite',
+    price: 1499,
+    area: '4800 sq ft',
+    capacity: 20,
+    description: 'Air-conditioned luxury forest cottages with ensuite modern bathrooms, hot water geysers, TV, private sitouts, and 24/7 housekeeping support.',
+    facilities: ['AC Rooms', 'Attached Bath', 'Geyser', 'TV', 'Private Sitout', 'Room Service'],
+    status: 'available',
+    coordinates: { x: 70, y: 18, width: 16, height: 15 },
+    color: '#A07830',
+    isCottage: true,
+    mapId: 'default-master-plan',
+    image: 'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80',
+    images: [
+      'https://images.unsplash.com/photo-1587061949409-02df41d5e562?w=800&q=80',
+      'https://images.unsplash.com/photo-1596394516093-501ba68a0ba6?w=800&q=80'
+    ],
+    distanceFromGate: '160 m',
+    distanceFromCanal: '20 m'
+  }
+]
+
 // GET all plots (optional mapId filter)
 router.get('/plots', async (req, res) => {
   try {
@@ -79,8 +187,15 @@ router.get('/plots', async (req, res) => {
     if (req.query.mapId) {
       filter.mapId = req.query.mapId
     }
-    const plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 }).lean()
-    res.json({ success: true, data: plots })
+    let plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 }).lean()
+    if (!plots || plots.length === 0) {
+      const count = await MapPlot.countDocuments()
+      if (count === 0) {
+        await MapPlot.insertMany(DEFAULT_PLOTS).catch(() => {})
+        plots = await MapPlot.find(filter).sort({ priority: -1, createdAt: 1 }).lean()
+      }
+    }
+    res.json({ success: true, data: plots || [] })
   } catch (err) {
     res.status(500).json({ success: false, message: err.message })
   }
@@ -128,8 +243,8 @@ router.get('/plots/:id', async (req, res) => {
       try {
         const SiteConfig = require('../models/SiteConfig')
         const config = await SiteConfig.findOne({ key: 'map_plots_config' })
-        if (config && Array.isArray(config.value)) {
-          const found = config.value.find(p => p._id === id || p.id === id || p.customId === id)
+        if (config && Array.isArray(config.data)) {
+          const found = config.data.find(p => p._id === id || p.id === id || p.customId === id)
           if (found) {
             return res.status(200).json({ success: true, data: found })
           }
@@ -201,7 +316,8 @@ router.get('/plots/:id/availability', async (req, res) => {
 // POST create plot
 router.post('/plots', async (req, res) => {
   try {
-    const payload = { ...req.body }
+    const processedBody = await processObjectForCloudinary(req.body, 'picnicutkal/plots')
+    const payload = { ...processedBody }
     if (payload.id && !payload.customId) {
       payload.customId = payload.id
     }
@@ -220,23 +336,24 @@ router.put('/plots/:id', async (req, res) => {
   try {
     const id = req.params.id
     const mongoose = require('mongoose')
+    const processedBody = await processObjectForCloudinary(req.body, 'picnicutkal/plots')
 
     let updatedPlot = null
     if (!mongoose.Types.ObjectId.isValid(id)) {
-      let plot = await MapPlot.findOne({ $or: [{ customId: id }, { title: req.body.title }] })
+      let plot = await MapPlot.findOne({ $or: [{ customId: id }, { title: processedBody.title }] })
       if (plot) {
-        updatedPlot = await MapPlot.findByIdAndUpdate(plot._id, req.body, { new: true })
+        updatedPlot = await MapPlot.findByIdAndUpdate(plot._id, processedBody, { new: true })
       } else {
-        const payload = { ...req.body }
+        const payload = { ...processedBody }
         if (!payload.customId) payload.customId = id
         delete payload._id
         updatedPlot = new MapPlot(payload)
         await updatedPlot.save()
       }
     } else {
-      updatedPlot = await MapPlot.findByIdAndUpdate(id, req.body, { new: true, runValidators: false })
+      updatedPlot = await MapPlot.findByIdAndUpdate(id, processedBody, { new: true, runValidators: false })
       if (!updatedPlot) {
-        const payload = { ...req.body }
+        const payload = { ...processedBody }
         delete payload._id
         updatedPlot = new MapPlot(payload)
         await updatedPlot.save()
@@ -269,8 +386,8 @@ router.delete('/plots/:id', async (req, res) => {
   }
 })
 
-// POST seed/sync database with map management zones
-router.post('/seed', async (req, res) => {
+// POST seed/sync — admin only
+router.post('/seed', protect, adminOnly, async (req, res) => {
   try {
     const plotsToSeed = Array.isArray(req.body.plots) ? req.body.plots : []
     await MapPlot.deleteMany({})

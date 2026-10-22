@@ -100,8 +100,12 @@ export default function EventAddons() {
   const [addons, setAddons] = useState(() => {
     try {
       const saved = localStorage.getItem('picnicutkal_event_addons')
-      return saved ? JSON.parse(saved) : INITIAL_ADDONS
-    } catch (e) { return INITIAL_ADDONS }
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) return parsed
+      }
+    } catch (e) {}
+    return INITIAL_ADDONS
   })
   const [searchQuery, setSearchQuery] = useState('')
   const [showDrawer, setShowDrawer] = useState(false)
@@ -112,9 +116,10 @@ export default function EventAddons() {
     fetch(buildApiUrl('/api/site-config/addons_config'), { cache: 'no-store' })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (d?.value && Array.isArray(d.value) && d.value.length > 0) {
-          setAddons(d.value)
-          try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(d.value)) } catch (e) {}
+        const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.value) ? d.value : null)
+        if (list !== null) {
+          setAddons(list)
+          try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(list)) } catch (e) {}
         }
       })
       .catch(() => {})
