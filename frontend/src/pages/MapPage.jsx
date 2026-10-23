@@ -200,9 +200,11 @@ export default function MapPage() {
     const isDefaultMasterPlan = selectedMapId === 'default-master-plan' || selectedMapId === 'default-map' || !selectedMapId
     let matchMap = false
     if (isDefaultMasterPlan) {
-      matchMap = p.mapId === 'default-master-plan' || p.mapId === 'default-map' || !p.mapId
+      matchMap = p.mapId === 'default-master-plan' || p.mapId === 'default-map' || !p.mapId || (currentMap && p.mapId === currentMap._id?.toString())
     } else {
-      matchMap = p.mapId === selectedMapId
+      matchMap = p.mapId === selectedMapId || 
+                 p.mapId === currentMap?._id?.toString() || 
+                 (currentMap?.title && String(p.mapId).toLowerCase() === currentMap.title.toLowerCase())
     }
     const matchSearch = p.title.toLowerCase().includes(search.toLowerCase())
     return matchMap && matchSearch

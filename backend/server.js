@@ -201,6 +201,6 @@ app.use((err, req, res, next) => {
 })
 
 const PORT = process.env.PORT || 5300
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server & Socket.io running on port ${PORT}`)
 })

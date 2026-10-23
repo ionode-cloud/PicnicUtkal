@@ -376,7 +376,9 @@ export default function AdminMapManagement() {
     if (isDefaultMasterPlan) {
       return !p.mapId || p.mapId === 'default-master-plan' || p.mapId === 'default-map' || (currentMap && p.mapId === currentMap._id)
     }
-    return p.mapId === selectedMapId
+    return p.mapId === selectedMapId || 
+           p.mapId === currentMap?._id?.toString() || 
+           (currentMap?.title && String(p.mapId).toLowerCase() === currentMap.title.toLowerCase())
   })
 
   // Save Plot / Zone (Optimistic local save + background backend sync)
@@ -737,31 +739,54 @@ export default function AdminMapManagement() {
 
         {/* ── Interactive Map Preview ── */}
         <div className="admin-map-canvas-wrap">
-          {/* Header Bar with Map Selector Dropdown & Live Indicators */}
+          {/* Map Tabs Bar */}
+          <div className="admin-map-tabs-container">
+            <div className="admin-map-tabs-list">
+              {maps.map(m => {
+                const isActive = m._id === selectedMapId
+                const zoneCount = plots.filter(p => {
+                  if (m.isDefault) return !p.mapId || p.mapId === m._id || p.mapId === 'default-master-plan' || p.mapId === 'default-map'
+                  return p.mapId === m._id || p.mapId === m._id?.toString() || (m.title && String(p.mapId).toLowerCase() === m.title.toLowerCase())
+                }).length
+
+                return (
+                  <button
+                    key={m._id}
+                    type="button"
+                    className={`admin-map-tab ${isActive ? 'active' : ''}`}
+                    onClick={() => setSelectedMapId(m._id)}
+                  >
+                    <Map size={14} className="admin-map-tab-icon" />
+                    <span className="admin-map-tab-title">{m.title}</span>
+                    <span className="admin-map-tab-badge">{zoneCount}</span>
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                className="admin-map-tab admin-map-tab--add"
+                onClick={handleOpenAddMap}
+                title="Add a new map layout"
+              >
+                <Plus size={14} />
+                <span>Add Map</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Header Bar with Map Status & Actions */}
           <div className="admin-map-canvas-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Map size={16} style={{ color: 'var(--gold)' }} />
-              <span style={{ fontWeight: 700 }}>Map Preview:</span>
+              <span style={{ fontWeight: 700 }}>Active Map:</span>
               <span style={{ color: 'var(--gold)', fontWeight: 600 }}>{currentMap?.title}</span>
               <span style={{ fontSize: '11px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', padding: '2px 8px', borderRadius: '10px' }}>
                 {activePlots.length} zone(s)
               </span>
             </div>
 
-            {/* Map Selection Controls */}
+            {/* Map Action Controls */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-              <label style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>Switch Map:</label>
-              <select
-                id="admin-map-select-dropdown"
-                value={selectedMapId}
-                onChange={e => setSelectedMapId(e.target.value)}
-                className="input"
-                style={{ width: 'auto', padding: '4px 12px', fontSize: '12px', background: 'var(--bg-primary)', color: 'var(--gold)', fontWeight: 700 }}
-              >
-                {maps.map(m => (
-                  <option key={m._id} value={m._id}>{m.title}</option>
-                ))}
-              </select>
               <button
                 type="button"
                 onClick={() => handleOpenEditMap(currentMap)}
@@ -779,7 +804,7 @@ export default function AdminMapManagement() {
                   style={{ color: 'var(--error)' }}
                   title="Delete current map"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={14} /> Delete
                 </button>
               )}
             </div>
@@ -906,140 +931,7 @@ export default function AdminMapManagement() {
         </div>
       </div>
 
-      {/* ── MAP MODAL (Add New Map / Edit Map) ── */}
-      <AnimatePresence>
-        {showMapModal && (
-          <div className="admin-modal-overlay">
-            <motion.div
-              className="card glass-card"
-              style={{ width: '100%', maxWidth: '520px', padding: '28px' }}
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '14px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(201,168,76,0.15)', color: 'var(--gold)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <Map size={20} />
-                  </div>
-                  <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: 700 }}>
-                      {editingMapId ? 'Edit Map' : 'Add New Map'}
-                    </h3>
-                    <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Configure interactive resort &amp; sanctuary map</p>
-                  </div>
-                </div>
-                <button type="button" className="btn btn-ghost btn-xs" onClick={() => setShowMapModal(false)}><X size={18} /></button>
-              </div>
 
-              <form onSubmit={handleSaveMap} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <div className="input-wrapper">
-                  <label className="input-label">Map Title / Name *</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="e.g. Chilika Sanctuary Resort Map"
-                    value={mapForm.title}
-                    onChange={e => setMapForm(m => ({ ...m, title: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="input-wrapper">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label className="input-label" style={{ margin: 0 }}>Map Image Source *</label>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${mapImgInputType === 'url' ? 'btn-gold' : 'btn-ghost'}`}
-                        onClick={() => { setMapImgInputType('url'); setMapForm(m => ({ ...m, image: '' })); }}
-                        style={{ padding: '2px 8px', fontSize: '11px' }}
-                      >
-                        <LinkIcon size={12} /> URL
-                      </button>
-                      <button
-                        type="button"
-                        className={`btn btn-xs ${mapImgInputType === 'file' ? 'btn-gold' : 'btn-ghost'}`}
-                        onClick={() => { setMapImgInputType('file'); setMapForm(m => ({ ...m, image: '' })); }}
-                        style={{ padding: '2px 8px', fontSize: '11px' }}
-                      >
-                        <Upload size={12} /> Local File
-                      </button>
-                    </div>
-                  </div>
-
-                  {mapImgInputType === 'url' ? (
-                    <input
-                      type="url"
-                      className="input"
-                      placeholder="https://images.unsplash.com/..."
-                      value={mapForm.image}
-                      onChange={e => setMapForm(m => ({ ...m, image: e.target.value }))}
-                      required
-                    />
-                  ) : (
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="input"
-                      onChange={handleMapFileUpload}
-                      style={{ padding: '6px 12px' }}
-                      required={!mapForm.image}
-                    />
-                  )}
-                </div>
-
-                {mapForm.image && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-                    <img src={mapForm.image} alt="Map Preview" style={{ width: '80px', height: '48px', objectFit: 'cover', borderRadius: '4px' }} />
-                    <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Image ready</span>
-                  </div>
-                )}
-
-                <div className="input-wrapper">
-                  <label className="input-label">Linked Picnic Spot</label>
-                  <input
-                    type="text"
-                    className="input"
-                    placeholder="e.g. Barapita Picnic Ground, Odisha"
-                    value={mapForm.linkedSpot || ''}
-                    onChange={e => setMapForm(m => ({ ...m, linkedSpot: e.target.value }))}
-                  />
-                </div>
-
-                <div className="input-wrapper">
-                  <label className="input-label">Google Map Location / URL</label>
-                  <input
-                    type="url"
-                    className="input"
-                    placeholder="e.g. https://maps.google.com/?q=20.311450,85.690644"
-                    value={mapForm.googleMapUrl || ''}
-                    onChange={e => setMapForm(m => ({ ...m, googleMapUrl: e.target.value }))}
-                  />
-                </div>
-
-                <div className="input-wrapper">
-                  <label className="input-label">Description</label>
-                  <textarea
-                    className="input"
-                    rows={2}
-                    placeholder="Short description of this resort ground or map zone..."
-                    value={mapForm.description}
-                    onChange={e => setMapForm(m => ({ ...m, description: e.target.value }))}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-                  <button type="button" onClick={() => setShowMapModal(false)} className="btn btn-outline btn-sm">Cancel</button>
-                  <button type="submit" className="btn btn-gold btn-sm" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <Save size={16} /> {editingMapId ? 'Update Map' : 'Create Map'}
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* ── PLOT FORM (Add / Edit Plot) ── */}
       <AnimatePresence>

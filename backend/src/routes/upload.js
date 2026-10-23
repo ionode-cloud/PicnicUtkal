@@ -3,11 +3,11 @@ const router = express.Router()
 const multer = require('multer')
 const cloudinary = require('../config/cloudinary')
 
-// Multer memory storage (5MB max)
+// Multer memory storage (50MB max)
 const storage = multer.memoryStorage()
 const upload = multer({
   storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB limit
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
       cb(null, true)
