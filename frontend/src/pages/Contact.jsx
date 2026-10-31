@@ -7,7 +7,7 @@ import { useSiteConfig, useInvalidators } from '../hooks/useQueryHooks'
 
 function ContactSkeleton() {
   return (
-    <div className="contact-page container-fluid" style={{ padding: '40px 20px' }}>
+    <div className="contact-page container-fluid" >
       <div style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
         <div className="skeleton-shimmer" style={{ width: '130px', height: '24px', borderRadius: '999px' }} />
         <div className="skeleton-shimmer" style={{ width: '300px', height: '38px', borderRadius: '8px' }} />

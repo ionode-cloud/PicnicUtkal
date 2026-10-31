@@ -56,9 +56,9 @@ export default function Navbar() {
               src={logoConfig?.url || logoImg} 
               alt="PicnicUtkal Logo" 
               style={{ 
-                height: `${logoConfig?.height ? Math.min(Math.max(logoConfig.height, 42), 65) : 52}px`, 
+                height: `${logoConfig?.height ? Math.min(Math.max(logoConfig.height, 28), 44) : 38}px`, 
                 width: 'auto', 
-                maxWidth: '220px', 
+                maxWidth: '200px', 
                 objectFit: 'contain'
               }}
               onError={(e) => {

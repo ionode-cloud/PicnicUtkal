@@ -115,50 +115,46 @@ export default function SpotAvailabilityCalendar({
   }
 
   return (
-    <div style={{
-      background: containerBg,
-      border: containerBorder,
-      borderRadius: '16px',
-      padding: '16px',
-      color: containerColor,
-      boxShadow: isLight ? 'var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.05))' : '0 8px 32px rgba(0,0,0,0.3)',
-      width: '100%',
-      maxWidth: '460px',
-      margin: '0 auto 16px'
-    }}>
+    <div
+      className="spot-cal-box"
+      style={{
+        background: containerBg,
+        border: containerBorder,
+        color: containerColor,
+        boxShadow: isLight ? 'var(--shadow-sm, 0 4px 16px rgba(0,0,0,0.05))' : '0 8px 32px rgba(0,0,0,0.3)',
+      }}
+    >
       {/* Calendar Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Calendar size={16} color="var(--gold, #D4AF37)" />
-          <span style={{ fontSize: '14px', fontWeight: 700, color: isLight ? 'var(--text-primary, #111827)' : 'var(--cream, #FDFBF7)' }}>
+      <div className="spot-cal-header">
+        <div className="spot-cal-title-wrap">
+          <Calendar size={15} color="var(--gold, #D4AF37)" style={{ flexShrink: 0 }} />
+          <span className="spot-cal-title" style={{ color: isLight ? 'var(--text-primary, #111827)' : 'var(--cream, #FDFBF7)' }}>
             {title}
           </span>
-          {loading && <RefreshCw size={12} className="spin" color="var(--gold, #D4AF37)" />}
+          {loading && <RefreshCw size={12} className="spin" color="var(--gold, #D4AF37)" style={{ flexShrink: 0 }} />}
         </div>
-        <span className={`badge ${selectedDatesList.length === durationDays ? 'badge-success' : 'badge-gold'}`} style={{ fontSize: '10px', padding: '2px 8px' }}>
+        <span className={`badge spot-cal-badge ${selectedDatesList.length === durationDays ? 'badge-success' : 'badge-gold'}`}>
           {selectedDatesList.length} / {durationDays} Day{durationDays > 1 ? 's' : ''} Selected
         </span>
       </div>
 
       {/* Month Navigation Bar */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justify: 'space-between',
-        background: navBg,
-        borderRadius: '10px',
-        padding: '6px 12px',
-        marginBottom: '12px'
-      }}>
+      <div
+        className="spot-cal-month-nav"
+        style={{
+          background: navBg,
+        }}
+      >
         <button
           onClick={handlePrevMonth}
           type="button"
           style={{ background: 'none', border: 'none', color: 'var(--gold, #D4AF37)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+          aria-label="Previous Month"
         >
           <ChevronLeft size={18} />
         </button>
 
-        <span style={{ fontSize: '13px', fontWeight: 800, letterSpacing: '0.5px', color: navText }}>
+        <span className="spot-cal-month-title" style={{ color: navText }}>
           {monthName}
         </span>
 
@@ -166,25 +162,26 @@ export default function SpotAvailabilityCalendar({
           onClick={handleNextMonth}
           type="button"
           style={{ background: 'none', border: 'none', color: 'var(--gold, #D4AF37)', cursor: 'pointer', padding: '4px', display: 'flex', alignItems: 'center' }}
+          aria-label="Next Month"
         >
           <ChevronRight size={18} />
         </button>
       </div>
 
       {/* Day Names Header */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '6px' }}>
+      <div className="spot-cal-weekdays">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <span key={day} style={{ fontSize: '10px', fontWeight: 700, color: dayHeaderColor, textTransform: 'uppercase' }}>
+          <span key={day} className="spot-cal-weekday" style={{ color: dayHeaderColor }}>
             {day}
           </span>
         ))}
       </div>
 
       {/* Days Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+      <div className="spot-cal-grid">
         {daysArray.map((day, idx) => {
           if (day === null) {
-            return <div key={`empty-${idx}`} style={{ minHeight: '36px' }} />
+            return <div key={`empty-${idx}`} className="spot-cal-empty-cell" style={{ minHeight: '32px' }} />
           }
 
           const mm = String(month + 1).padStart(2, '0')
@@ -259,32 +256,23 @@ export default function SpotAvailabilityCalendar({
               onClick={handleClick}
               disabled={isPast || isBooked}
               title={isBooked ? 'Booked' : isPast ? 'Past date' : `Available: ${dateStr}`}
+              className={`spot-cal-day-cell ${isSelected ? 'spot-cal-day-cell--selected' : ''} ${isBooked ? 'spot-cal-day-cell--booked' : ''} ${isPast ? 'spot-cal-day-cell--past' : ''}`}
               style={{
-                minHeight: '38px',
-                borderRadius: '8px',
                 background: bg,
                 border: border,
                 color: textColor,
                 cursor: cursor,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justify: 'center',
-                padding: '2px',
-                position: 'relative',
-                transition: 'all 0.15s ease',
                 fontWeight: isSelected ? 900 : 600,
-                fontSize: '12px'
               }}
             >
-              <span>{day}</span>
+              <span className="spot-cal-day-num">{day}</span>
               {isBooked && (
-                <span style={{ fontSize: '8px', fontWeight: 800, color: '#FA5252', textTransform: 'uppercase', lineHeight: 1 }}>
+                <span className="spot-cal-day-status status-booked">
                   Booked
                 </span>
               )}
               {!isBooked && isSelected && (
-                <span style={{ fontSize: '8px', fontWeight: 800, color: '#D4AF37', textTransform: 'uppercase', lineHeight: 1 }}>
+                <span className="spot-cal-day-status status-selected">
                   {durationDays > 1 ? `Day ${rangeIndex + 1}` : 'Selected'}
                 </span>
               )}
@@ -294,27 +282,23 @@ export default function SpotAvailabilityCalendar({
       </div>
 
       {/* Legend Footer */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justify: 'space-around',
-        marginTop: '12px',
-        paddingTop: '10px',
-        borderTop: isLight ? '1px dashed rgba(0, 0, 0, 0.12)' : '1px dashed rgba(255, 255, 255, 0.12)',
-        fontSize: '11px',
-        color: isLight ? 'var(--text-muted, #4B5563)' : 'rgba(255, 255, 255, 0.8)',
-        gap: '12px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#52B788', display: 'inline-block', boxShadow: '0 0 6px rgba(82, 183, 136, 0.5)' }} />
+      <div
+        className="spot-cal-legend"
+        style={{
+          borderTop: isLight ? '1px dashed rgba(0, 0, 0, 0.12)' : '1px dashed rgba(255, 255, 255, 0.12)',
+          color: isLight ? 'var(--text-muted, #4B5563)' : 'rgba(255, 255, 255, 0.8)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#52B788', display: 'inline-block', boxShadow: '0 0 6px rgba(82, 183, 136, 0.5)' }} />
           <span>Available</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#EF4444', display: 'inline-block', boxShadow: '0 0 6px rgba(239, 68, 68, 0.5)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', display: 'inline-block', boxShadow: '0 0 6px rgba(239, 68, 68, 0.5)' }} />
           <span>Booked</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#D4AF37', display: 'inline-block', boxShadow: '0 0 6px rgba(212, 175, 55, 0.5)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+          <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D4AF37', display: 'inline-block', boxShadow: '0 0 6px rgba(212, 175, 55, 0.5)' }} />
           <span>Selected</span>
         </div>
       </div>

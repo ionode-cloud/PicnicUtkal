@@ -17,7 +17,7 @@ function resolvePlotImage(imgSrc) {
 
 function AboutSkeleton() {
   return (
-    <div className="about-page container-fluid" style={{ padding: '40px 20px' }}>
+    <div className="about-page container-fluid" >
       <div className="about-story-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '40px', alignItems: 'center' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="skeleton-shimmer" style={{ width: '120px', height: '24px', borderRadius: '999px' }} />

@@ -382,14 +382,7 @@ export default function BookingPage() {
         <meta name="description" content={`Booking form page for reserving ${activeTitle} at Picnic Utkal.`} />
       </Helmet>
 
-      <div className="bk-page-container container-fluid section">
-        {/* Breadcrumb */}
-        <div className="spot-breadcrumb">
-          <Link to="/">Home</Link> <ChevronRight size={12} />
-          {plot ? <Link to="/map">Interactive Map</Link> : <Link to="/spots">Spots</Link>} <ChevronRight size={12} />
-          <span>Book {activeTitle}</span>
-        </div>
-
+      <div className="bk-page-container container-fluid">
         {/* Outer Grid Layout */}
         <div className={`bk-page-grid ${step === 1 ? 'bk-page-grid--full' : ''}`}>
           {/* Left Column: Form & Stepper */}

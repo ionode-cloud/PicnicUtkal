@@ -19,7 +19,7 @@ function resolvePlotImage(imgSrc) {
 
 function GallerySkeleton() {
   return (
-    <div className="gallery-page container-fluid" style={{ padding: '40px 20px' }}>
+    <div className="gallery-page container-fluid" >
       <div style={{ textAlign: 'center', marginBottom: '32px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
         <div className="skeleton-shimmer" style={{ width: '140px', height: '24px', borderRadius: '999px' }} />
         <div className="skeleton-shimmer" style={{ width: '320px', height: '40px', borderRadius: '8px' }} />

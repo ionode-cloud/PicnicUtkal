@@ -4,6 +4,7 @@ import { useParams, Link, useNavigate, useLocation, useSearchParams } from 'reac
 import { Helmet } from 'react-helmet-async'
 import { useAuthStore } from '../store'
 import { buildApiUrl } from '../services/api'
+import { INITIAL_ADDONS } from '../constants/addons'
 import {
   LuMapPin as MapPin, LuStar as Star, LuShare2 as Share2, LuCalendar as CalendarIcon,
   LuClock as Clock, LuCloudRain as CloudRain, LuSun as Sun, LuDroplets as Droplets, LuWind as Wind, LuCheck as Check, LuTriangleAlert as AlertTriangle,
@@ -177,15 +178,27 @@ export default function SpotDetail() {
       .catch(() => {})
   }, [id])
 
-  const [addonsList, setAddonsList] = useState([])
+  const [collapsedAddons, setCollapsedAddons] = useState([])
+
+  const [addonsList, setAddonsList] = useState(() => {
+    try {
+      const saved = localStorage.getItem('picnicutkal_event_addons')
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch (e) {}
+    return INITIAL_ADDONS
+  })
 
   useEffect(() => {
     fetch(buildApiUrl('/api/site-config/addons_config'), { cache: 'no-store' })
       .then(r => r.ok ? r.json() : null)
       .then(d => {
-        if (d?.value && Array.isArray(d.value)) {
-          setAddonsList(d.value)
-          try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(d.value)) } catch (e) {}
+        const list = Array.isArray(d?.data) ? d.data : (Array.isArray(d?.value) ? d.value : null)
+        if (list && Array.isArray(list) && list.length > 0) {
+          setAddonsList(list)
+          try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(list)) } catch (e) {}
         }
       })
       .catch(() => {})
@@ -196,7 +209,7 @@ export default function SpotDetail() {
   useEffect(() => {
     if (!socket) return
     const handleAddonsUpdate = (data) => {
-      if (data && Array.isArray(data.addons)) {
+      if (data && Array.isArray(data.addons) && data.addons.length > 0) {
         setAddonsList(data.addons)
         try { localStorage.setItem('picnicutkal_event_addons', JSON.stringify(data.addons)) } catch (e) {}
       }
@@ -221,7 +234,7 @@ export default function SpotDetail() {
 
   const toggleExpandAddon = (e, addonId) => {
     e.stopPropagation()
-    setExpandedAddons(prev =>
+    setCollapsedAddons(prev =>
       prev.includes(addonId) ? prev.filter(id => id !== addonId) : [...prev, addonId]
     )
   }
@@ -279,14 +292,7 @@ export default function SpotDetail() {
         <meta name="description" content={spot.description.slice(0, 155)} />
       </Helmet>
 
-      <div className="spot-detail container-fluid section">
-        {/* Breadcrumb */}
-        <div className="spot-breadcrumb">
-          <Link to="/">Home</Link> <ChevronRight size={12} />
-          <Link to="/spots">Spots</Link> <ChevronRight size={12} />
-          <span>{spot.name}</span>
-        </div>
-
+      <div className="spot-detail container-fluid">
         {/* Title Header */}
         <div className="spot-title-section">
           <div>
@@ -344,6 +350,90 @@ export default function SpotDetail() {
               <p className="spot-description-text">{spot.description}</p>
             </div>
 
+            {/* Custom Event Add-ons (Placed after About this Spot) */}
+            {activeAddonsList.length > 0 && (
+              <div className="spot-card-info section-card" id="custom-event-addons-section">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '8px' }}>
+                  <h2 className="heading-4" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Sparkles size={20} style={{ color: 'var(--gold)' }} />
+                    Custom Event Add-ons
+                  </h2>
+                  <span className="badge badge-gold" style={{ fontSize: '12px', padding: '4px 10px', borderRadius: '12px' }}>
+                    {activeAddonsList.length} Add-on Packages Available
+                  </span>
+                </div>
+                <p className="spot-subtext" style={{ marginBottom: '16px' }}>Customize your outdoor event package. Select one or more addons to include with your booking.</p>
+                <div className="zones-list-detail">
+                  {activeAddonsList.map(addon => {
+                    const isSelected = selectedAddons.includes(addon.id)
+                    const isExpanded = !collapsedAddons.includes(addon.id)
+                    return (
+                      <div
+                        key={addon.id}
+                        className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
+                        onClick={() => handleAddonToggle(addon.id)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div className="addon-row-content">
+                          <div className="zone-detail-checkbox">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => {}}
+                              style={{ pointerEvents: 'none' }}
+                              id={`addon-check-${addon.id}`}
+                            />
+                          </div>
+                          <div className="addon-row-body">
+                            <div className="zone-detail-main addon-item-main">
+                              <h3 className="addon-title-heading">
+                                <span>{addon.name}</span>
+                                {isSelected && (
+                                  <span className="badge badge-success addon-selected-badge">Selected</span>
+                                )}
+                              </h3>
+                              <p className="addon-desc-text">{addon.desc}</p>
+                              {addon.items && Array.isArray(addon.items) && addon.items.length > 0 && (
+                                <button
+                                  type="button"
+                                  className="addon-details-btn"
+                                  onClick={(e) => toggleExpandAddon(e, addon.id)}
+                                >
+                                  {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                                </button>
+                              )}
+                            </div>
+                            <div className="zone-detail-price addon-item-price">
+                              <span className="addon-price-val">+ ₹{addon.priceAddon || addon.price || 0}</span>
+                              <small className="addon-price-unit">/ flat addon</small>
+                            </div>
+                          </div>
+                        </div>
+
+                      {/* Included Items Details */}
+                      {isExpanded && addon.items && Array.isArray(addon.items) && addon.items.length > 0 && (
+                        <div 
+                          className="addon-expanded-box" 
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="addon-items-heading">📦 What's Inside &amp; Package Details:</div>
+                          <div className="addon-items-grid">
+                            {addon.items.map((item, idx) => (
+                              <div key={idx} className="addon-item-row">
+                                <Check size={11} className="addon-check-icon" />
+                                <span>{typeof item === 'string' ? item : (item.title || item.name || item.text || '')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
             {/* Activity Zones */}
             <div className="spot-card-info section-card">
               <h2 className="heading-4">Select Activity Zones</h2>
@@ -381,77 +471,6 @@ export default function SpotDetail() {
                 })}
               </div>
             </div>
-
-            {/* Custom Event Add-ons */}
-            {activeAddonsList.length > 0 && (
-              <div className="spot-card-info section-card">
-                <h2 className="heading-4">Add Custom Event Add-ons</h2>
-                <p className="spot-subtext">Customize your outdoor event package. Select one or more addons to include with your booking.</p>
-                <div className="zones-list-detail">
-                  {activeAddonsList.map(addon => {
-                    const isSelected = selectedAddons.includes(addon.id)
-                    const isExpanded = expandedAddons.includes(addon.id)
-                    return (
-                      <div
-                        key={addon.id}
-                        className={`zone-detail-row ${isSelected ? 'zone-detail-row--selected' : ''}`}
-                        onClick={() => handleAddonToggle(addon.id)}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        <div className="addon-row-content">
-                          <div className="zone-detail-checkbox">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => {}}
-                              style={{ pointerEvents: 'none' }}
-                              id={`addon-check-${addon.id}`}
-                            />
-                          </div>
-                          <div className="addon-row-body">
-                            <div className="zone-detail-main" style={{ flex: 1, paddingRight: '12px' }}>
-                              <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>{addon.name}</h3>
-                              <p style={{ margin: '4px 0 6px', fontSize: '13px' }}>{addon.desc}</p>
-                              {addon.items && Array.isArray(addon.items) && addon.items.length > 0 && (
-                                <button
-                                  type="button"
-                                  className="addon-details-btn"
-                                  onClick={(e) => toggleExpandAddon(e, addon.id)}
-                                >
-                                  {isExpanded ? 'HIDE DETAILS' : 'VIEW DETAILS'}
-                                </button>
-                              )}
-                            </div>
-                            <div className="zone-detail-price" style={{ minWidth: '85px', textAlign: 'right', flexShrink: 0 }}>
-                              <span>+ ₹{addon.priceAddon || addon.price || 0}</span>
-                              <small>/ flat addon</small>
-                            </div>
-                          </div>
-                        </div>
-
-                      {/* Collapsible Items Details */}
-                      {isExpanded && addon.items && (
-                        <div 
-                          className="addon-expanded-box" 
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <div className="addon-items-heading">What's Inside:</div>
-                          <div className="addon-items-grid">
-                            {addon.items.map((item, idx) => (
-                              <div key={idx} className="addon-item-row">
-                                <Check size={11} className="addon-check-icon" />
-                                <span>{item}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
 
 
 
