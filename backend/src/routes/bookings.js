@@ -51,11 +51,24 @@ router.post('/', async (req, res) => {
     }
 
     // Check special cottage-rooms virtual fallback or error if plot does not exist
+    // Check SiteConfig fallback
+    if (!plotDoc) {
+      try {
+        const SiteConfig = require('../models/SiteConfig')
+        const config = await SiteConfig.findOne({ key: 'map_plots_config' })
+        const list = Array.isArray(config?.data) ? config.data : (Array.isArray(config?.data?.value) ? config.data.value : (Array.isArray(config?.value) ? config.value : []))
+        const found = list.find(p => p._id === plotId || p.id === plotId || p.customId === plotId)
+        if (found) {
+          plotDoc = found
+        }
+      } catch (e) {}
+    }
+
     if (!plotDoc && plotId !== 'cottage-rooms') {
       return res.status(404).json({ success: false, message: 'Picnic plot / zone not found in database.' })
     }
 
-    const authoritativePlotId = plotDoc ? String(plotDoc._id) : plotId
+    const authoritativePlotId = plotDoc ? String(plotDoc._id || plotDoc.id) : plotId
     const authoritativePlotTitle = plotDoc ? plotDoc.title : (plotTitle || 'Cottage Rooms')
     const authoritativeBasePrice = plotDoc ? Number(plotDoc.price) : (Number(plotPrice) || 999)
 

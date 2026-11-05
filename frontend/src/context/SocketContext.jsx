@@ -25,9 +25,9 @@ export function SocketProvider({ children }) {
   const [lastBooking, setLastBooking] = useState(null)
 
   useEffect(() => {
-    // Create socket instance
+    // Create socket instance with polling first to prevent aborted websocket connection warnings in React StrictMode
     const socketIo = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       autoConnect: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 2000

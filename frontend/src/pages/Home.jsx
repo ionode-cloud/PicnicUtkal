@@ -113,7 +113,7 @@ function normalizePlot(p) {
     id: p._id || p.id,
     name: p.title || p.name || 'Unnamed Spot',
     location: p.location || (p.mapId === 'chilika-map-02' ? 'Chilika Lake Sanctuary, Puri' : (p.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Picnic Ground, Odisha')),
-    price: Number(p.price) || 499,
+    price: Number(p.price ?? p.basePrice ?? 0),
     rating: p.rating || 4.8,
     reviews: p.reviews || 0,
     image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image || ''),
@@ -139,7 +139,7 @@ function SpotCard({ spot, index }) {
   const displayImage = resolvePlotImage(spot.image)
 
   // Guard against stale temporary IDs
-  const isValidId = spot.id && !/^(plot|spot)-\d+$/.test(spot.id)
+  const isValidId = Boolean(spot.id)
 
   return (
     <motion.div
@@ -196,7 +196,7 @@ function SpotCard({ spot, index }) {
         </div>
         <div className="spot-card__footer">
           <div className="spot-card__price">
-            <span className="spot-card__price-amount">₹{spot.price}</span>
+            <span className="spot-card__price-amount">₹{Number(spot.price || 0).toLocaleString()}</span>
             <span className="spot-card__price-unit">/day</span>
           </div>
           <div className="spot-card__actions">
@@ -391,29 +391,25 @@ export default function Home() {
     navigate(`/spots?${params.toString()}`)
   }
 
-  const isNonBookableLandmark = (p) => Boolean(
-    p.isLandmark ||
-    p.isFree ||
-    Number(p.price) === 0 ||
-    p.price === 0 ||
-    p._id === 'main-gate' ||
-    p._id === 'parking' ||
-    p.id === 'main-gate' ||
-    p.id === 'parking'
-  )
-
-  // Load featured spots — use shared React Query cache so navigating
-  // away and back doesn't re-fetch while data is still fresh
-  const isStaleTemporaryId = (p) => {
-    const id = p._id || p.id || ''
-    return /^(plot|spot)-\d+$/.test(id)
+  const isNonBookableLandmark = (p) => {
+    const numPrice = Number(p.price ?? p.basePrice ?? 0)
+    if (numPrice > 0) return false
+    return Boolean(
+      p.isLandmark ||
+      p.isFree ||
+      numPrice === 0 ||
+      p._id === 'main-gate' ||
+      p._id === 'parking' ||
+      p.id === 'main-gate' ||
+      p.id === 'parking'
+    )
   }
 
   const featuredSpots = useMemo(() => {
     return rawPlots
+      .filter(p => p && (p.title || p.name))
       .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
       .filter(p => !isNonBookableLandmark(p))
-      .filter(p => !isStaleTemporaryId(p))
       .map(normalizePlot)
   }, [rawPlots])
 

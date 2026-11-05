@@ -14,14 +14,16 @@ function normalizePlot(p) {
       ? p.facilities.split(',').map(f => f.trim()).filter(Boolean)
       : []
 
-  const isLandmark = Boolean(p.isFree || p.isLandmark || Number(p.price) === 0 || p.isGate || p.isParking)
+  const numPrice = Number(p.price ?? p.basePrice ?? 0)
+  const isPaid = numPrice > 0 && !p.isFree
+  const isLandmark = !isPaid && Boolean(p.isFree || p.isLandmark || p.isGate || p.isParking)
 
   return {
     id: p._id || p.id,
     name: p.title || p.name || 'Unnamed Spot',
     location: p.location || (p.mapId === 'chilika-map-02' ? 'Chilika Lake, Puri' : p.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Picnic Ground'),
     district: p.district || 'Khordha',
-    price: Number(p.price) || 0,
+    price: numPrice,
     rating: p.rating || 4.8,
     reviews: p.reviews || 0,
     image: (Array.isArray(p.images) && p.images[0]) ? p.images[0] : (p.image || ''),
@@ -56,21 +58,18 @@ export default function Spots() {
   const selectedMapId = searchParams.get('mapId')
   const peopleParam   = searchParams.get('people')
 
-  const isNonBookableLandmark = (p) => Boolean(
-    p.isLandmark ||
-    p.isFree ||
-    Number(p.price) === 0 ||
-    p.price === 0 ||
-    p._id === 'main-gate' ||
-    p._id === 'parking' ||
-    p.id === 'main-gate' ||
-    p.id === 'parking'
-  )
-
-  // Filter out old temporary frontend IDs like 'plot-1786816983749'
-  const isStaleTemporaryId = (p) => {
-    const id = p._id || p.id || ''
-    return /^plot-\d+$/.test(id) || /^spot-\d+$/.test(id)
+  const isNonBookableLandmark = (p) => {
+    const numPrice = Number(p.price ?? p.basePrice ?? 0)
+    if (numPrice > 0) return false
+    return Boolean(
+      p.isLandmark ||
+      p.isFree ||
+      numPrice === 0 ||
+      p._id === 'main-gate' ||
+      p._id === 'parking' ||
+      p.id === 'main-gate' ||
+      p.id === 'parking'
+    )
   }
 
   const [view, setView] = useState('grid')
@@ -86,9 +85,9 @@ export default function Spots() {
   // Derive spots from cached plots data
   const spots = useMemo(() => {
     return rawPlots
+      .filter(p => p && (p.title || p.name))
       .filter(p => p._id !== 'chilika-zone-1' && p._id !== 'simlipal-zone-1' && p.id !== 'chilika-zone-1' && p.id !== 'simlipal-zone-1')
       .filter(p => !isNonBookableLandmark(p))
-      .filter(p => !isStaleTemporaryId(p))
       .map(normalizePlot)
   }, [rawPlots])
 
@@ -237,7 +236,7 @@ export default function Spots() {
                 <button className="btn btn-primary" onClick={() => { setSearchQ(''); setFilters({ minPrice: 0, maxPrice: 2000, minRating: 0, zone: '' }) }}>Clear Filters</button>
               </div>
             ) : filtered.map((spot, i) => {
-              const isValidId = spot.id && !/^(plot|spot)-\d+$/.test(spot.id)
+              const isValidId = Boolean(spot.id)
               const handleCardClick = () => isValidId ? navigate(`/plots/${spot.id}`) : navigate('/spots')
               return (
               <motion.div key={spot.id} className={`spot-card ${view === 'list' ? 'spot-card--list' : ''}`}

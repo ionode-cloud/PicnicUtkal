@@ -2,10 +2,10 @@ const mongoose = require('mongoose')
 
 const mapPlotSchema = new mongoose.Schema({
   title: { type: String, required: true },
-  price: { type: Number, required: true },
-  area: { type: String, required: true },        // e.g. "4500 sq ft"
-  capacity: { type: Number, required: true },
-  description: { type: String, required: true },
+  price: { type: Number, default: 0 },
+  area: { type: String, default: '3500 sq ft' },        // e.g. "4500 sq ft"
+  capacity: { type: Number, default: 20 },
+  description: { type: String, default: '' },
   facilities: [{ type: String }],
   status: {
     type: String,

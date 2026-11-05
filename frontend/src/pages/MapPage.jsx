@@ -98,7 +98,7 @@ export default function MapPage() {
         const d = await pRes.json()
         if (d.success && Array.isArray(d.data) && d.data.length > 0) {
           // Filter out stale temporary IDs like 'plot-1786816983749'
-          const clean = d.data.filter(p => !/^(plot|spot)-\d+$/.test(p._id || p.id || ''))
+          const clean = d.data.filter(p => p && (p.title || p.name))
           setPlots(clean)
           try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(clean)) } catch (e) {}
           return
@@ -113,7 +113,7 @@ export default function MapPage() {
         const scPlotsData = await scPlotsRes.json()
         const val = scPlotsData?.value || scPlotsData?.data
         if (Array.isArray(val) && val.length > 0) {
-          const clean = val.filter(p => !/^(plot|spot)-\d+$/.test(p._id || p.id || ''))
+          const clean = val.filter(p => p && (p.title || p.name))
           setPlots(clean)
           try { localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(clean)) } catch (e) {}
         }
@@ -424,7 +424,10 @@ export default function MapPage() {
                       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                     >
                       <span className="mp-hotspot-label">
-                        {plot.price > 0 && !plot.isFree && !plot.isLandmark && !plot.isGate && !plot.isParking ? `₹${plot.price}/day` : plot.title}
+                        {plot.title}
+                        {Number(plot.price ?? plot.basePrice ?? 0) > 0 && !plot.isFree ? (
+                          <span style={{ marginLeft: '4px', color: '#FFE066', fontWeight: 800 }}>· ₹{Number(plot.price ?? plot.basePrice ?? 0).toLocaleString()}</span>
+                        ) : null}
                       </span>
                       <span className="mp-hotspot-status-dot" style={{ background: sColor }} />
                     </motion.div>
@@ -492,7 +495,7 @@ export default function MapPage() {
 
                 <div className="mp-popup-body">
                   <div className="mp-popup-stats">
-                    {(selected.isFree || selected.isLandmark || !selected.price || selected.price === 0 || selected.isGate || selected.isParking) ? (
+                    {(Number(selected.price ?? selected.basePrice ?? 0) <= 0 || (selected.isFree && Number(selected.price ?? selected.basePrice ?? 0) === 0)) ? (
                       <div className="mp-popup-stat">
                         <IndianRupee size={14} />
                         <div>
@@ -504,7 +507,7 @@ export default function MapPage() {
                       <div className="mp-popup-stat">
                         <IndianRupee size={14} />
                         <div>
-                          <span className="mp-popup-stat-val">₹{selected.price?.toLocaleString()}</span>
+                          <span className="mp-popup-stat-val">₹{Number(selected.price ?? selected.basePrice ?? 0).toLocaleString()}</span>
                           <span className="mp-popup-stat-lbl">Per Day</span>
                         </div>
                       </div>
@@ -512,7 +515,7 @@ export default function MapPage() {
                       <div className="mp-popup-stat">
                         <IndianRupee size={14} />
                         <div>
-                          <span className="mp-popup-stat-val">₹{selected.price?.toLocaleString()}</span>
+                          <span className="mp-popup-stat-val">₹{Number(selected.price ?? selected.basePrice ?? 0).toLocaleString()}</span>
                           <span className="mp-popup-stat-lbl">Flat / Day</span>
                         </div>
                       </div>
@@ -629,7 +632,7 @@ export default function MapPage() {
                       <ExternalLink size={14} />
                       View on Google Maps
                     </a>
-                    {!(selected.isFree || selected.isLandmark || !selected.price || selected.price === 0 || selected.isGate || selected.isParking) ? (
+                    {Number(selected.price ?? selected.basePrice ?? 0) > 0 && !selected.isFree ? (
                       <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                         <button
                           id={`mp-details-${selected._id}`}
@@ -637,8 +640,8 @@ export default function MapPage() {
                           style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--cream)', border: '1px solid rgba(255,255,255,0.2)', flex: 1 }}
                           onClick={() => {
                             const plotId = selected._id || selected.id || ''
-                            if (!plotId || /^(plot|spot)-\d+$/.test(plotId)) {
-                              alert('This zone link is outdated. Please reload the map to see updated zones.')
+                            if (!plotId) {
+
                               return
                             }
                             navigate(`/plots/${plotId}`)
@@ -652,8 +655,8 @@ export default function MapPage() {
                           style={{ flex: 1 }}
                           onClick={() => {
                             const plotId = selected._id || selected.id || ''
-                            if (!plotId || /^(plot|spot)-\d+$/.test(plotId)) {
-                              alert('This zone link is outdated. Please reload the map to see updated zones.')
+                            if (!plotId) {
+
                               return
                             }
                             navigate(`/plots/${plotId}?book=true`, { state: { initialDate: mapVisitDate } })

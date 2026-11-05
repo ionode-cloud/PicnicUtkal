@@ -55,17 +55,17 @@ const normalizePlotToSpot = (p) => ({
   name: p.title || p.name || 'Unnamed Spot',
   title: p.title || p.name || 'Unnamed Spot',
   location: p.location || (p.mapId === 'chilika-map-02' ? 'Chilika Lake, Puri' : (p.mapId === 'simlipal-map-03' ? 'Simlipal Reserve, Mayurbhanj' : 'Barapita Ground, Deras')),
-  price: Number(p.price) || 0,
+  price: Number(p.price ?? p.basePrice ?? 0),
   area: p.area || '3500 sq ft',
   rating: p.rating || 4.8,
   reviews: p.reviews || 120,
   capacity: Number(p.capacity) || 100,
-  category: p.isLandmark || p.isFree ? 'Landmark & Facility' : (p.isCottage ? 'Cottage Accommodation' : 'Map Zone & Pandal'),
+  category: Number(p.price ?? p.basePrice ?? 0) <= 0 && (p.isLandmark || p.isFree) ? 'Landmark & Facility' : (p.isCottage ? 'Cottage Accommodation' : 'Map Zone & Pandal'),
   status: p.status === 'booked' ? 'Booked' : (p.status === 'maintenance' ? 'Maintenance' : 'available'),
-  badge: p.isLandmark || p.isFree ? 'Free Landmark' : (p.isCottage ? 'Cottage' : 'Map Zone'),
+  badge: Number(p.price ?? p.basePrice ?? 0) <= 0 && (p.isLandmark || p.isFree) ? 'Free Landmark' : (p.isCottage ? 'Cottage' : 'Map Zone'),
   isMapZone: true,
-  isFree: Boolean(p.isFree || p.isLandmark || p.price === 0),
-  isLandmark: Boolean(p.isLandmark || p.isFree),
+  isFree: Number(p.price ?? p.basePrice ?? 0) > 0 ? false : Boolean(p.isFree || p.isLandmark),
+  isLandmark: Number(p.price ?? p.basePrice ?? 0) > 0 ? false : Boolean(p.isLandmark || p.isFree),
   isCottage: Boolean(p.isCottage),
   mapId: p.mapId || 'default-master-plan',
   description: p.description || '',
@@ -80,16 +80,19 @@ const normalizePlotToSpot = (p) => ({
 })
 
 export default function Spots() {
-  const isNonBookableLandmark = (p) => Boolean(
-    p.isLandmark ||
-    p.isFree ||
-    Number(p.price) === 0 ||
-    p.price === 0 ||
-    p._id === 'main-gate' ||
-    p._id === 'parking' ||
-    p.id === 'main-gate' ||
-    p.id === 'parking'
-  )
+  const isNonBookableLandmark = (p) => {
+    const numPrice = Number(p.price ?? p.basePrice ?? 0)
+    if (numPrice > 0) return false
+    return Boolean(
+      p.isLandmark ||
+      p.isFree ||
+      numPrice === 0 ||
+      p._id === 'main-gate' ||
+      p._id === 'parking' ||
+      p.id === 'main-gate' ||
+      p.id === 'parking'
+    )
+  }
 
   const [spots, setSpots] = useState(() => {
     try {
@@ -359,6 +362,8 @@ export default function Spots() {
       title: spotTitle.trim(),
       name: spotTitle.trim(),
       price: Number(formData.price) || 0,
+      isFree: Number(formData.price) > 0 ? false : Boolean(formData.isFree),
+      isLandmark: Number(formData.price) > 0 ? false : Boolean(formData.isLandmark),
       capacity: Number(formData.capacity) || 0,
       priority: Number(formData.priority) || 0,
       images: currentImages,

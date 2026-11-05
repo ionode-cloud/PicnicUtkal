@@ -493,11 +493,23 @@ router.get('/plots/:id/availability', async (req, res) => {
 router.post('/plots', async (req, res) => {
   try {
     const processedBody = await processObjectForCloudinary(req.body, 'picnicutkal/plots')
+    if (processedBody.price !== undefined && processedBody.price !== null) {
+      processedBody.price = Number(processedBody.price) || 0
+      if (processedBody.price > 0) {
+        processedBody.isFree = false
+      }
+    }
     const payload = { ...processedBody }
     if (payload.id && !payload.customId) {
       payload.customId = payload.id
     }
     delete payload._id
+    if (payload.price !== undefined && payload.price !== null) {
+      payload.price = Number(payload.price) || 0
+      if (payload.price > 0) {
+        payload.isFree = false
+      }
+    }
     const plot = new MapPlot(payload)
     await plot.save()
     if (req.io) req.io.emit('plots_update', { plot, action: 'created', timestamp: new Date() })
@@ -513,6 +525,12 @@ router.put('/plots/:id', async (req, res) => {
     const id = req.params.id
     const mongoose = require('mongoose')
     const processedBody = await processObjectForCloudinary(req.body, 'picnicutkal/plots')
+    if (processedBody.price !== undefined && processedBody.price !== null) {
+      processedBody.price = Number(processedBody.price) || 0
+      if (processedBody.price > 0) {
+        processedBody.isFree = false
+      }
+    }
 
     let updatedPlot = null
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -523,6 +541,12 @@ router.put('/plots/:id', async (req, res) => {
         const payload = { ...processedBody }
         if (!payload.customId) payload.customId = id
         delete payload._id
+    if (payload.price !== undefined && payload.price !== null) {
+      payload.price = Number(payload.price) || 0
+      if (payload.price > 0) {
+        payload.isFree = false
+      }
+    }
         updatedPlot = new MapPlot(payload)
         await updatedPlot.save()
       }
@@ -531,6 +555,12 @@ router.put('/plots/:id', async (req, res) => {
       if (!updatedPlot) {
         const payload = { ...processedBody }
         delete payload._id
+    if (payload.price !== undefined && payload.price !== null) {
+      payload.price = Number(payload.price) || 0
+      if (payload.price > 0) {
+        payload.isFree = false
+      }
+    }
         updatedPlot = new MapPlot(payload)
         await updatedPlot.save()
       }

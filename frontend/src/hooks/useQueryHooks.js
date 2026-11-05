@@ -8,6 +8,7 @@
  */
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { buildApiUrl } from '../services/api'
+import { useAuthStore } from '../store'
 
 // ─── Query Keys ──────────────────────────────────────────────────────────────
 export const QUERY_KEYS = {
@@ -19,14 +20,19 @@ export const QUERY_KEYS = {
   maps:       ['maps'],
 }
 
-// ─── Fetcher (always bypasses browser cache) ─────────────────────────────────
+// ─── Fetcher (always bypasses browser cache, attaches token if available) ─────
 const fetcher = async (url) => {
+  const token = useAuthStore.getState().token
+  const headers = {
+    'Pragma': 'no-cache',
+    'Cache-Control': 'no-cache'
+  }
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`
+  }
   const res = await fetch(buildApiUrl(url), {
     cache: 'no-store',
-    headers: {
-      'Pragma': 'no-cache',
-      'Cache-Control': 'no-cache'
-    }
+    headers
   })
   if (!res.ok) throw new Error(`HTTP ${res.status}`)
   return res.json()
@@ -56,14 +62,20 @@ export function useBookings(options = {}) {
   })
 }
 
-// ─── Users ───────────────────────────────────────────────────────────────────
+// ─── Users (Authenticated & Privileged only) ──────────────────────────────────
 export function useUsers(options = {}) {
+  const token = useAuthStore((s) => s.token)
+  const user = useAuthStore((s) => s.user)
+  const isPrivileged = !!token && ['admin', 'manager', 'staff'].includes(user?.role)
+
   return useQuery({
     queryKey: QUERY_KEYS.users,
     queryFn:  () => fetcher('/api/auth/users'),
     staleTime: 60 * 1000,
     gcTime:    5 * 60 * 1000,
-    select: (d) => (d?.success && Array.isArray(d.data)) ? d.data : [],
+    enabled:   isPrivileged && (options.enabled !== undefined ? options.enabled : true),
+    retry:     false,
+    select:    (d) => (d?.success && Array.isArray(d.data)) ? d.data : [],
     ...options,
   })
 }

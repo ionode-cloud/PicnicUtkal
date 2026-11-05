@@ -152,13 +152,24 @@ const compressImage = (dataUrl, maxDimension = 1400, quality = 0.82) => {
   })
 }
 
+const sanitizePlotsList = (list) => {
+  if (!Array.isArray(list)) return []
+  return list.map(p => {
+    const numPrice = Number(p.price ?? p.basePrice ?? 0)
+    if (numPrice > 0) {
+      return { ...p, price: numPrice, isFree: false }
+    }
+    return p
+  })
+}
+
 export default function AdminMapManagement() {
   const [maps, setMaps] = useState(() => {
     try {
-      const saved = localStorage.getItem('picnicutkal_admin_maps')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      const rawStoredMaps = localStorage.getItem('picnicutkal_admin_maps')
+      if (rawStoredMaps) {
+        const parsedMaps = JSON.parse(rawStoredMaps)
+        if (Array.isArray(parsedMaps) && parsedMaps.length > 0) return parsedMaps
       }
     } catch (e) {}
     return DEFAULT_MAPS
@@ -182,10 +193,11 @@ export default function AdminMapManagement() {
 
   const [plots, setPlots] = useState(() => {
     try {
-      const saved = localStorage.getItem('picnicutkal_admin_plots')
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      const savedPList = localStorage.getItem('picnicutkal_admin_plots')
+      if (savedPList) {
+        const parsedPlots = JSON.parse(savedPList)
+        if (Array.isArray(parsedPlots) && parsedPlots.length > 0) return sanitizePlotsList(parsedPlots)
+
       }
     } catch (e) {}
     return []
@@ -286,9 +298,10 @@ export default function AdminMapManagement() {
   const currentMap = maps.find(m => m._id === selectedMapId) || maps[0] || DEFAULT_MAPS[0]
 
   const saveAndSyncPlots = (updatedPlots) => {
-    setPlots(updatedPlots)
+    const clean = sanitizePlotsList(updatedPlots)
+    setPlots(clean)
     try {
-      localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(updatedPlots))
+      localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(clean))
     } catch (e) {}
   }
 
@@ -327,7 +340,7 @@ export default function AdminMapManagement() {
             setPlots(prev => {
               const serverIds = new Set(val.map(p => p._id || p.id))
               const localAdditions = prev.filter(p => !serverIds.has(p._id) && !serverIds.has(p.id))
-              const merged = [...val, ...localAdditions]
+              const merged = sanitizePlotsList([...val, ...localAdditions])
               try {
                 localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(merged))
               } catch (e) {}
@@ -347,7 +360,7 @@ export default function AdminMapManagement() {
         setPlots(prev => {
           const serverIds = new Set(data.data.map(p => p._id || p.id))
           const localAdditions = prev.filter(p => !serverIds.has(p._id) && !serverIds.has(p.id))
-          const merged = [...data.data, ...localAdditions]
+          const merged = sanitizePlotsList([...data.data, ...localAdditions])
           try {
             localStorage.setItem('picnicutkal_admin_plots', JSON.stringify(merged))
           } catch (e) {}
@@ -365,6 +378,19 @@ export default function AdminMapManagement() {
     fetchMaps()
     fetchPlots()
   }, [])
+
+  useEffect(() => {
+    if (!socket) return
+    const onPlotsUpdate = () => {
+      fetchPlots()
+    }
+    socket.on('plots_update', onPlotsUpdate)
+    socket.on('plot_updated', onPlotsUpdate)
+    return () => {
+      socket.off('plots_update', onPlotsUpdate)
+      socket.off('plot_updated', onPlotsUpdate)
+    }
+  }, [socket])
 
   // Filter plots strictly for current selected map (New maps start empty with 0 zones)
   const activePlots = plots.filter(p => {
@@ -387,9 +413,11 @@ export default function AdminMapManagement() {
       toast.error('Title is required')
       return
     }
-    const isFreeFacility = Boolean(form.isFree || form.isLandmark || form.price === 0 || form.price === '0')
-    if (!isFreeFacility && !form.price && form.price !== 0) {
-      toast.error('Price is required (or click "No Price" for landmarks like Main Gate, Pool, Trees)')
+    const numericPrice = Number(form.price)
+    const hasNumericPrice = !isNaN(numericPrice) && numericPrice > 0
+    const isFreeFacility = !hasNumericPrice && Boolean(form.isFree || form.isLandmark || form.price === 0 || form.price === '0')
+    if (!isFreeFacility && !hasNumericPrice) {
+      toast.error('Price is required for bookable zones (or mark as Free Landmark)')
       return
     }
     setSaving(true)
@@ -407,9 +435,10 @@ export default function AdminMapManagement() {
       id: newPlotId,
       customId: newPlotId,
       mapId: targetMapId,
-      price: isFreeFacility ? 0 : (Number(form.price) || 0),
+      price: hasNumericPrice ? numericPrice : 0,
       isFree: isFreeFacility,
-      isLandmark: isFreeFacility,
+      isLandmark: isFreeFacility ? true : Boolean(form.isLandmark && !hasNumericPrice),
+      isCottage: Boolean(form.isCottage),
       capacity: Number(form.capacity) || 0,
       priority: Number(form.priority) || 0,
       images: currentImages,
@@ -480,7 +509,7 @@ export default function AdminMapManagement() {
       images: imagesList,
       image: imagesList[0] || plot.image || ''
     })
-    setEditing(plot._id)
+    setEditing(plot._id || plot.id)
     setShowForm(true)
   }
 
@@ -827,13 +856,13 @@ export default function AdminMapManagement() {
               const sc = STATUS_CONFIG[plot.status] || STATUS_CONFIG.available
               return (
                 <div
-                  key={plot._id}
-                  className={`admin-map-hotspot-overlay ${previewPlot?._id === plot._id ? 'preview-active' : ''}`}
+                  key={plot._id || plot.id}
+                  className={`admin-map-hotspot-overlay ${(previewPlot?._id === plot._id || (previewPlot?.id && previewPlot.id === (plot._id || plot.id))) ? 'preview-active' : ''}`}
                   style={{
-                    left: `${plot.coordinates.x}%`,
-                    top: `${plot.coordinates.y}%`,
-                    width: `${plot.coordinates.width}%`,
-                    height: `${plot.coordinates.height}%`,
+                    left: `${plot.coordinates?.x ?? 10}%`,
+                    top: `${plot.coordinates?.y ?? 10}%`,
+                    width: `${plot.coordinates?.width ?? 15}%`,
+                    height: `${plot.coordinates?.height ?? 10}%`,
                     borderColor: sc.color,
                     background: `${sc.color}22`
                   }}
@@ -841,12 +870,52 @@ export default function AdminMapManagement() {
                   onMouseLeave={() => setPreviewPlot(null)}
                   onClick={e => { e.stopPropagation(); handleEditPlot(plot) }}
                 >
-                  <span className="admin-map-hotspot-lbl">{plot.title}</span>
+                  <span className="admin-map-hotspot-lbl">
+                    {plot.title}
+                    {Number(plot.price) > 0 && !plot.isFree ? ` · ₹${Number(plot.price).toLocaleString()}` : ''}
+                  </span>
                   <span className="admin-map-hotspot-status" style={{ background: sc.color }} />
                 </div>
               )
             })}
             
+            {/* Hover Tooltip Card */}
+            {previewPlot && (
+              <div
+                className="admin-map-hover-card"
+                style={{
+                  position: 'absolute',
+                  left: `${Math.min(82, Math.max(12, previewPlot.coordinates?.x ?? 50))}%`,
+                  top: `${Math.max(6, (previewPlot.coordinates?.y ?? 50) - 4)}%`,
+                  transform: 'translate(-50%, -100%)',
+                  zIndex: 60,
+                  background: 'rgba(10, 38, 23, 0.96)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid var(--gold)',
+                  borderRadius: '8px',
+                  padding: '8px 12px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                  pointerEvents: 'none',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '13px', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>{previewPlot.title}</span>
+                  <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '4px', background: STATUS_CONFIG[previewPlot.status]?.color || '#40C057', color: '#000', fontWeight: 800 }}>
+                    {STATUS_CONFIG[previewPlot.status]?.label || 'Available'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--gold)', fontWeight: 700, marginTop: '2px' }}>
+                  {Number(previewPlot.price) > 0 && !previewPlot.isFree
+                    ? `₹${Number(previewPlot.price).toLocaleString()} / day`
+                    : 'Free / Landmark'}
+                </div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', marginTop: '2px' }}>
+                  Capacity: {previewPlot.capacity || '—'} · Area: {previewPlot.area || '—'}
+                </div>
+              </div>
+            )}
+
             {/* New plot preview while form is open */}
             {showForm && (
               <div
@@ -859,7 +928,10 @@ export default function AdminMapManagement() {
                   borderColor: form.color
                 }}
               >
-                <span className="admin-map-hotspot-lbl">{form.title || 'New Zone'}</span>
+                <span className="admin-map-hotspot-lbl">
+                  {form.title || 'New Zone'}
+                  {Number(form.price) > 0 ? ` · ₹${Number(form.price).toLocaleString()}/day` : ''}
+                </span>
               </div>
             )}
           </div>
@@ -881,7 +953,7 @@ export default function AdminMapManagement() {
                 const sc = STATUS_CONFIG[plot.status] || STATUS_CONFIG.available
                 return (
                   <motion.div
-                    key={plot._id}
+                    key={plot._id || plot.id}
                     className="admin-map-plot-row"
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -893,11 +965,13 @@ export default function AdminMapManagement() {
                     <div className="admin-map-plot-info">
                       <span className="admin-map-plot-name">{plot.title}</span>
                       <div className="admin-map-plot-meta">
-                        <span>
-                          {plot.isFree || plot.isLandmark || !plot.price || plot.price === 0 || plot.isGate || plot.isParking
-                            ? 'Free / Landmark'
-                            : `₹${plot.price?.toLocaleString()} / day`}
-                        </span>
+                        {(() => {
+                          const pPrice = Number(plot.price ?? plot.basePrice ?? 0)
+                          if (pPrice > 0 && !plot.isFree) {
+                            return <span style={{ color: 'var(--gold)', fontWeight: 700 }}>₹{pPrice.toLocaleString()} / day</span>
+                          }
+                          return <span style={{ color: 'var(--text-muted)' }}>Free / Landmark</span>
+                        })()}
                         <span>·</span>
                         <span>{plot.area || '—'}</span>
                         <span>·</span>
@@ -917,7 +991,7 @@ export default function AdminMapManagement() {
                       </button>
                       <button
                         className="admin-map-action-btn admin-map-action-btn--delete"
-                        onClick={() => setDeleteConfirm(plot._id)}
+                        onClick={() => setDeleteConfirm(plot._id || plot.id)}
                         title="Delete Plot"
                       >
                         <Trash2 size={14} />
@@ -974,56 +1048,45 @@ export default function AdminMapManagement() {
                     </select>
                   </div>
 
-                  {/* Instruction / Landmark Quick Presets */}
-                  <div style={{ background: 'rgba(201,168,76,0.08)', padding: '12px 14px', borderRadius: '8px', border: '1px dashed rgba(201,168,76,0.35)', marginBottom: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--gold)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                        <MapPin size={14} /> Landmark & Instruction Presets:
-                      </span>
-                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Non-bookable map reference point</span>
+                  {/* Zone Category Selection */}
+                  <div className="admin-map-form-row" style={{ marginBottom: '14px' }}>
+                    <label style={{ fontWeight: 700, display: 'block', marginBottom: '6px' }}>Zone Type / Category</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                      <button
+                        type="button"
+                        className={`btn btn-xs ${!form.isLandmark && !form.isCottage ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setForm(f => ({ ...f, isLandmark: false, isFree: false, isCottage: false, price: f.price || 499 }))}
+                        style={{ fontSize: '11px', padding: '6px 8px', justifyContent: 'center' }}
+                      >
+                        🏕️ Picnic Zone
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-xs ${form.isCottage ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setForm(f => ({ ...f, isCottage: true, isLandmark: false, isFree: false, price: f.price || 999 }))}
+                        style={{ fontSize: '11px', padding: '6px 8px', justifyContent: 'center' }}
+                      >
+                        🏡 Cottage Room
+                      </button>
+                      <button
+                        type="button"
+                        className={`btn btn-xs ${form.isLandmark ? 'btn-primary' : 'btn-outline'}`}
+                        onClick={() => setForm(f => ({ ...f, isLandmark: true, isFree: true, isCottage: false, price: 0 }))}
+                        style={{ fontSize: '11px', padding: '6px 8px', justifyContent: 'center' }}
+                      >
+                        📍 Free Landmark
+                      </button>
                     </div>
+                  </div>
 
-                    {/* Dedicated Input Field */}
-                    <div style={{ marginBottom: '10px' }}>
-                      <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '4px' }}>
-                        Landmark / Instruction Name (e.g. Main Gate, River, Parking):
-                      </label>
-                      <input
-                        id="admin-map-landmark-input"
-                        type="text"
-                        className="admin-map-input"
-                        list="landmark-preset-options"
-                        placeholder="Type or select instruction (e.g. Main Gate, River Shore, Parking Stand...)"
-                        value={form.title ?? ''}
-                        onChange={e => {
-                          const val = e.target.value
-                          setForm(f => ({
-                            ...f,
-                            title: val,
-                            isFree: true,
-                            isLandmark: true
-                          }))
-                        }}
-                        style={{ width: '100%', fontSize: '13px', background: 'var(--bg-primary)' }}
-                      />
-                      <datalist id="landmark-preset-options">
-                        <option value="Main Gate & Welcome Arch" />
-                        <option value="River Shore / Waterfront" />
-                        <option value="Visitor Parking Zone" />
-                        <option value="Public Washrooms & RO Water" />
-                        <option value="Swimming Pool Area" />
-                        <option value="Security Cabin" />
-                        <option value="Dining Hall / Cafeteria" />
-                        <option value="Children Play Ground" />
-                        <option value="Garden Walkway" />
-                      </datalist>
-                    </div>
-
-                    {/* Quick Preset Buttons */}
-                    <div>
-                      <span style={{ display: 'block', fontSize: '11px', color: 'var(--text-muted)', marginBottom: '5px', fontWeight: 600 }}>
-                        Or Click Quick Preset:
-                      </span>
+                  {form.isLandmark && (
+                    <div style={{ background: 'rgba(201,168,76,0.08)', padding: '12px 14px', borderRadius: '8px', border: '1px dashed rgba(201,168,76,0.35)', marginBottom: '14px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--gold)', display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                          <MapPin size={14} /> Quick Landmark Presets:
+                        </span>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Non-bookable map reference point</span>
+                      </div>
                       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                         {[
                           { label: '🚪 Main Gate', title: 'Main Gate & Entry Arch', desc: 'Main security check-in entrance and welcome gate.', color: '#4A90E2', fac: 'Security, CCTV, Entry Signboard' },
@@ -1056,14 +1119,14 @@ export default function AdminMapManagement() {
                         ))}
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="admin-map-form-row">
-                    <label>Title *</label>
+                    <label>Zone / Spot Title *</label>
                     <input
                       id="admin-map-form-title"
                       className="admin-map-input"
-                      placeholder="e.g. Main Gate, River Point, Parking Stand, Biotech Park 1"
+                      placeholder="e.g. Pine & Sal Forest Grove, Riverside Pandal, Sunset Lawn"
                       value={form.title ?? ''}
                       onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
                     />
@@ -1160,15 +1223,43 @@ export default function AdminMapManagement() {
                   </div>
                   <div className="admin-map-form-2col">
                     <div className="admin-map-form-row">
-                      <label>Price (₹/day)</label>
-                      <input
-                        id="admin-map-form-price"
-                        type="number"
-                        className="admin-map-input"
-                        placeholder="499"
-                        value={form.price ?? ''}
-                        onChange={e => setForm(f => ({ ...f, price: e.target.value }))}
-                      />
+                      {form.isLandmark ? (
+                        <>
+                          <label>Price (₹/day)</label>
+                          <input
+                            id="admin-map-form-price"
+                            type="text"
+                            className="admin-map-input"
+                            disabled
+                            value="Free / Non-bookable"
+                            style={{ opacity: 0.7, background: 'rgba(255,255,255,0.05)' }}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span>Price (₹/day) *</span>
+                            <span style={{ fontSize: '10px', color: 'var(--gold)', fontWeight: 700 }}>Bookable Rate</span>
+                          </label>
+                          <input
+                            id="admin-map-form-price"
+                            type="number"
+                            className="admin-map-input"
+                            placeholder="499"
+                            value={form.price ?? ''}
+                            onChange={e => {
+                              const val = e.target.value
+                              const num = Number(val)
+                              setForm(f => ({
+                                ...f,
+                                price: val,
+                                isFree: num > 0 ? false : f.isFree,
+                                isLandmark: num > 0 ? false : f.isLandmark
+                              }))
+                            }}
+                          />
+                        </>
+                      )}
                     </div>
                     <div className="admin-map-form-row">
                       <label>Area</label>

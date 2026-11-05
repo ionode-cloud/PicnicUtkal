@@ -91,7 +91,7 @@ export default function BookingPage() {
   const tomorrowStr = tomorrow.toISOString().split('T')[0]
 
   const isCottage = plot?.isCottage || spot?.isCottage || false
-  const pricePerPerson = plot?.price || spot?.basePrice || 0
+  const pricePerPerson = Number(plot?.price ?? plot?.basePrice ?? spot?.basePrice ?? 0)
 
   const getDraftForm = () => {
     try {
@@ -276,9 +276,9 @@ export default function BookingPage() {
         body: JSON.stringify({
           plotId:        plot?._id || spot?.id || 'spot-booking',
           plotTitle:     plot?.title || spot?.name || 'Picnic Spot Booking',
-          plotPrice:     pricePerPerson || 499,
+          plotPrice:     pricePerPerson,
           durationDays:  Number(form.durationDays || 1),
-          totalAmount:   total || pricePerPerson || 499,
+          totalAmount:   total ?? pricePerPerson,
           name:          form.name || user?.name || (user?.email ? user.email.split('@')[0] : 'Valued Visitor'),
           email:         form.email || user?.email || 'visitor@picnicutkal.com',
           phone:         form.phone || location.state?.initialPhone || user?.phone || '9876543210',

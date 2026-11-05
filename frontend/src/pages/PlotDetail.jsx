@@ -161,16 +161,6 @@ function PlotDetail() {
   useEffect(() => {
     if (!id) return
 
-    // Reject stale temporary frontend IDs immediately — they were never saved in DB
-    if (id.startsWith('plot-') || id.startsWith('spot-') || /^plot-\d+$/.test(id)) {
-      setPlot(null)
-      setError('This link is outdated. Please navigate to the Spots or Map page to find a valid zone.')
-      setLoading(false)
-      // Clear stale draft for this ID
-      try { localStorage.removeItem(`picnicutkal_plot_draft_${id}`) } catch (e) {}
-      return
-    }
-
     setPlot(null)
     setError('')
     setLoading(true)
@@ -269,7 +259,7 @@ function PlotDetail() {
   const isPandal = plot ? (plot._id.startsWith('pandal') || plot.isPandal) : false
 
   // Select current price
-  let basePrice = plot ? plot.price : 0
+  let basePrice = plot ? (Number(plot.price ?? plot.basePrice ?? 0)) : 0
   if (isCottage && cottageRoomTypes.length > 0) {
     const selectedCot = cottageRoomTypes.find(c => c.id === selectedCottageId) || cottageRoomTypes[0]
     basePrice = selectedCot ? selectedCot.price : (plot.price || 0)
@@ -652,7 +642,7 @@ function PlotDetail() {
               <div className="booking-card-price">
                 <div>
                   <span className="price-label">Starts from</span>
-                  <h2>₹{basePrice} <small>{!isCottage ? '/day' : '/night'}</small></h2>
+                  <h2>₹{Number(basePrice || 0).toLocaleString()} <small>{!isCottage ? '/day' : '/night'}</small></h2>
                 </div>
               </div>
 
@@ -834,7 +824,7 @@ function PlotDetail() {
                     {selectedAddonsObjects.map(addon => (
                       <div key={addon.id} className="breakdown-row" style={{ color: 'var(--gold)', fontSize: '13px' }}>
                         <span>{addon.name}</span>
-                        <span>+ ₹{addon.priceAddon.toLocaleString()}</span>
+                        <span>+ ₹{Number(addon.priceAddon ?? addon.price ?? 0).toLocaleString()}</span>
                       </div>
                     ))}
                     <hr className="breakdown-divider" />
